@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>KIPM-UP · Absensi Piket | QR Live + Admin</title>
+<title>KIPM-UP · Absensi Piket | QR Live + Validasi Token</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
@@ -317,10 +317,6 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
 </head>
 <body>
 
-<script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRraxIRxop0nvHqqbJ_Rqg9yHLMECM7F6mDS9U5WboLEnpdIQ/exec';
-</script>
-
 <!-- LANDING (3 OPSI) -->
 <div id="page-landing" class="page active">
   <div class="landing-card">
@@ -358,14 +354,14 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
       <div class="gps-status" id="gps-status" style="font-size:11px; margin-top:6px;">📍 Mengambil lokasi...</div>
     </div>
     <div class="scan-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-top:16px; text-align:center;">
-      <div class="scan-label">Arahkan kamera ke QR Code yang ditampilkan admin / layar</div>
+      <div class="scan-label">Arahkan kamera ke QR Code yang ditampilkan di menu "QR Code Live"</div>
       <div id="qr-reader-wrapper" style="width:260px; height:260px; margin:12px auto; position:relative;"><div id="qr-reader"></div></div>
       <button class="btn-scan" id="btn-start-scan" onclick="toggleScan()" style="background:var(--accent); color:#0a1a0f; padding:10px 20px; border-radius:30px; border:none;">▶ Mulai Scan</button>
     </div>
   </div>
 </div>
 
-<!-- HALAMAN QR LIVE (DIPINDAHKAN DARI ADMIN) -->
+<!-- HALAMAN QR LIVE (DIPINDAHKAN DARI ADMIN + VALIDASI TOKEN) -->
 <div id="page-qr" class="page">
   <div style="padding:16px 20px; background:var(--bg2); display:flex; gap:12px; align-items:center;">
     <div class="back-btn" onclick="goTo('landing')">←</div>
@@ -373,11 +369,11 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
   </div>
   <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:20px;">
     <div class="qr-container">
-      <div class="qr-title">📸 QR Dinamis</div>
-      <div class="qr-sub">Setiap 30 detik token berubah · Scan menggunakan halaman Anggota</div>
+      <div class="qr-title">📸 QR Dinamis + Validasi Token</div>
+      <div class="qr-sub">Setiap 30 detik token berubah · Hanya token terbaru yang diterima sistem</div>
       <div id="qr-display-canvas" style="background:white; padding:12px; border-radius:20px; display:inline-block;"></div>
       <div class="token-box" id="qr-token-text-live">----</div>
-      <div class="refresh-info">🔄 Refresh otomatis setiap 30 detik | Token unik untuk absen</div>
+      <div class="refresh-info">🔄 Refresh otomatis setiap 30 detik | Scan wajib menggunakan token yang tampil sekarang</div>
     </div>
   </div>
 </div>
@@ -395,7 +391,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
   </div>
 </div>
 
-<!-- ADMIN DASHBOARD (QR TAB TELAH DIHAPUS) -->
+<!-- ADMIN DASHBOARD (tanpa tab QR) -->
 <div id="page-admin" class="page" style="display:none;">
   <div class="sidebar">
     <div class="sidebar-logo" style="padding:24px 20px;"><div class="sidebar-logo-text">KIPM-UP</div><div class="sidebar-logo-sub">Admin</div></div>
@@ -517,6 +513,19 @@ let jadwalMingguan = JSON.parse(localStorage.getItem('jadwalMingguan') || 'null'
   5: ['082024029','092025027','092025038','092025004','092025022','092025001','092025040','092025017']
 };
 
+// ========== QR TOKEN VALIDATION (LIVE) ==========
+let currentLiveToken = null;
+function updateLiveToken() {
+  currentLiveToken = md5(Date.now() + "KIPM_SECURE").substring(0, 12).toUpperCase();
+  localStorage.setItem('kipm_live_token', currentLiveToken);
+  const canvasDiv = document.getElementById('qr-display-canvas');
+  if(canvasDiv){
+    canvasDiv.innerHTML = '';
+    new QRCode(canvasDiv, { text: currentLiveToken, width: 180, height: 180 });
+    document.getElementById('qr-token-text-live').innerText = currentLiveToken;
+  }
+}
+
 function api(params) {
   const today = new Date().toISOString().split('T')[0];
   if(params.action === 'getAnggota') return {ok:true, data: demoAnggotaList};
@@ -547,10 +556,15 @@ function api(params) {
     return {ok:true, csv};
   }
   if(params.action === 'validateBarcode'){
+    // VALIDASI TOKEN QR (HARUS SAMA DENGAN TOKEN LIVE)
+    const expectedToken = localStorage.getItem('kipm_live_token');
+    if(!expectedToken || params.token !== expectedToken) {
+      return {ok:false, msg:'QR Code tidak valid atau sudah kadaluarsa. Silakan refresh halaman QR dan scan ulang.'};
+    }
     const anggota = demoAnggotaList.find(a=>a.NIA===params.NIA);
-    if(!anggota) return {ok:false, msg:'NIA tidak terdaftar'};
+    if(!anggota) return {ok:false, msg:'NIA tidak terdaftar di sistem'};
     if(demoAbsensi.some(r=>r.tanggal===today && r.NIA===params.NIA && r.tipe===params.tipe)) return {ok:false, msg:`Sudah absen ${params.tipe} hari ini`};
-    if(params.tipe==='PULANG' && !demoAbsensi.some(r=>r.tanggal===today && r.NIA===params.NIA && r.tipe==='DATANG')) return {ok:false, msg:'Harus absen DATANG dulu'};
+    if(params.tipe==='PULANG' && !demoAbsensi.some(r=>r.tanggal===today && r.NIA===params.NIA && r.tipe==='DATANG')) return {ok:false, msg:'Harus absen DATANG terlebih dahulu'};
     demoAbsensi.push({tanggal:today, waktu:new Date().toTimeString().slice(0,8), NIA:params.NIA, nama:anggota.nama, tipe:params.tipe, status:'HADIR'});
     return {ok:true, msg:`Absen ${params.tipe} berhasil, ${anggota.nama}!`};
   }
@@ -571,28 +585,35 @@ function goTo(page){
   document.getElementById('page-'+page).classList.add('active');
   if(page==='admin') initAdmin();
   if(page==='scan'){ loadJadwalScan(); if(navigator.geolocation) navigator.geolocation.getCurrentPosition(()=>{},()=>{}); }
-  if(page==='qr'){ startQRLiveDisplay(); }
+  if(page==='qr'){ 
+    if(qrRefreshInterval) clearInterval(qrRefreshInterval);
+    updateLiveToken(); 
+    qrRefreshInterval = setInterval(() => updateLiveToken(), 30000);
+  }
   if(page!=='qr' && qrRefreshInterval){ clearInterval(qrRefreshInterval); qrRefreshInterval=null; }
 }
 function setScanType(t){ currentScanType=t; document.getElementById('btn-tipe-datang').style.borderColor=t==='DATANG'?'var(--accent)':'var(--border2)'; document.getElementById('btn-tipe-pulang').style.borderColor=t==='PULANG'?'#c084fc':'var(--border2)';}
 async function loadJadwalScan(){ const res=await api({action:'getJadwalHariIni'}); const el=document.getElementById('jadwal-today'); if(res.ok && res.data.length) el.innerHTML=res.data.map(j=>`<div class="jadwal-item" style="display:flex;justify-content:space-between;padding:6px 0;"><div><b>${j.nama}</b><div style="font-size:11px;">${j.NIA} · ${j.divisi}</div></div><span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span></div>`).join(''); else el.innerHTML='<div class="empty-state">Tidak ada jadwal hari ini</div>';}
-function toggleScan(){ if(scannerActive){ if(html5Scanner) html5Scanner.stop().catch(e=>{}); scannerActive=false; document.getElementById('btn-start-scan').innerHTML='▶ Mulai Scan'; }else{ const nia=document.getElementById('input-NIA').value.trim(); if(!nia){ showToast('Isi NIA dulu','error'); return; } html5Scanner=new Html5Qrcode('qr-reader'); html5Scanner.start({facingMode:'environment'},{fps:10,qrbox:220}, async (text)=>{ const res=await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); showToast(res.ok?`✅ ${res.msg}`:`❌ ${res.msg}`, res.ok?'success':'error'); if(res.ok){ toggleScan(); loadJadwalScan(); } }).catch(e=>{ showToast('Gagal akses kamera','error'); }); scannerActive=true; document.getElementById('btn-start-scan').innerHTML='⏹ Stop Scan'; }}
-// QR LIVE DISPLAY (dipindah ke halaman publik)
-function renderQRCodeOnPublic() {
-  const token = md5(Date.now()+"KIPM").substring(0,12).toUpperCase();
-  const canvasDiv = document.getElementById('qr-display-canvas');
-  if(canvasDiv){
-    canvasDiv.innerHTML = '';
-    new QRCode(canvasDiv, { text: token, width: 180, height: 180 });
-    document.getElementById('qr-token-text-live').innerText = token;
+function toggleScan(){ 
+  if(scannerActive){ 
+    if(html5Scanner) html5Scanner.stop().catch(e=>{}); 
+    scannerActive=false; 
+    document.getElementById('btn-start-scan').innerHTML='▶ Mulai Scan'; 
+  }else{ 
+    const nia=document.getElementById('input-NIA').value.trim(); 
+    if(!nia){ showToast('Isi NIA dulu','error'); return; } 
+    html5Scanner=new Html5Qrcode('qr-reader'); 
+    html5Scanner.start({facingMode:'environment'},{fps:10,qrbox:220}, async (text)=>{ 
+      const res=await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); 
+      showToast(res.ok?`✅ ${res.msg}`:`❌ ${res.msg}`, res.ok?'success':'error'); 
+      if(res.ok){ toggleScan(); loadJadwalScan(); } 
+    }).catch(e=>{ showToast('Gagal akses kamera','error'); }); 
+    scannerActive=true; 
+    document.getElementById('btn-start-scan').innerHTML='⏹ Stop Scan'; 
   }
 }
-function startQRLiveDisplay() {
-  if(qrRefreshInterval) clearInterval(qrRefreshInterval);
-  renderQRCodeOnPublic();
-  qrRefreshInterval = setInterval(() => renderQRCodeOnPublic(), 30000);
-}
-// ADMIN LOGIC (QR dihapus total)
+
+// ADMIN LOGIC
 async function adminLogin(){ const u=document.getElementById('admin-username').value, p=document.getElementById('admin-password').value; const res=await api({action:'adminLogin', username:u, password:p}); if(res.ok){ goTo('admin'); }else{ document.getElementById('login-err').style.display='block'; }}
 function adminLogout(){ goTo('landing'); if(qrRefreshInterval) clearInterval(qrRefreshInterval); }
 async function initAdmin(){ await loadAnggotaForPicker(); startClock(); switchTab('dashboard'); loadDashboard(); }
@@ -603,7 +624,7 @@ function renderAnggotaPicker(){ const query=document.getElementById('cari-anggot
 function togglePickAnggota(NIA){ if(selectedAnggota.has(NIA)) selectedAnggota.delete(NIA); else selectedAnggota.add(NIA); renderAnggotaPicker(); }
 async function saveJadwalHari(){ const hari=parseInt(document.getElementById('jadwal-hari-select').value); if(selectedAnggota.size===0){ showToast('Pilih minimal 1 anggota!','error'); return; } jadwalMingguan[hari]=[...selectedAnggota]; localStorage.setItem('jadwalMingguan',JSON.stringify(jadwalMingguan)); await api({action:'setJadwal', hari, anggota:JSON.stringify([...selectedAnggota])}); showToast('✅ Jadwal berhasil disimpan!','success'); renderJadwalPreview(); }
 function renderJadwalPreview(){ const hariNama=['','Senin','Selasa','Rabu','Kamis','Jumat']; const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=''; for(let h=1;h<=5;h++){ const list=jadwalMingguan[h]||[]; html+=`<div style="margin-bottom:12px;padding:10px;background:var(--bg2);border-radius:8px;"><div style="font-weight:600;">${hariNama[h]} (${list.length})</div>${list.map(nia=>{const a=anggotaMap.get(nia); return `<div>📌 ${a?`${a.nama} (${a.divisi})`:`${nia}`}</div>`;}).join('')||'<div class="empty-state">Kosong</div>'}</div>`; } document.getElementById('jadwal-preview-minggu').innerHTML=html; }
-function downloadJadwalPDF(){ const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=`<html><head><meta charset="UTF-8"><title>Jadwal Piket KIPM-UP</title><style>body{font-family:sans-serif;padding:20px;}h1{color:#2d6a4f;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f1f8e9;}</style></head><body><h1>📋 Jadwal Piket KIPM-UP</h1><p>Cetak: ${new Date().toLocaleDateString('id-ID')}</p>`; const hariNama=['Senin','Selasa','Rabu','Kamis','Jumat']; for(let i=0;i<5;i++){ const h=i+1; const list=jadwalMingguan[h]||[]; if(list.length){ html+=`<h3>${hariNama[i]}</h3><table><tr><th>No</th><th>NIA</th><th>Nama</th><th>Divisi</th></tr>`; list.forEach((nia,idx)=>{ const a=anggotaMap.get(nia); html+=`<tr><td>${idx+1}</td><td>${nia}</td><td>${a?a.nama:'-'}</td><td>${a?a.divisi:'-'}</td></tr>`; }); html+=`</table><br>`; } } html+=`</body></html>`; const win=window.open(); win.document.write(html); win.document.close(); win.print(); }
+function downloadJadwalPDF(){ const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=`<html><head><meta charset="UTF-8"><title>Jadwal Piket KIPM-UP</title><style>body{font-family:sans-serif;padding:20px;}h1{color:#2d6a4f;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f1f8e9;}</style></head><body><h1>📋 Jadwal Piket KIPM-UP</h1><p>Cetak: ${new Date().toLocaleDateString('id-ID')}</p>`; const hariNama=['Senin','Selasa','Rabu','Kamis','Jumat']; for(let i=0;i<5;i++){ const h=i+1; const list=jadwalMingguan[h]||[]; if(list.length){ html+=`<h3>${hariNama[i]}</h3><table><tr><th>No</th><th>NIA</th><th>Nama</th><th>Divisi</th></tr>`; list.forEach((nia,idx)=>{ const a=anggotaMap.get(nia); html+=`<tr><td>${idx+1}</td><td>${nia}</td><td>${a?a.nama:'-'}</td><td>${a?a.divisi:'-'}</td>`; }); html+=`</table><br>`; } } html+=`</body></html>`; const win=window.open(); win.document.write(html); win.document.close(); win.print(); }
 async function loadDashboard(){ const res=await api({action:'getDashboardStats'}); document.getElementById('stats-grid').innerHTML=`<div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Hadir Hari Ini</div><div class="stat-value stat-green" style="font-size:28px; font-weight:600;">${res.hadirHariIni||0}</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label">% Kehadiran</div><div class="stat-value stat-blue" style="font-size:28px;">${res.persenHariIni||0}%</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label">Total Anggota</div><div class="stat-value" style="font-size:28px;">${res.totalAnggota||0}</div></div>`; const rekap=await api({action:'getRekapAbsensi', from:new Date().toISOString().split('T')[0], to:new Date().toISOString().split('T')[0]}); const tbody=document.getElementById('tbl-today'); if(rekap.data.length) tbody.innerHTML=rekap.data.map(r=>`<tr><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); else tbody.innerHTML='<tr><td colspan="4" class="empty-state">Belum ada absensi</td></tr>'; }
 async function loadRekap(){ const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; const res=await api({action:'getRekapAbsensi', from, to}); const tbody=document.getElementById('tbl-rekap'); if(res.data.length) tbody.innerHTML=res.data.map(r=>`<tr><td>${r.tanggal}</td><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); else tbody.innerHTML='<tr><td colspan="5" class="empty-state">Tidak ada data</td></tr>'; }
 async function exportCSV(){ const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; const res=await api({action:'exportAbsensi', from, to}); if(res.ok){ const blob=new Blob([res.csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='rekap_absensi.csv'; a.click(); showToast('CSV terunduh','success'); } }
@@ -614,7 +635,7 @@ async function submitAddAnggota(){ const NIA=document.getElementById('new-NIA').
 async function deleteAnggota(NIA){ if(confirm('Hapus anggota?')){ await api({action:'deleteAnggota', NIA}); await loadAnggotaForPicker(); loadAnggotaTable(); showToast('Dihapus','success'); } }
 document.getElementById('jadwal-hari-select')?.addEventListener('change',()=>{ const hari=parseInt(document.getElementById('jadwal-hari-select').value); selectedAnggota=new Set(jadwalMingguan[hari]||[]); renderAnggotaPicker(); });
 window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.downloadJadwalPDF=downloadJadwalPDF; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV;
-console.log('✅ Sistem siap | QR Live di halaman publik | 3 opsi landing');
+console.log('✅ Sistem siap | QR Live dengan validasi token unik | 3 opsi landing');
 </script>
 </body>
 </html>
