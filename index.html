@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
 <style>
 :root {
   --bg: #0a0c10;
@@ -215,7 +216,7 @@ body {
   font-size: 13px;
 }
 .jadwal-nama { font-weight: 500; }
-.jadwal-nim { color: var(--text2); font-family: var(--mono); font-size: 11px; }
+.jadwal-NIA { color: var(--text2); font-family: var(--mono); font-size: 11px; }
 .badge {
   font-size: 10px;
   padding: 2px 8px;
@@ -880,8 +881,8 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzyWr7unsELjl4VkaBXhgdw
     <div class="identity-section">
       <div class="jadwal-card-title" style="margin-bottom:12px">👤 Identitasmu</div>
       <div class="form-row">
-        <label class="form-label">NIM</label>
-        <input class="form-input" id="input-nim" type="text" placeholder="Contoh: 20210001" maxlength="20" />
+        <label class="form-label">NIA</label>
+        <input class="form-input" id="input-NIA" type="text" placeholder="Contoh: 20210001" maxlength="20" />
       </div>
       <div class="form-row">
         <label class="form-label">Nama Lengkap</label>
@@ -1028,7 +1029,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzyWr7unsELjl4VkaBXhgdw
           <div class="table-scroll">
             <table>
               <thead>
-                <tr><th>Waktu</th><th>NIM</th><th>Nama</th><th>Status</th></tr>
+                <tr><th>Waktu</th><th>NIA</th><th>Nama</th><th>Status</th></tr>
               </thead>
               <tbody id="tbl-today"></tbody>
             </table>
@@ -1083,7 +1084,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzyWr7unsELjl4VkaBXhgdw
           <div class="table-scroll">
             <table>
               <thead>
-                <tr><th>Tanggal</th><th>Waktu</th><th>NIM</th><th>Nama</th><th>Status</th></tr>
+                <tr><th>Tanggal</th><th>Waktu</th><th>NIA</th><th>Nama</th><th>Status</th></tr>
               </thead>
               <tbody id="tbl-rekap"></tbody>
             </table>
@@ -1096,7 +1097,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzyWr7unsELjl4VkaBXhgdw
         <div class="histori-search">
           <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Cari Histori Anggota</div>
           <div class="filter-row">
-            <input class="filter-input" id="histori-nim" placeholder="Masukkan NIM..." style="flex:1;" />
+            <input class="filter-input" id="histori-NIA" placeholder="Masukkan NIA..." style="flex:1;" />
             <button class="btn-sm primary" onclick="loadHistori()">Cari</button>
           </div>
         </div>
@@ -1123,7 +1124,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzyWr7unsELjl4VkaBXhgdw
           <div class="table-scroll">
             <table>
               <thead>
-                <tr><th>NIM</th><th>Nama</th><th>Divisi</th><th>No. Telp</th><th>Aksi</th></tr>
+                <tr><th>NIA</th><th>Nama</th><th>Divisi</th><th>No. Telp</th><th>Aksi</th></tr>
               </thead>
               <tbody id="tbl-anggota"></tbody>
             </table>
@@ -1163,8 +1164,8 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzyWr7unsELjl4VkaBXhgdw
     <div class="modal-title">Tambah Anggota Baru</div>
     <div class="modal-sub">Data akan disimpan ke Google Sheets</div>
     <div class="form-row" style="margin-bottom:10px;">
-      <label class="form-label">NIM</label>
-      <input class="form-input" id="new-nim" placeholder="Nomor Induk Mahasiswa" />
+      <label class="form-label">NIA</label>
+      <input class="form-input" id="new-NIA" placeholder="Nomor Induk Mahasiswa" />
     </div>
     <div class="form-row" style="margin-bottom:10px;">
       <label class="form-label">Nama Lengkap</label>
@@ -1224,7 +1225,7 @@ function showToast(msg, type = 'info', dur = 3000) {
 }
 
 async function api(params) {
-  if (!GAS_URL || GAS_URL === 'GANTI_DENGAN_URL_WEB_APP_GOOGLE_APPS_SCRIPT') {
+  if (!GAS_URL || GAS_URL === 'https://script.google.com/macros/s/AKfycbzyWr7unsELjl4VkaBXhgdwdwf-a67fWrzZY4z13gkfsMgEKTT2DF0wGXb4FjoCh2rVPQ/exec') {
     // Demo mode
     return demoApi(params);
   }
@@ -1239,19 +1240,19 @@ async function api(params) {
 
 // ---- DEMO MODE (saat GAS_URL belum diset) ----
 const demoJadwal = [
-  {nim:'20210001', nama:'Budi Santoso', divisi:'Penelitian', status:'HADIR'},
-  {nim:'20210002', nama:'Siti Rahayu', divisi:'Edukasi', status:'BELUM'},
-  {nim:'20210003', nama:'Ahmad Fauzi', divisi:'Humas', status:'BELUM'},
+  {NIA:'20210001', nama:'Budi Santoso', divisi:'Penelitian', status:'HADIR'},
+  {NIA:'20210002', nama:'Siti Rahayu', divisi:'Edukasi', status:'BELUM'},
+  {NIA:'20210003', nama:'Ahmad Fauzi', divisi:'Humas', status:'BELUM'},
 ];
 const demoAnggota = [
-  {nim:'20210001', nama:'Budi Santoso', divisi:'Penelitian', telp:'081234567890'},
-  {nim:'20210002', nama:'Siti Rahayu', divisi:'Edukasi', telp:'081234567891'},
-  {nim:'20210003', nama:'Ahmad Fauzi', divisi:'Humas', telp:'081234567892'},
-  {nim:'20210004', nama:'Dewi Lestari', divisi:'Keuangan', telp:'081234567893'},
+  {NIA:'20210001', nama:'Budi Santoso', divisi:'Penelitian', telp:'081234567890'},
+  {NIA:'20210002', nama:'Siti Rahayu', divisi:'Edukasi', telp:'081234567891'},
+  {NIA:'20210003', nama:'Ahmad Fauzi', divisi:'Humas', telp:'081234567892'},
+  {NIA:'20210004', nama:'Dewi Lestari', divisi:'Keuangan', telp:'081234567893'},
 ];
 const demoRekap = [
-  {tanggal: new Date().toISOString().split('T')[0], waktu:'08:15:32', nim:'20210001', nama:'Budi Santoso', status:'HADIR'},
-  {tanggal: new Date().toISOString().split('T')[0], waktu:'08:22:11', nim:'20210004', nama:'Dewi Lestari', status:'HADIR (tidak terjadwal)'},
+  {tanggal: new Date().toISOString().split('T')[0], waktu:'08:15:32', NIA:'20210001', nama:'Budi Santoso', status:'HADIR'},
+  {tanggal: new Date().toISOString().split('T')[0], waktu:'08:22:11', NIA:'20210004', nama:'Dewi Lestari', status:'HADIR (tidak terjadwal)'},
 ];
 function demoApi(p) {
   const today = new Date().toISOString().split('T')[0];
@@ -1260,13 +1261,13 @@ function demoApi(p) {
     case 'getDashboardStats': return {ok:true, hadirHariIni:1, jadwalHariIni:3, hadirBulanIni:8, jadwalBulanIni:12, totalAnggota:4, persenHariIni:33};
     case 'getAnggota': return {ok:true, data: demoAnggota};
     case 'getRekapAbsensi': return {ok:true, data: demoRekap};
-    case 'getHistoriAnggota': return {ok:true, nim:p.nim, totalJadwal:5, totalHadir:4, persentase:80, histori:[{tanggal:today,waktu:'08:15',status:'HADIR'}]};
-    case 'adminLogin': return (p.username==='admin'&&p.password==='kipmup2024') ? {ok:true,nama:'Administrator',role:'superadmin'} : {ok:false,msg:'Salah'};
+    case 'getHistoriAnggota': return {ok:true, NIA:p.NIA, totalJadwal:5, totalHadir:4, persentase:80, histori:[{tanggal:today,waktu:'08:15',status:'HADIR'}]};
+    case 'adminLogin': return (p.username==='adminhrd'&&p.password==='kipmup2017') ? {ok:true,nama:'Administrator',role:'superadmin'} : {ok:false,msg:'Salah'};
     case 'validateBarcode': return {ok:true, msg:'[DEMO] Absensi berhasil!', waktu:'08:30:00', jadwal:true};
     case 'addAnggota': return {ok:true, msg:'[DEMO] Anggota ditambahkan'};
     case 'deleteAnggota': return {ok:true};
     case 'setJadwal': return {ok:true, msg:'[DEMO] Jadwal disimpan'};
-    case 'exportAbsensi': return {ok:true, csv:'Tanggal,Waktu,NIM,Nama,Status\n'+today+',08:15,20210001,Budi Santoso,HADIR', total:1};
+    case 'exportAbsensi': return {ok:true, csv:'Tanggal,Waktu,NIA,Nama,Status\n'+today+',08:15,20210001,Budi Santoso,HADIR', total:1};
     default: return {ok:false, msg:'Demo: unknown action'};
   }
 }
@@ -1293,7 +1294,7 @@ async function loadJadwalScan() {
     <div class="jadwal-item">
       <div>
         <div class="jadwal-nama">${j.nama}</div>
-        <div class="jadwal-nim">${j.nim} · ${j.divisi}</div>
+        <div class="jadwal-NIA">${j.NIA} · ${j.divisi}</div>
       </div>
       <span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span>
     </div>
@@ -1309,10 +1310,10 @@ function toggleScan() {
 }
 
 function startScanner() {
-  const nim = document.getElementById('input-nim').value.trim();
+  const NIA = document.getElementById('input-NIA').value.trim();
   const nama = document.getElementById('input-nama').value.trim();
-  if (!nim || !nama) {
-    showToast('Isi NIM dan Nama dulu ya!', 'error');
+  if (!NIA || !nama) {
+    showToast('Isi NIA dan Nama dulu ya!', 'error');
     return;
   }
   isScanning = true;
@@ -1324,7 +1325,7 @@ function startScanner() {
   scannerInstance.start(
     {facingMode:'environment'},
     config,
-    (decodedText) => onQRScanned(decodedText, nim, nama),
+    (decodedText) => onQRScanned(decodedText, NIA, nama),
     () => {}
   ).catch(err => {
     showToast('Tidak bisa akses kamera: ' + err, 'error');
@@ -1344,13 +1345,13 @@ function stopScanner() {
 }
 
 let lastScanTime = 0;
-async function onQRScanned(text, nim, nama) {
+async function onQRScanned(text, NIA, nama) {
   const now = Date.now();
   if (now - lastScanTime < 3000) return;
   lastScanTime = now;
   
   showToast('⏳ Memvalidasi...', 'info');
-  const res = await api({action:'validateBarcode', token: text, nim, nama});
+  const res = await api({action:'validateBarcode', token: text, NIA, nama});
   if (res.ok) {
     showToast('✅ ' + res.msg + (res.jadwal ? ' (Terjadwal)' : ''), 'success', 4000);
     stopScanner();
@@ -1431,25 +1432,14 @@ function switchTab(tab) {
 
 // ---- QR CODE GENERATOR ----
 function generateToken() {
+  // FIXED: pakai MD5 agar identik dengan backend Code.gs
   const wib = new Date(new Date().getTime() + 7*3600*1000);
   const d = wib.toISOString().slice(0,10).replace(/-/g,'');
   const slot = Math.floor(wib.getSeconds()/30) + Math.floor(wib.getMinutes())*2 + Math.floor(wib.getHours())*120;
-  const raw = d + '_' + slot + '_KIPMUP2017SECRET';
-  // Simple hash simulation (client-side mirror of GAS MD5 first 12 chars)
-  let h = 0;
-  for (let i = 0; i < raw.length; i++) {
-    h = Math.imul(31, h) + raw.charCodeAt(i) | 0;
-  }
-  // Use a fixed-width hex representation padded to 12 chars
-  let hex = Math.abs(h).toString(16).padStart(8,'0');
-  // XOR with slot to add more variance
-  let h2 = 0;
-  for (let i = raw.length - 1; i >= 0; i--) {
-    h2 = Math.imul(17, h2) + raw.charCodeAt(i) | 0;
-  }
-  hex += Math.abs(h2).toString(16).padStart(8,'0');
-  return hex.substring(0,12).toUpperCase();
+  const raw = d + '_' + slot + '_KIPMUP2024SECRET';
+  return md5(raw).substring(0, 12).toUpperCase();
 }
+
 
 function renderQR(token) {
   const el = document.getElementById('qr-canvas');
@@ -1514,7 +1504,7 @@ async function loadJadwalLive() {
     <div class="jadwal-item" style="margin-bottom:6px;">
       <div>
         <div class="jadwal-nama" style="font-size:12px;">${j.nama}</div>
-        <div class="jadwal-nim">${j.divisi}</div>
+        <div class="jadwal-NIA">${j.divisi}</div>
       </div>
       <span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span>
     </div>
@@ -1539,7 +1529,7 @@ async function loadDashboard() {
     tbody.innerHTML = rekap.data.map(r => `
       <tr>
         <td style="font-family:var(--mono);color:var(--accent);">${r.waktu}</td>
-        <td style="font-family:var(--mono);color:var(--text2);">${r.nim}</td>
+        <td style="font-family:var(--mono);color:var(--text2);">${r.NIA}</td>
         <td>${r.nama}</td>
         <td><span class="badge ${r.status.includes('tidak')? 'badge-blue':'badge-hadir'}">${r.status}</span></td>
       </tr>
@@ -1560,7 +1550,7 @@ async function loadRekap() {
       <tr>
         <td style="font-family:var(--mono);">${r.tanggal}</td>
         <td style="font-family:var(--mono);color:var(--accent);">${r.waktu}</td>
-        <td style="font-family:var(--mono);color:var(--text2);">${r.nim}</td>
+        <td style="font-family:var(--mono);color:var(--text2);">${r.NIA}</td>
         <td>${r.nama}</td>
         <td><span class="badge ${r.status.includes('tidak')? 'badge-blue':'badge-hadir'}">${r.status}</span></td>
       </tr>
@@ -1586,9 +1576,9 @@ async function exportCSV() {
 
 // ---- HISTORI ----
 async function loadHistori() {
-  const nim = document.getElementById('histori-nim').value.trim();
-  if (!nim) return;
-  const res = await api({action:'getHistoriAnggota', nim});
+  const NIA = document.getElementById('histori-NIA').value.trim();
+  if (!NIA) return;
+  const res = await api({action:'getHistoriAnggota', NIA});
   const el = document.getElementById('histori-result');
   el.style.display = 'block';
   if (res.ok) {
@@ -1598,7 +1588,7 @@ async function loadHistori() {
         <div class="circle-label">Kehadiran</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="font-size:14px;font-weight:600;">NIM: ${res.nim}</div>
+        <div style="font-size:14px;font-weight:600;">NIA: ${res.NIA}</div>
         <div style="font-size:13px;color:var(--text2);">Total Jadwal: ${res.totalJadwal} hari</div>
         <div style="font-size:13px;color:var(--accent);">Total Hadir: ${res.totalHadir} hari</div>
       </div>
@@ -1630,19 +1620,19 @@ function renderAnggotaPicker() {
     return;
   }
   el.innerHTML = allAnggota.map(a => `
-    <div class="anggota-pick-item ${selectedAnggota.has(a.nim) ? 'selected' : ''}" onclick="togglePick('${a.nim}')">
-      <div class="pick-check">${selectedAnggota.has(a.nim) ? '✓' : ''}</div>
+    <div class="anggota-pick-item ${selectedAnggota.has(a.NIA) ? 'selected' : ''}" onclick="togglePick('${a.NIA}')">
+      <div class="pick-check">${selectedAnggota.has(a.NIA) ? '✓' : ''}</div>
       <div>
         <div class="pick-name">${a.nama}</div>
-        <div class="pick-divisi">${a.nim} · ${a.divisi}</div>
+        <div class="pick-divisi">${a.NIA} · ${a.divisi}</div>
       </div>
     </div>
   `).join('');
 }
 
-function togglePick(nim) {
-  if (selectedAnggota.has(nim)) selectedAnggota.delete(nim);
-  else selectedAnggota.add(nim);
+function togglePick(NIA) {
+  if (selectedAnggota.has(NIA)) selectedAnggota.delete(NIA);
+  else selectedAnggota.add(NIA);
   renderAnggotaPicker();
 }
 
@@ -1657,22 +1647,22 @@ async function loadJadwalToday_Admin() {
     <div class="jadwal-item" style="margin-bottom:6px;">
       <div>
         <div class="jadwal-nama" style="font-size:12px;">${j.nama}</div>
-        <div class="jadwal-nim">${j.divisi}</div>
+        <div class="jadwal-NIA">${j.divisi}</div>
       </div>
       <span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span>
     </div>
   `).join('');
   // Also pre-select today's anggota
-  selectedAnggota = new Set(res.data.map(j => j.nim));
+  selectedAnggota = new Set(res.data.map(j => j.NIA));
   renderAnggotaPicker();
 }
 
 async function saveJadwal() {
   const tanggal = document.getElementById('jadwal-date').value;
   if (!tanggal) { showToast('Pilih tanggal dulu!', 'error'); return; }
-  if (!selectedAnggota.size) { showToast('Pilih minimal 1 anggota!', 'error'); return; }
+  if (!selectedAnggota.size) { showToast('Pilih miNIAal 1 anggota!', 'error'); return; }
   
-  const anggota = allAnggota.filter(a => selectedAnggota.has(a.nim));
+  const anggota = allAnggota.filter(a => selectedAnggota.has(a.NIA));
   const res = await api({action:'setJadwal', tanggal, anggota: JSON.stringify(anggota)});
   if (res.ok) {
     showToast('✅ ' + res.msg, 'success');
@@ -1690,12 +1680,12 @@ async function loadAnggota() {
   const tbody = document.getElementById('tbl-anggota');
   tbody.innerHTML = allAnggota.map(a => `
     <tr>
-      <td style="font-family:var(--mono);color:var(--text2);">${a.nim}</td>
+      <td style="font-family:var(--mono);color:var(--text2);">${a.NIA}</td>
       <td style="font-weight:500;">${a.nama}</td>
       <td>${a.divisi}</td>
       <td style="font-family:var(--mono);font-size:12px;">${a.telp || '-'}</td>
       <td>
-        <button class="btn-sm danger" onclick="deleteAnggota('${a.nim}','${a.nama}')">Hapus</button>
+        <button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}','${a.nama}')">Hapus</button>
       </td>
     </tr>
   `).join('');
@@ -1710,13 +1700,13 @@ function closeModal(id) {
 }
 
 async function submitAddAnggota() {
-  const nim = document.getElementById('new-nim').value.trim();
+  const NIA = document.getElementById('new-NIA').value.trim();
   const nama = document.getElementById('new-nama').value.trim();
   const divisi = document.getElementById('new-divisi').value.trim();
   const telp = document.getElementById('new-telp').value.trim();
-  if (!nim || !nama) { showToast('NIM dan Nama wajib diisi!', 'error'); return; }
+  if (!NIA || !nama) { showToast('NIA dan Nama wajib diisi!', 'error'); return; }
   
-  const res = await api({action:'addAnggota', nim, nama, divisi, telp});
+  const res = await api({action:'addAnggota', NIA, nama, divisi, telp});
   if (res.ok) {
     showToast('✅ ' + res.msg, 'success');
     closeModal('modal-add-anggota');
@@ -1727,9 +1717,9 @@ async function submitAddAnggota() {
   }
 }
 
-async function deleteAnggota(nim, nama) {
+async function deleteAnggota(NIA, nama) {
   if (!confirm(`Hapus anggota ${nama}?`)) return;
-  const res = await api({action:'deleteAnggota', nim});
+  const res = await api({action:'deleteAnggota', NIA});
   if (res.ok) {
     showToast('✅ Anggota dihapus', 'success');
     loadAnggota();
