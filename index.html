@@ -41,6 +41,7 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 4px; }
 .page { display: none; min-height: 100vh; }
 .page.active { display: flex; flex-direction: column; }
+#page-admin.active { flex-direction: row; }
 /* LANDING */
 #page-landing {
   align-items: center;
@@ -887,8 +888,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbz9AaUwRZBY2QmoeZ2AKw2V
   <div class="sidebar">
     <div class="sidebar-logo"><div class="sidebar-logo-text">KIPM-UP</div></div>
     <div class="sidebar-nav">
-      <button class="nav-item active" onclick="switchTab('qr')">📱 QR Code</button>
-      <button class="nav-item" onclick="switchTab('dashboard')">📊 Dashboard</button>
+      <button class="nav-item active" onclick="switchTab('dashboard')">📊 Dashboard</button>
       <button class="nav-item" onclick="switchTab('anggota')">👥 Anggota</button>
       <button class="nav-item" onclick="switchTab('jadwal')">📅 Jadwal Piket</button>
       <button class="nav-item" onclick="switchTab('rekap')">📋 Rekap Absensi</button>
@@ -906,18 +906,8 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbz9AaUwRZBY2QmoeZ2AKw2V
       <div class="topbar-date" id="topbar-clock">--:--:-- WIB</div>
     </div>
     <div class="admin-content">
-      <!-- Panel QR -->
-      <div id="tab-qr" class="tab-panel active">
-        <div class="qr-display-card">
-          <div id="qr-canvas"></div>
-          <div class="qr-timer-bar"><div id="qr-timer-fill" class="qr-timer-fill"></div></div>
-          <div>Refresh: <span id="qr-countdown">30</span> detik</div>
-          <div id="qr-token-text" class="qr-token-display"></div>
-        </div>
-      </div>
-
       <!-- Panel Dashboard -->
-      <div id="tab-dashboard" class="tab-panel">
+      <div id="tab-dashboard" class="tab-panel active">
         <div class="stats-grid" id="dashboard-stats">
           <div class="stat-card"><div class="stat-label">HADIR HARI INI</div><div class="stat-value stat-green" id="stat-hadir-hari">-</div><div class="stat-sub">dari 8 jadwal</div></div>
           <div class="stat-card"><div class="stat-label">HADIR BULAN INI</div><div class="stat-value stat-blue" id="stat-hadir-bulan">-</div><div class="stat-sub">dari 40 jadwal</div></div>
@@ -1008,8 +998,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbz9AaUwRZBY2QmoeZ2AKw2V
     </div>
   </div>
   <div class="mobile-nav">
-    <button class="mobile-nav-item" onclick="switchTab('qr')"><span class="mobile-nav-icon">📱</span><span>QR</span></button>
-    <button class="mobile-nav-item" onclick="switchTab('dashboard')"><span class="mobile-nav-icon">📊</span><span>Dashboard</span></button>
+    <button class="mobile-nav-item active" onclick="switchTab('dashboard')"><span class="mobile-nav-icon">📊</span><span>Dashboard</span></button>
     <button class="mobile-nav-item" onclick="switchTab('anggota')"><span class="mobile-nav-icon">👥</span><span>Anggota</span></button>
     <button class="mobile-nav-item" onclick="switchTab('jadwal')"><span class="mobile-nav-icon">📅</span><span>Jadwal</span></button>
     <button class="mobile-nav-item" onclick="switchTab('rekap')"><span class="mobile-nav-icon">📋</span><span>Rekap</span></button>
@@ -1426,12 +1415,12 @@ function adminLogout() {
 // ============================================================
 function initAdminPage() {
   startClock();
-  startQRTimer();
   loadJadwalToday_Admin(); // untuk tampilan di panel jadwal
   loadAnggotaPicker();
   loadDashboard();
   loadAnggota();
   loadRekap(); // default tanpa filter
+  switchTab('dashboard');
 }
 
 function startClock() {
