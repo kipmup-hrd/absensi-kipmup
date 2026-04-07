@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>KIPM-UP · Sistem Absensi Piket (Admin Fix)</title>
+<title>KIPM-UP · Absensi Piket (QR Code & Jadwal Fix)</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
@@ -43,12 +43,6 @@ body {
 #page-admin.active { flex-direction: row; }
 
 /* LANDING */
-#page-landing {
-  align-items: center;
-  justify-content: center;
-  background: var(--bg);
-  position: relative;
-}
 .landing-card {
   background: var(--bg2);
   border: 1px solid var(--border2);
@@ -57,6 +51,7 @@ body {
   width: 100%;
   max-width: 420px;
   text-align: center;
+  margin: auto;
 }
 .logo-ring {
   width: 72px; height: 72px;
@@ -65,22 +60,14 @@ body {
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 20px;
 }
-.logo-inner { font-size: 28px; font-weight: 700; color: var(--accent); font-family: var(--mono); }
-.landing-title { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
 .btn-main {
   width: 100%;
   padding: 14px 20px;
   border-radius: var(--radius);
-  font-family: var(--font);
-  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   border: none;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  transition: 0.2s;
 }
 .btn-member { background: var(--accent); color: #0a1a0f; }
 .btn-admin { background: transparent; color: var(--text); border: 1px solid var(--border2); }
@@ -90,13 +77,14 @@ body {
   color: var(--text2);
   width: 36px; height: 36px;
   border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
-.badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; font-family: var(--mono); white-space: nowrap; }
+.badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; font-family: var(--mono); }
 .badge-hadir { background: rgba(74,222,128,0.15); color: var(--accent); }
 .badge-belum { background: rgba(248,113,113,0.15); color: var(--red); }
-.badge-pulang { background: rgba(167,139,250,0.2); color: #c084fc; }
 .form-input {
   width: 100%;
   background: var(--bg3);
@@ -104,7 +92,6 @@ body {
   border-radius: 8px;
   padding: 10px 14px;
   color: var(--text);
-  font-family: var(--font);
   font-size: 14px;
   outline: none;
 }
@@ -113,16 +100,12 @@ body {
   background: var(--bg3);
   border: 1px solid var(--border2);
   color: var(--text2);
-  font-family: var(--font);
   font-size: 12px;
-  font-weight: 500;
   padding: 6px 12px;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s;
 }
 .btn-sm.primary { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3); color: var(--accent); }
-.btn-sm.primary:hover { background: rgba(74,222,128,0.2); }
 .btn-sm.danger { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: var(--red); }
 .table-card {
   background: var(--bg2);
@@ -133,7 +116,7 @@ body {
 .table-scroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; color: var(--text3); background: var(--bg3); }
-td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text); }
+td { padding: 11px 16px; border-top: 1px solid var(--border); }
 .empty-state { color: var(--text3); text-align: center; padding: 28px; }
 .toast {
   position: fixed;
@@ -142,13 +125,12 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
   transform: translateX(-50%) translateY(80px);
   background: var(--bg3);
   border: 1px solid var(--border2);
-  color: var(--text);
   padding: 12px 20px;
   border-radius: 30px;
   font-size: 14px;
   z-index: 999;
   opacity: 0;
-  transition: all 0.3s ease;
+  transition: 0.3s;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.success { border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.1); }
@@ -173,16 +155,15 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
   max-width: 420px;
   position: relative;
 }
-.modal-close {
-  position: absolute;
-  top: 16px; right: 16px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  width: 32px; height: 32px;
-  border-radius: 6px;
-  cursor: pointer;
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  height: 100vh;
+  position: sticky;
+  top: 0;
 }
-.sidebar { width: 240px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); height: 100vh; position: sticky; top: 0; }
 .sidebar-nav { padding: 12px; display: flex; flex-direction: column; gap: 4px; }
 .nav-item {
   background: none;
@@ -202,6 +183,44 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
 .admin-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+
+/* QR DISPLAY */
+.qr-admin-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+}
+.qr-display-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.qr-box {
+  background: white;
+  padding: 16px;
+  border-radius: 10px;
+}
+.qr-timer-bar {
+  width: 200px;
+  height: 4px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.qr-timer-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 1s linear;
+}
+.qr-expire-countdown { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--accent3); }
+.qr-token-display { font-size: 22px; font-weight: 700; font-family: var(--mono); letter-spacing: 3px; }
+
+/* Jadwal Manager */
 .jadwal-manager {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -235,11 +254,10 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
   font-size: 12px;
 }
 .anggota-pick-item.selected .pick-check { background: var(--accent); border-color: var(--accent); color: #0a1a0f; }
-.pick-name { font-size: 13px; font-weight: 500; }
-.pick-divisi { font-size: 11px; color: var(--text2); }
 .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 @media (max-width: 768px) {
   .sidebar { display: none; }
+  .qr-admin-grid { grid-template-columns: 1fr; }
   .jadwal-manager { grid-template-columns: 1fr; }
   .admin-content { padding: 14px; }
 }
@@ -270,6 +288,7 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
 <body>
 
 <script>
+// GAS URL (tetap sama)
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRraxIRxop0nvHqqbJ_Rqg9yHLMECM7F6mDS9U5WboLEnpdIQ/exec';
 </script>
 
@@ -278,15 +297,15 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
   <div class="landing-card">
     <div class="logo-ring"><div class="logo-inner">KP</div></div>
     <div class="landing-title">KIPM-UP</div>
-    <div class="landing-sub">Sistem Absensi Piket · Komunitas Investasi</div>
-    <div class="btn-choice">
+    <div class="landing-sub">Sistem Absensi Piket</div>
+    <div class="btn-choice" style="display:flex; flex-direction:column; gap:12px;">
       <button class="btn-main btn-member" onclick="goTo('scan')">📱 Saya Anggota — Absen Sekarang</button>
       <button class="btn-main btn-admin" onclick="goTo('admin-login')">🔐 Login Admin</button>
     </div>
   </div>
 </div>
 
-<!-- SCAN (Anggota) -->
+<!-- SCAN (Anggota) - disederhanakan agar fokus ke admin -->
 <div id="page-scan" class="page">
   <div class="scan-header" style="background:var(--bg2); padding:16px 20px; display:flex; gap:12px;">
     <div class="back-btn" onclick="goTo('landing')">←</div>
@@ -298,7 +317,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
       <div id="jadwal-today"><div class="loading">Memuat...</div></div>
     </div>
     <div class="identity-section" style="background:var(--bg2); border-radius:12px; padding:16px;">
-      <label class="form-label">NIA (Nomor Induk Anggota)</label>
+      <label class="form-label">NIA</label>
       <input class="form-input" id="input-NIA" placeholder="Contoh: 082024022">
       <div style="margin:12px 0 8px;"><label class="form-label">Jenis Absen</label>
         <div style="display:flex; gap:10px;">
@@ -306,7 +325,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
           <button class="scan-type-btn" id="btn-tipe-pulang" onclick="setScanType('PULANG')" style="flex:1; padding:8px; background:var(--bg3); border:1px solid var(--border2); border-radius:8px;">🟣 Pulang</button>
         </div>
       </div>
-      <div class="gps-status" id="gps-status" style="font-size:11px; margin-top:6px;">📍 Mengambil lokasi...</div>
+      <div class="gps-status" id="gps-status" style="font-size:11px;">📍 Mengambil lokasi...</div>
     </div>
     <div class="scan-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-top:16px; text-align:center;">
       <div class="scan-label">Arahkan kamera ke QR Code</div>
@@ -321,7 +340,6 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
   <div style="position:absolute;top:16px;left:16px;"><div class="back-btn" onclick="goTo('landing')">←</div></div>
   <div class="admin-login-card" style="background:var(--bg2); max-width:380px; margin:auto; padding:40px; border-radius:20px;">
     <div class="admin-login-title">Admin Login</div>
-    <div class="admin-login-sub">Masuk ke dashboard</div>
     <input class="form-input" id="admin-username" placeholder="Username" style="margin-bottom:12px;">
     <input class="form-input" id="admin-password" type="password" placeholder="Password" onkeydown="if(event.key==='Enter') adminLogin()">
     <button class="btn-login" onclick="adminLogin()" style="width:100%; margin-top:16px; background:var(--accent); padding:12px; border:none; border-radius:12px; font-weight:bold;">Masuk →</button>
@@ -348,30 +366,50 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
   <div class="admin-main">
     <div class="admin-topbar" style="padding:14px 24px; background:var(--bg2); display:flex; justify-content:space-between;"><div class="topbar-title" id="tab-title">QR Code Live</div><div id="topbar-clock">--:--:--</div></div>
     <div class="admin-content">
-      <div id="tab-qr" class="tab-panel active"> <!-- QR panel sederhana --><div>QR Generator Aktif (refresh otomatis)</div><div id="qr-canvas" style="margin:12px 0;"></div><div id="qr-token-text" style="font-family:monospace;"></div></div>
-      <div id="tab-dashboard" class="tab-panel"><div class="stats-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;" id="stats-grid"></div><div class="table-card"><div class="table-card-header">Absensi Hari Ini</div><div class="table-scroll"><table><thead><tr><th>Tipe</th><th>Waktu</th><th>NIA</th><th>Nama</th></tr></thead><tbody id="tbl-today"></tbody></table></div></div></div>
+      <!-- TAB QR CODE LENGKAP DENGAN TIMER -->
+      <div id="tab-qr" class="tab-panel active">
+        <div class="qr-admin-grid">
+          <div class="qr-display-card">
+            <div style="font-size:13px;color:var(--text2);">QR Code untuk Scan Anggota</div>
+            <div class="qr-box" id="qr-canvas-container">
+              <div id="qr-canvas"></div>
+            </div>
+            <div class="qr-timer-bar"><div class="qr-timer-fill" id="qr-timer-fill" style="width:100%;"></div></div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div class="qr-expire-label">Refresh dalam</div>
+              <div class="qr-expire-countdown" id="qr-countdown">30</div>
+              <div class="qr-expire-label">detik</div>
+            </div>
+            <div class="qr-token-display" id="qr-token-text">------</div>
+          </div>
+          <div class="qr-display-card">
+            <div style="font-size:12px; color:var(--text3);">Kehadiran Hari Ini (Jadwal)</div>
+            <div id="qr-jadwal-live" style="width:100%;"></div>
+          </div>
+        </div>
+      </div>
+      <div id="tab-dashboard" class="tab-panel"><div class="stats-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px;" id="stats-grid"></div><div class="table-card"><div class="table-card-header">Absensi Hari Ini</div><div class="table-scroll"><table><thead><tr><th>Tipe</th><th>Waktu</th><th>NIA</th><th>Nama</th></tr></thead><tbody id="tbl-today"></tbody></table></div></div></div>
       <div id="tab-jadwal" class="tab-panel">
         <div class="table-card" style="margin-bottom:20px;">
-          <div class="table-card-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-            <div class="table-card-title">⚙️ Atur Jadwal Piket (Klik centang anggota)</div>
+          <div class="table-card-header" style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+            <div class="table-card-title">⚙️ Atur Jadwal Piket (centang anggota)</div>
             <div class="filter-row">
               <select class="filter-input" id="jadwal-hari-select"><option value="1">Senin</option><option value="2">Selasa</option><option value="3">Rabu</option><option value="4">Kamis</option><option value="5">Jumat</option></select>
               <button class="btn-sm primary" onclick="saveJadwalHari()">💾 Simpan Hari Ini</button>
               <button class="btn-sm blue" onclick="downloadJadwalPDF()">📥 Download Jadwal PDF</button>
-              <button class="btn-sm" onclick="loadAnggotaPicker(true)">🔄 Refresh Anggota</button>
             </div>
           </div>
           <div style="padding:16px;">
             <div class="jadwal-manager">
               <div class="anggota-picker">
-                <div class="anggota-picker-title">✅ Pilih Anggota yang Piket (centang / hapus centang)</div>
+                <div class="anggota-picker-title">✅ Pilih Anggota yang Piket</div>
                 <input class="filter-input" id="cari-anggota" placeholder="Cari nama atau NIA..." style="width:100%; margin-bottom:12px;" oninput="renderAnggotaPicker()">
-                <div class="anggota-list-pick" id="anggota-pick-list"><div class="loading">Memuat data anggota...</div></div>
-                <div style="margin-top:12px; font-size:11px; color:var(--text3);">Klik nama untuk memilih/membatalkan. Klik "Simpan Hari Ini" untuk menyimpan jadwal.</div>
+                <div class="anggota-list-pick" id="anggota-pick-list"><div class="loading">Memuat data...</div></div>
+                <div style="margin-top:8px; font-size:11px; color:var(--text3);">Klik nama untuk menambah/menghapus dari jadwal hari yang dipilih.</div>
               </div>
               <div>
                 <div class="anggota-picker">
-                  <div class="anggota-picker-title">📅 Pratinjau Jadwal Minggu Ini (setelah disimpan)</div>
+                  <div class="anggota-picker-title">📅 Pratinjau Jadwal Minggu Ini</div>
                   <div id="jadwal-preview-minggu" style="font-size:13px;">Memuat...</div>
                 </div>
               </div>
@@ -385,11 +423,13 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0U_FqSI0YQqwIokG3jrRr
   </div>
   <div class="mobile-nav"><button class="mobile-nav-item active" onclick="switchTab('qr')">📲QR</button><button class="mobile-nav-item" onclick="switchTab('dashboard')">📊</button><button class="mobile-nav-item" onclick="switchTab('jadwal')">📅</button><button class="mobile-nav-item" onclick="switchTab('rekap')">📋</button><button class="mobile-nav-item" onclick="switchTab('anggota')">👥</button></div>
 </div>
+
+<!-- MODAL TAMBAH ANGGOTA -->
 <div class="modal-overlay" id="modal-add-anggota"><div class="modal-box"><button class="modal-close" onclick="closeModal('modal-add-anggota')">✕</button><div class="modal-title">Tambah Anggota</div><input class="form-input" id="new-NIA" placeholder="NIA"><input class="form-input" id="new-nama" placeholder="Nama" style="margin-top:8px;"><input class="form-input" id="new-divisi" placeholder="Divisi" style="margin-top:8px;"><input class="form-input" id="new-telp" placeholder="No. Telp" style="margin-top:8px;"><button class="btn-sm primary" style="margin-top:16px; width:100%;" onclick="submitAddAnggota()">Simpan</button></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
-// ----------------------------- DATA NYATA + DEMO MODE -----------------------------
+// ----------------------------- DATA DEMO LENGKAP (SAMA SEPERTI SEBELUMNYA) -----------------------------
 const realAnggota = [
   {NIA:'082024022', nama:'Rifqy Rachmat', divisi:'Ketua Umum', telp:'87886993450'},
   {NIA:'082024015', nama:'Muhamad Alfan', divisi:'Wakil Ketua Umum I', telp:'85773694230'},
@@ -446,18 +486,18 @@ let jadwalMingguan = JSON.parse(localStorage.getItem('jadwalMingguan') || 'null'
   4: ['082024017','092025034','092025036','092025005','092025009','092025019','092025023','092025016'],
   5: ['082024029','092025027','092025038','092025004','092025022','092025001','092025040','092025017']
 };
-function api(params) { // demo always works
+async function api(params) {
   const today = new Date().toISOString().split('T')[0];
   if(params.action === 'getAnggota') return {ok:true, data: demoAnggotaList};
   if(params.action === 'getJadwalHariIni'){
     const dow = new Date().getDay();
     const list = jadwalMingguan[dow] || [];
     const data = list.map(nia=>{const a=demoAnggotaList.find(x=>x.NIA===nia); return a?{NIA:a.NIA,nama:a.nama,divisi:a.divisi,status:demoAbsensi.some(r=>r.tanggal===today && r.NIA===nia && r.tipe==='DATANG')?'HADIR':'BELUM'}:null}).filter(Boolean);
-    return {ok:true, data};
+    return {ok:true, data, tanggal:today};
   }
   if(params.action === 'getDashboardStats'){
     const hadirHari = new Set(demoAbsensi.filter(r=>r.tanggal===today && r.tipe==='DATANG').map(r=>r.NIA)).size;
-    return {ok:true, hadirHariIni:hadirHari, jadwalHariIni:8, hadirBulanIni:0, jadwalBulanIni:40, totalAnggota:demoAnggotaList.length, persenHariIni:Math.round(hadirHari/8*100)};
+    return {ok:true, hadirHariIni:hadirHari, jadwalHariIni:8, totalAnggota:demoAnggotaList.length, persenHariIni:Math.round(hadirHari/8*100)};
   }
   if(params.action === 'getRekapAbsensi') return {ok:true, data:demoAbsensi.filter(r=>(!params.from||r.tanggal>=params.from)&&(!params.to||r.tanggal<=params.to))};
   if(params.action === 'adminLogin') return (params.username==='adminhrd'&&params.password==='kipmup2017')?{ok:true,nama:'Administrator',role:'superadmin'}:{ok:false};
@@ -486,44 +526,45 @@ function api(params) { // demo always works
   return {ok:false};
 }
 
-// Global variables
+// Global
 let allAnggota = [];
-let selectedAnggota = new Set();
-let currentScanType = 'DATANG';
-let scannerActive = false, html5Scanner = null;
+let selectedAnggotaSet = new Set();
+let qrInterval = null;
 
 function showToast(msg, type='info'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000);}
-function goTo(page){ document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active'); p.style.display='none';}); document.getElementById('page-'+page).style.display='flex'; document.getElementById('page-'+page).classList.add('active'); if(page==='admin') initAdmin(); if(page==='scan'){ loadJadwalScan(); if(navigator.geolocation) navigator.geolocation.getCurrentPosition(()=>{},()=>{});}}
+function goTo(page){ document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active'); p.style.display='none';}); document.getElementById('page-'+page).style.display='flex'; document.getElementById('page-'+page).classList.add('active'); if(page==='admin') initAdmin(); if(page==='scan'){ loadJadwalScan(); navigator.geolocation?.getCurrentPosition(()=>{},()=>{}); }}
 function setScanType(t){ currentScanType=t; document.getElementById('btn-tipe-datang').style.borderColor=t==='DATANG'?'var(--accent)':'var(--border2)'; document.getElementById('btn-tipe-pulang').style.borderColor=t==='PULANG'?'#c084fc':'var(--border2)';}
-async function loadJadwalScan(){ const res=await api({action:'getJadwalHariIni'}); const el=document.getElementById('jadwal-today'); if(res.ok && res.data.length) el.innerHTML=res.data.map(j=>`<div class="jadwal-item"><div><b>${j.nama}</b><div>${j.NIA} · ${j.divisi}</div></div><span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span></div>`).join(''); else el.innerHTML='<div class="empty-state">Tidak ada jadwal hari ini</div>';}
-function toggleScan(){ if(scannerActive){ if(html5Scanner) html5Scanner.stop().catch(e=>{}); scannerActive=false; document.getElementById('btn-start-scan').innerHTML='▶ Mulai Scan'; }else{ const nia=document.getElementById('input-NIA').value.trim(); if(!nia){ showToast('Isi NIA dulu','error'); return; } html5Scanner=new Html5Qrcode('qr-reader'); html5Scanner.start({facingMode:'environment'},{fps:10,qrbox:220}, async (text)=>{ const res=await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); showToast(res.ok?`✅ ${res.msg}`:`❌ ${res.msg}`, res.ok?'success':'error'); if(res.ok){ toggleScan(); loadJadwalScan(); } }).catch(e=>{ showToast('Gagal akses kamera','error'); }); scannerActive=true; document.getElementById('btn-start-scan').innerHTML='⏹ Stop Scan'; }}
+let currentScanType='DATANG';
+async function loadJadwalScan(){ const res=await api({action:'getJadwalHariIni'}); const el=document.getElementById('jadwal-today'); if(res.ok && res.data.length) el.innerHTML=res.data.map(j=>`<div><b>${j.nama}</b> (${j.NIA}) <span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span></div>`).join(''); else el.innerHTML='<div class="empty-state">Tidak ada jadwal</div>';}
+let scannerActive=false, html5Scanner=null;
+function toggleScan(){ if(scannerActive){ if(html5Scanner) html5Scanner.stop().catch(e=>{}); scannerActive=false; document.getElementById('btn-start-scan').innerHTML='▶ Mulai Scan'; }else{ const nia=document.getElementById('input-NIA').value.trim(); if(!nia){ showToast('Isi NIA','error'); return; } html5Scanner=new Html5Qrcode('qr-reader'); html5Scanner.start({facingMode:'environment'},{fps:10,qrbox:220}, async (text)=>{ const res=await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); showToast(res.ok?`✅ ${res.msg}`:`❌ ${res.msg}`, res.ok?'success':'error'); if(res.ok){ toggleScan(); loadJadwalScan(); } }).catch(e=>{ showToast('Gagal akses kamera','error'); }); scannerActive=true; document.getElementById('btn-start-scan').innerHTML='⏹ Stop Scan'; }}
 
-// ADMIN LOGIC
+// ADMIN
 async function adminLogin(){ const u=document.getElementById('admin-username').value, p=document.getElementById('admin-password').value; const res=await api({action:'adminLogin', username:u, password:p}); if(res.ok){ goTo('admin'); }else{ document.getElementById('login-err').style.display='block'; }}
-function adminLogout(){ goTo('landing'); }
-async function initAdmin(){ await loadAnggotaForPicker(); startClock(); switchTab('jadwal'); loadDashboard(); renderQRToken(); setInterval(()=>renderQRToken(),30000); }
+function adminLogout(){ if(qrInterval) clearInterval(qrInterval); goTo('landing'); }
+async function initAdmin(){ await loadAnggotaForPicker(); startClock(); switchTab('qr'); startQRTimer(); loadDashboard(); }
 function startClock(){ setInterval(()=>{ const d=new Date(); document.getElementById('topbar-clock').innerText=d.toLocaleTimeString('id-ID'); },1000); }
-function renderQRToken(){ const token=md5(Date.now()+"KIPM").substring(0,12).toUpperCase(); const canvasDiv=document.getElementById('qr-canvas'); canvasDiv.innerHTML=''; new QRCode(canvasDiv,{text:token,width:160,height:160}); document.getElementById('qr-token-text').innerText=token; }
-function switchTab(tab){ document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); document.getElementById(`tab-${tab}`).classList.add('active'); document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active'); document.getElementById('tab-title').innerText=tab==='qr'?'QR Code':tab==='dashboard'?'Dashboard':tab==='jadwal'?'Jadwal Piket (Edit)':tab==='rekap'?'Rekap':tab==='anggota'?'Anggota':''; if(tab==='dashboard') loadDashboard(); if(tab==='rekap') loadRekap(); if(tab==='anggota') loadAnggotaTable(); if(tab==='jadwal'){ loadAnggotaForPicker(); renderJadwalPreview(); } }
-async function loadAnggotaForPicker(){ const res=await api({action:'getAnggota'}); if(res.ok){ allAnggota=res.data; const hari=parseInt(document.getElementById('jadwal-hari-select').value); selectedAnggota=new Set(jadwalMingguan[hari]||[]); renderAnggotaPicker(); renderJadwalPreview(); }else{ showToast('Gagal load anggota','error'); } }
-function renderAnggotaPicker(){ const query=document.getElementById('cari-anggota')?.value.toLowerCase()||''; let filtered=allAnggota; if(query) filtered=allAnggota.filter(a=>a.nama.toLowerCase().includes(query)||a.NIA.includes(query)); const container=document.getElementById('anggota-pick-list'); if(!filtered.length){ container.innerHTML='<div class="empty-state">Tidak ada anggota</div>'; return; } container.innerHTML=filtered.map(a=>`<div class="anggota-pick-item ${selectedAnggota.has(a.NIA)?'selected':''}" onclick="togglePickAnggota('${a.NIA}')"><div class="pick-check">${selectedAnggota.has(a.NIA)?'✓':''}</div><div><div class="pick-name">${a.nama}</div><div class="pick-divisi">${a.NIA} · ${a.divisi}</div></div></div>`).join(''); }
-function togglePickAnggota(NIA){ if(selectedAnggota.has(NIA)) selectedAnggota.delete(NIA); else selectedAnggota.add(NIA); renderAnggotaPicker(); }
-async function saveJadwalHari(){ const hari=parseInt(document.getElementById('jadwal-hari-select').value); if(selectedAnggota.size===0){ showToast('Pilih minimal 1 anggota!','error'); return; } jadwalMingguan[hari]=[...selectedAnggota]; localStorage.setItem('jadwalMingguan',JSON.stringify(jadwalMingguan)); await api({action:'setJadwal', hari, anggota:JSON.stringify([...selectedAnggota])}); showToast('✅ Jadwal berhasil disimpan!','success'); renderJadwalPreview(); }
-function renderJadwalPreview(){ const hariNama=['','Senin','Selasa','Rabu','Kamis','Jumat']; const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=''; for(let h=1;h<=5;h++){ const list=jadwalMingguan[h]||[]; html+=`<div style="margin-bottom:12px;padding:10px;background:var(--bg2);border-radius:8px;"><div style="font-weight:600;">${hariNama[h]} (${list.length})</div>${list.map(nia=>{const a=anggotaMap.get(nia); return `<div>📌 ${a?`${a.nama} (${a.divisi})`:`${nia}`}</div>`;}).join('')||'<div class="empty-state">Kosong</div>'}</div>`; } document.getElementById('jadwal-preview-minggu').innerHTML=html; }
-function downloadJadwalPDF(){ const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=`<html><head><meta charset="UTF-8"><title>Jadwal Piket KIPM-UP</title><style>body{font-family:sans-serif;padding:20px;}h1{color:#2d6a4f;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f1f8e9;}</style></head><body><h1>📋 Jadwal Piket KIPM-UP</h1><p>Cetak: ${new Date().toLocaleDateString('id-ID')}</p>`; const hariNama=['Senin','Selasa','Rabu','Kamis','Jumat']; for(let i=0;i<5;i++){ const h=i+1; const list=jadwalMingguan[h]||[]; if(list.length){ html+=`<h3>${hariNama[i]}</h3><table><tr><th>No</th><th>NIA</th><th>Nama</th><th>Divisi</th></tr>`; list.forEach((nia,idx)=>{ const a=anggotaMap.get(nia); html+=`<tr><td>${idx+1}</td><td>${nia}</td><td>${a?a.nama:'-'}</td><td>${a?a.divisi:'-'}</td></tr>`; }); html+=`</table><br>`; } } html+=`</body></html>`; const win=window.open(); win.document.write(html); win.document.close(); win.print(); }
-async function loadDashboard(){ const res=await api({action:'getDashboardStats'}); document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div class="stat-label">Hadir Hari Ini</div><div class="stat-value stat-green">${res.hadirHariIni||0}</div></div><div class="stat-card"><div class="stat-label">% Kehadiran</div><div class="stat-value stat-blue">${res.persenHariIni||0}%</div></div><div class="stat-card"><div class="stat-label">Total Anggota</div><div class="stat-value">${res.totalAnggota||0}</div></div>`; const rekap=await api({action:'getRekapAbsensi', from:new Date().toISOString().split('T')[0], to:new Date().toISOString().split('T')[0]}); const tbody=document.getElementById('tbl-today'); if(rekap.data.length) tbody.innerHTML=rekap.data.map(r=>`<tr><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); else tbody.innerHTML='<tr><td colspan="4" class="empty-state">Belum ada absensi</td></tr>'; }
-async function loadRekap(){ const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; const res=await api({action:'getRekapAbsensi', from, to}); const tbody=document.getElementById('tbl-rekap'); if(res.data.length) tbody.innerHTML=res.data.map(r=>`<tr><td>${r.tanggal}</td><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); else tbody.innerHTML='<tr><td colspan="5" class="empty-state">Tidak ada data</td></tr>'; }
+function generateToken(){ const wib=new Date(new Date().getTime()+7*3600*1000); const d=wib.toISOString().slice(0,10).replace(/-/g,''); const slot=Math.floor(wib.getSeconds()/30)+Math.floor(wib.getMinutes())*2+Math.floor(wib.getHours())*120; return md5(d+'_'+slot+'_KIPMUP2024SECRET').substring(0,12).toUpperCase(); }
+function renderQR(token){ const el=document.getElementById('qr-canvas'); el.innerHTML=''; new QRCode(el,{text:token,width:180,height:180,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M}); document.getElementById('qr-token-text').innerText=token; }
+function startQRTimer(){ if(qrInterval) clearInterval(qrInterval); const tick=()=>{ const wib=new Date(new Date().getTime()+7*3600*1000); const secInSlot=wib.getSeconds()%30; const remaining=30-secInSlot; document.getElementById('qr-countdown').innerText=remaining; document.getElementById('qr-timer-fill').style.width=((30-secInSlot)/30)*100+'%'; if(secInSlot===0 || !document.getElementById('qr-canvas').querySelector('img,canvas')){ const token=generateToken(); renderQR(token); loadJadwalLive(); } }; tick(); qrInterval=setInterval(tick,1000); }
+async function loadJadwalLive(){ const res=await api({action:'getJadwalHariIni'}); const el=document.getElementById('qr-jadwal-live'); if(!el) return; if(res.ok && res.data.length) el.innerHTML=res.data.map(j=>`<div style="padding:4px 0;">📌 ${j.nama} <span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span></div>`).join(''); else el.innerHTML='<div class="empty-state">Tidak ada jadwal hari ini</div>'; }
+function switchTab(tab){ document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); document.getElementById(`tab-${tab}`).classList.add('active'); document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active'); document.getElementById('tab-title').innerText=tab==='qr'?'QR Code Live':tab==='dashboard'?'Dashboard':tab==='jadwal'?'Jadwal Piket':tab==='rekap'?'Rekap':tab==='anggota'?'Anggota':''; if(tab==='dashboard') loadDashboard(); if(tab==='rekap') loadRekap(); if(tab==='anggota') loadAnggotaTable(); if(tab==='jadwal'){ loadAnggotaForPicker(); renderJadwalPreview(); } }
+async function loadAnggotaForPicker(){ const res=await api({action:'getAnggota'}); if(res.ok){ allAnggota=res.data; const hari=parseInt(document.getElementById('jadwal-hari-select').value); selectedAnggotaSet=new Set(jadwalMingguan[hari]||[]); renderAnggotaPicker(); renderJadwalPreview(); }}
+function renderAnggotaPicker(){ const q=document.getElementById('cari-anggota')?.value.toLowerCase()||''; let filtered=allAnggota; if(q) filtered=allAnggota.filter(a=>a.nama.toLowerCase().includes(q)||a.NIA.includes(q)); const container=document.getElementById('anggota-pick-list'); if(!filtered.length){ container.innerHTML='<div class="empty-state">Tidak ada anggota</div>'; return; } container.innerHTML=filtered.map(a=>`<div class="anggota-pick-item ${selectedAnggotaSet.has(a.NIA)?'selected':''}" onclick="togglePickAnggota('${a.NIA}')"><div class="pick-check">${selectedAnggotaSet.has(a.NIA)?'✓':''}</div><div><div class="pick-name">${a.nama}</div><div class="pick-divisi">${a.NIA} · ${a.divisi}</div></div></div>`).join(''); }
+window.togglePickAnggota=function(NIA){ if(selectedAnggotaSet.has(NIA)) selectedAnggotaSet.delete(NIA); else selectedAnggotaSet.add(NIA); renderAnggotaPicker(); };
+async function saveJadwalHari(){ const hari=parseInt(document.getElementById('jadwal-hari-select').value); if(selectedAnggotaSet.size===0){ showToast('Pilih minimal 1 anggota!','error'); return; } jadwalMingguan[hari]=[...selectedAnggotaSet]; localStorage.setItem('jadwalMingguan',JSON.stringify(jadwalMingguan)); await api({action:'setJadwal', hari, anggota:JSON.stringify([...selectedAnggotaSet])}); showToast('✅ Jadwal berhasil disimpan!','success'); renderJadwalPreview(); }
+function renderJadwalPreview(){ const hariNama=['','Senin','Selasa','Rabu','Kamis','Jumat']; const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=''; for(let h=1;h<=5;h++){ const list=jadwalMingguan[h]||[]; html+=`<div style="margin-bottom:12px;padding:8px;background:var(--bg2);border-radius:8px;"><b>${hariNama[h]}</b> (${list.length})<br>${list.map(nia=>{const a=anggotaMap.get(nia); return `<span style="display:inline-block;background:var(--bg3);margin:2px;padding:2px 6px;border-radius:12px;">${a?a.nama:nia}</span>`;}).join('')||'<i>Kosong</i>'}</div>`; } document.getElementById('jadwal-preview-minggu').innerHTML=html; }
+function downloadJadwalPDF(){ const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=`<html><head><meta charset="UTF-8"><title>Jadwal Piket</title><style>body{font-family:sans-serif;padding:20px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:6px;}</style></head><body><h1>Jadwal Piket KIPM-UP</h1>`; const hariNama=['Senin','Selasa','Rabu','Kamis','Jumat']; for(let i=0;i<5;i++){ const h=i+1; const list=jadwalMingguan[h]||[]; if(list.length){ html+=`<h3>${hariNama[i]}</h3><table><tr><th>No</th><th>NIA</th><th>Nama</th><th>Divisi</th></tr>`; list.forEach((nia,idx)=>{ const a=anggotaMap.get(nia); html+=`<tr><td>${idx+1}</td><td>${nia}</td><td>${a?a.nama:'-'}</td><td>${a?a.divisi:'-'}</td></tr>`; }); html+=`</table><br>`; } } html+=`</body></html>`; const w=window.open(); w.document.write(html); w.document.close(); w.print(); }
+async function loadDashboard(){ const res=await api({action:'getDashboardStats'}); document.getElementById('stats-grid').innerHTML=`<div class="stat-card"><div>Hadir Hari Ini</div><div class="stat-value stat-green">${res.hadirHariIni||0}</div></div><div class="stat-card"><div>% Kehadiran</div><div>${res.persenHariIni||0}%</div></div><div class="stat-card"><div>Total Anggota</div><div>${res.totalAnggota||0}</div></div>`; const rekap=await api({action:'getRekapAbsensi', from:new Date().toISOString().split('T')[0], to:new Date().toISOString().split('T')[0]}); const tbody=document.getElementById('tbl-today'); tbody.innerHTML=rekap.data.length?rekap.data.map(r=>`<tr><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-state">Belum ada absensi</td></tr>'; }
+async function loadRekap(){ const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; const res=await api({action:'getRekapAbsensi', from, to}); const tbody=document.getElementById('tbl-rekap'); tbody.innerHTML=res.data.length?res.data.map(r=>`<tr><td>${r.tanggal}</td><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''):'<tr><td colspan="5" class="empty-state">Tidak ada data</td></tr>'; }
 async function exportCSV(){ const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; const res=await api({action:'exportAbsensi', from, to}); if(res.ok){ const blob=new Blob([res.csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='rekap_absensi.csv'; a.click(); showToast('CSV terunduh','success'); } }
-async function loadAnggotaTable(){ const res=await api({action:'getAnggota'}); const tbody=document.getElementById('tbl-anggota'); if(res.data.length) tbody.innerHTML=res.data.map(a=>`<tr><td>${a.NIA}</td><td>${a.nama}</td><td>${a.divisi}</td><td>${a.telp||'-'}</td><td><button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">Hapus</button></td></tr>`).join(''); else tbody.innerHTML='<tr><td colspan="5" class="empty-state">Kosong</td></tr>'; }
+async function loadAnggotaTable(){ const res=await api({action:'getAnggota'}); const tbody=document.getElementById('tbl-anggota'); tbody.innerHTML=res.data.map(a=>`<tr><td>${a.NIA}</td><td>${a.nama}</td><td>${a.divisi}</td><td>${a.telp||'-'}</td><td><button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">Hapus</button></td></tr>`).join(''); }
 function showAddAnggota(){ document.getElementById('modal-add-anggota').classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 async function submitAddAnggota(){ const NIA=document.getElementById('new-NIA').value.trim(), nama=document.getElementById('new-nama').value.trim(), divisi=document.getElementById('new-divisi').value.trim(), telp=document.getElementById('new-telp').value.trim(); if(!NIA||!nama){ showToast('NIA dan Nama wajib','error'); return; } const res=await api({action:'addAnggota', NIA, nama, divisi, telp}); if(res.ok){ showToast('Anggota ditambahkan','success'); closeModal('modal-add-anggota'); await loadAnggotaForPicker(); loadAnggotaTable(); }else showToast(res.msg||'Gagal','error'); }
 async function deleteAnggota(NIA){ if(confirm('Hapus anggota?')){ await api({action:'deleteAnggota', NIA}); await loadAnggotaForPicker(); loadAnggotaTable(); showToast('Dihapus','success'); } }
-// INITIAL SETUP
-document.getElementById('jadwal-hari-select')?.addEventListener('change',()=>{ const hari=parseInt(document.getElementById('jadwal-hari-select').value); selectedAnggota=new Set(jadwalMingguan[hari]||[]); renderAnggotaPicker(); });
-window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.downloadJadwalPDF=downloadJadwalPDF; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV;
-// load awal
-if(document.getElementById('page-landing')) console.log('ready');
+document.getElementById('jadwal-hari-select')?.addEventListener('change',()=>{ const hari=parseInt(document.getElementById('jadwal-hari-select').value); selectedAnggotaSet=new Set(jadwalMingguan[hari]||[]); renderAnggotaPicker(); });
+window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.saveJadwalHari=saveJadwalHari; window.downloadJadwalPDF=downloadJadwalPDF; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV;
 </script>
 </body>
 </html>
