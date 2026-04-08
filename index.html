@@ -319,10 +319,12 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
 <body>
 
 <script>
-// --- URL GAS MILIK KAMU ---
+// =========================================================================
+// DATA DEFAULT (Diambil dari Screenshot Google Sheet Anda)
+// =========================================================================
+
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyS9eF5QUuTJrMzjwNXUL5-WyUPFMbFxVdSOqd5byXCQa_J1KwiiDfiYAIlGaiuZyyoVA/exec';
 
-// DATA BAWAAN (FALLBACK) JIKA SERVER GAS KOSONG
 const realAnggota = [
   {NIA:'082024022', nama:'Rifqy Rachmat', divisi:'Ketua Umum', telp:'87886993450'},
   {NIA:'082024015', nama:'Muhamad Alfan', divisi:'Wakil Ketua Umum I', telp:'85773694230'},
@@ -370,6 +372,17 @@ const realAnggota = [
   {NIA:'082024014', nama:'M. Fabian Al Aziz', divisi:'DP', telp:'85156428245'},
   {NIA:'000000001', nama:'Alfan Tirta Admajaya Putra', divisi:'Founder', telp:'81918892779'}
 ];
+
+// Jadwal Senin - Jumat yang tersimpan di memori lokal atau fallback bawaan
+let jadwalMingguan = JSON.parse(localStorage.getItem('jadwalMingguan')) || {
+  1: ['092025012','092025013','092025014','092025007','092025002','092025004','092025019','092025027'],
+  2: ['092025033','092025032','092025015','092025011','092025009','082024029','092025005','092025016'],
+  3: ['092025026','092025001','092025039','092025018','082024015','082024022','082024012','092025006'],
+  4: ['092025036','092025034','082024017','092025035','092025023','092025025','092025021','092025030'],
+  5: ['092025010','092025024','092025038','092025017','092025037','092025003','092025040','092025008']
+};
+
+let allAnggota = [...realAnggota];
 </script>
 
 <!-- LANDING (3 OPSI) -->
@@ -395,7 +408,7 @@ const realAnggota = [
   <div class="scan-body" style="padding:20px; max-width:480px; margin:0 auto;">
     <div class="jadwal-card" style="background:var(--bg2); border-radius:12px; padding:16px; margin-bottom:16px;">
       <div class="jadwal-card-title">📋 Piket Hari Ini</div>
-      <div id="jadwal-today"><div class="loading" style="color:var(--accent);">Memuat dari server...</div></div>
+      <div id="jadwal-today"><div class="loading" style="color:var(--accent);">Memuat jadwal & status...</div></div>
     </div>
     <div class="identity-section" style="background:var(--bg2); border-radius:12px; padding:16px;">
       <label class="form-label">NIA (Nomor Induk Anggota)</label>
@@ -468,15 +481,21 @@ const realAnggota = [
       <!-- DASHBOARD TAB -->
       <div id="tab-dashboard" class="tab-panel active"><div class="stats-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;" id="stats-grid"></div><div class="table-card"><div class="table-card-header">Absensi Hari Ini</div><div class="table-scroll"><table><thead><tr><th>Tipe</th><th>Waktu</th><th>NIA</th><th>Nama</th></tr></thead><tbody id="tbl-today"></tbody></table></div></div></div>
       
-      <!-- JADWAL TAB -->
+      <!-- JADWAL TAB - KEMBALI KE DROPDOWN SENIN-JUMAT -->
       <div id="tab-jadwal" class="tab-panel">
         <div class="table-card" style="margin-bottom:20px;">
           <div class="table-card-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-            <div class="table-card-title">⚙️ Atur Jadwal Piket (Pilih Tanggal Dulu)</div>
+            <div class="table-card-title">⚙️ Atur Jadwal Piket Mingguan</div>
             <div class="filter-row">
-              <input type="date" class="form-input" id="jadwal-tgl-select" style="width:auto; padding:6px 12px;">
+              <select class="form-input" id="jadwal-hari-select" style="width:auto; padding:6px 12px;">
+                <option value="1">Senin</option>
+                <option value="2">Selasa</option>
+                <option value="3">Rabu</option>
+                <option value="4">Kamis</option>
+                <option value="5">Jumat</option>
+              </select>
               <button class="btn-sm primary" onclick="saveJadwalHari()">💾 Simpan Jadwal</button>
-              <button class="btn-sm blue" onclick="renderJadwalPreview()">🔄 Refresh Tampilan</button>
+              <button class="btn-sm blue" onclick="downloadJadwalPDF()">📥 Download PDF</button>
             </div>
           </div>
           <div style="padding:16px;">
@@ -488,8 +507,8 @@ const realAnggota = [
               </div>
               <div>
                 <div class="anggota-picker">
-                  <div class="anggota-picker-title" id="preview-title">📅 Anggota Terpilih untuk Disimpan</div>
-                  <div id="jadwal-preview-minggu" style="font-size:13px; margin-top:12px;">Pilih anggota di samping...</div>
+                  <div class="anggota-picker-title" id="preview-title">📅 Pratinjau Jadwal Selama Seminggu</div>
+                  <div id="jadwal-preview-minggu" style="font-size:13px; margin-top:12px;">Memuat pratinjau...</div>
                 </div>
               </div>
             </div>
@@ -513,12 +532,12 @@ const realAnggota = [
 </div>
 
 <!-- MODAL TAMBAH ANGGOTA -->
-<div class="modal-overlay" id="modal-add-anggota"><div class="modal-box"><button class="modal-close" onclick="closeModal('modal-add-anggota')">✕</button><div class="modal-title">Tambah Anggota</div><input class="form-input" id="new-NIA" placeholder="NIA"><input class="form-input" id="new-nama" placeholder="Nama" style="margin-top:8px;"><input class="form-input" id="new-divisi" placeholder="Divisi" style="margin-top:8px;"><input class="form-input" id="new-telp" placeholder="No. Telp" style="margin-top:8px;"><button class="btn-sm primary" style="margin-top:16px; width:100%;" onclick="submitAddAnggota()">Simpan (ke Server)</button></div></div>
+<div class="modal-overlay" id="modal-add-anggota"><div class="modal-box"><button class="modal-close" onclick="closeModal('modal-add-anggota')">✕</button><div class="modal-title">Tambah Anggota</div><input class="form-input" id="new-NIA" placeholder="NIA"><input class="form-input" id="new-nama" placeholder="Nama" style="margin-top:8px;"><input class="form-input" id="new-divisi" placeholder="Divisi" style="margin-top:8px;"><input class="form-input" id="new-telp" placeholder="No. Telp" style="margin-top:8px;"><button class="btn-sm primary" style="margin-top:16px; width:100%;" onclick="submitAddAnggota()">Simpan</button></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 // =========================================================================
-// SCRIPT FINAL - KONEKSI SERVER DENGAN FALLBACK DATA LOKAL
+// LOGIKA SISTEM (SINKRONISASI JADWAL SENIN-JUMAT DENGAN SERVER ABSENSI)
 // =========================================================================
 
 async function gasCall(params) {
@@ -534,12 +553,10 @@ async function gasCall(params) {
 }
 
 async function api(params) {
-  showToast('Menghubungkan ke server...', 'info');
   return await gasCall(params);
 }
 
 // GLOBAL VARS
-let allAnggota = [];
 let selectedAnggota = new Set();
 let currentScanType = 'DATANG';
 let scannerActive = false, html5Scanner = null;
@@ -563,13 +580,34 @@ function goTo(page){
 }
 function setScanType(t){ currentScanType=t; document.getElementById('btn-tipe-datang').style.borderColor=t==='DATANG'?'var(--accent)':'var(--border2)'; document.getElementById('btn-tipe-pulang').style.borderColor=t==='PULANG'?'#c084fc':'var(--border2)';}
 
+// LOGIKA JADWAL SCAN: Menggunakan Jadwal Mingguan Lokal + Absensi Server
 async function loadJadwalScan(){ 
-  const res = await api({action:'getJadwalHariIni'}); 
   const el = document.getElementById('jadwal-today'); 
-  if(res.ok && res.data && res.data.length > 0) {
-    el.innerHTML = res.data.map(j => `<div class="jadwal-item" style="display:flex;justify-content:space-between;padding:6px 0; border-bottom: 1px solid var(--border);"><div><b>${j.nama}</b><div style="font-size:11px; color:var(--text2);">${j.NIA} · ${j.divisi}</div></div><span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}" style="align-self:center;">${j.status}</span></div>`).join(''); 
-  } else { 
-    el.innerHTML = '<div class="empty-state" style="padding:10px;">Tidak ada jadwal tersetting untuk hari ini. Hubungi Admin.</div>';
+  el.innerHTML = '<div class="loading" style="color:var(--accent);">Memuat jadwal & sinkronisasi status...</div>';
+  
+  try {
+    const dow = new Date().getDay(); // 1=Senin, 5=Jumat, dll.
+    const list = jadwalMingguan[dow] || [];
+
+    if(!list.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:10px;">Hari ini tidak ada jadwal piket. (Libur)</div>';
+      return;
+    }
+
+    // Tanya server Google Sheets siapa saja yang sudah absen (HADIR) hari ini
+    const today = new Date().toISOString().split('T')[0];
+    const res = await api({action:'getRekapAbsensi', from:today, to:today});
+    const hadirNIA = new Set((res.ok && res.data ? res.data : []).filter(r=>r.tipe==='DATANG').map(r=>r.NIA));
+
+    // Gabungkan jadwal lokal dengan status dari server
+    const displayData = list.map(nia => {
+      const a = allAnggota.find(x => x.NIA === nia);
+      return a ? {NIA: a.NIA, nama: a.nama, divisi: a.divisi, status: hadirNIA.has(nia) ? 'HADIR' : 'BELUM'} : null;
+    }).filter(Boolean);
+
+    el.innerHTML = displayData.map(j => `<div class="jadwal-item" style="display:flex;justify-content:space-between;padding:6px 0; border-bottom: 1px solid var(--border);"><div><b>${j.nama}</b><div style="font-size:11px; color:var(--text2);">${j.NIA} · ${j.divisi}</div></div><span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}" style="align-self:center;">${j.status}</span></div>`).join('');
+  } catch(e) {
+      el.innerHTML = '<div class="empty-state" style="padding:10px; color:var(--red);">Gagal memuat status dari server.</div>';
   }
 }
 
@@ -586,6 +624,7 @@ function toggleScan(){
       html5Scanner.stop();
       scannerActive = false;
       document.getElementById('btn-start-scan').innerHTML = '▶ Mulai Scan';
+      showToast('Menghubungkan ke server...', 'info');
       const res = await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); 
       showToast(res.ok ? `✅ ${res.msg}` : `❌ ${res.msg}`, res.ok ? 'success' : 'error'); 
       if(res.ok){ loadJadwalScan(); } 
@@ -640,12 +679,12 @@ function startQRLiveDisplay() {
 async function adminLogin(){ 
   const u=document.getElementById('admin-username').value;
   const p=document.getElementById('admin-password').value; 
+  showToast('Memeriksa kredensial...', 'info');
   const res=await api({action:'adminLogin', username:u, password:p}); 
   if(res.ok){ goTo('admin'); }else{ document.getElementById('login-err').style.display='block'; }
 }
 function adminLogout(){ goTo('landing'); if(qrRefreshInterval) clearInterval(qrRefreshInterval); }
 async function initAdmin(){ 
-  document.getElementById('jadwal-tgl-select').value = new Date().toISOString().split('T')[0];
   await loadAnggotaForPicker(); 
   startClock(); 
   switchTab('dashboard'); 
@@ -666,16 +705,10 @@ function switchTab(tab){
   if(tab==='jadwal'){ loadAnggotaForPicker(); renderJadwalPreview(); } 
 }
 
-// ADMIN: JADWAL LOGIC
+// ADMIN: JADWAL LOGIC (SENIN-JUMAT)
 async function loadAnggotaForPicker(){ 
-  const res = await api({action:'getAnggota'}); 
-  if(res.ok && res.data && res.data.length > 0){ 
-    allAnggota = res.data; 
-  } else { 
-    // FALLBACK: JIKA GOOGLE SHEETS KOSONG, PAKAI DATA BAWAAN
-    showToast('Data di server kosong. Menggunakan data cadangan.','info');
-    allAnggota = [...realAnggota]; 
-  } 
+  const hari = parseInt(document.getElementById('jadwal-hari-select').value);
+  selectedAnggota = new Set(jadwalMingguan[hari] || []);
   renderAnggotaPicker(); 
   renderJadwalPreview(); 
 }
@@ -688,66 +721,103 @@ function renderAnggotaPicker(){
   if(!filtered.length){ container.innerHTML='<div class="empty-state">Tidak ada anggota</div>'; return; } 
   container.innerHTML = filtered.map(a => `<div class="anggota-pick-item ${selectedAnggota.has(a.NIA)?'selected':''}" onclick="togglePickAnggota('${a.NIA}')"><div class="pick-check">${selectedAnggota.has(a.NIA)?'✓':''}</div><div><div class="pick-name">${a.nama}</div><div class="pick-divisi">${a.NIA} · ${a.divisi}</div></div></div>`).join(''); 
 }
+
 function togglePickAnggota(NIA){ 
   if(selectedAnggota.has(NIA)) selectedAnggota.delete(NIA); 
   else selectedAnggota.add(NIA); 
   renderAnggotaPicker(); 
   renderJadwalPreview();
 }
-document.getElementById('jadwal-tgl-select')?.addEventListener('change', () => {
-  selectedAnggota.clear(); 
+
+document.getElementById('jadwal-hari-select')?.addEventListener('change', () => {
+  const hari = parseInt(document.getElementById('jadwal-hari-select').value);
+  selectedAnggota = new Set(jadwalMingguan[hari] || []);
   renderAnggotaPicker();
-  renderJadwalPreview();
 });
 
+// Cetak Pratinjau Jadwal Seminggu Penuh
 function renderJadwalPreview(){ 
-  const tgl = document.getElementById('jadwal-tgl-select').value;
-  let html = `<div style="margin-bottom:12px;padding:10px;background:var(--bg2);border-radius:8px;"><div style="font-weight:600; color:var(--accent);">Tanggal: ${tgl}</div><div style="font-size:11px; margin-bottom:8px;">Terpilih: ${selectedAnggota.size} Anggota</div>`; 
-  if(selectedAnggota.size === 0) {
-     html += '<div class="empty-state" style="padding:10px;">Belum ada yang dipilih</div>';
-  } else {
-     Array.from(selectedAnggota).forEach(nia => { 
-       const a = allAnggota.find(x => x.NIA === nia); 
-       html += `<div>📌 ${a ? `${a.nama} <span style="font-size:10px;color:var(--text2)">(${a.divisi})</span>` : nia}</div>`; 
-     }); 
+  const hariNama = ['','Senin','Selasa','Rabu','Kamis','Jumat'];
+  let html = ''; 
+  
+  for(let h=1; h<=5; h++) {
+    // Jika hari yang sedang dirender adalah hari yang sedang diedit di dropdown
+    const list = (h === parseInt(document.getElementById('jadwal-hari-select').value)) 
+                  ? Array.from(selectedAnggota) 
+                  : (jadwalMingguan[h] || []);
+    
+    html += `<div style="margin-bottom:12px;padding:10px;background:var(--bg2);border-radius:8px;">
+              <div style="font-weight:600; color:var(--accent);">${hariNama[h]} (${list.length})</div>`;
+    
+    if(list.length === 0) {
+       html += '<div class="empty-state" style="padding:4px;">Kosong</div>';
+    } else {
+       list.forEach(nia => { 
+         const a = allAnggota.find(x => x.NIA === nia); 
+         html += `<div>📌 ${a ? `${a.nama} <span style="font-size:10px;color:var(--text2)">(${a.divisi})</span>` : nia}</div>`; 
+       }); 
+    }
+    html += '</div>'; 
   }
-  html += '</div>'; 
   document.getElementById('jadwal-preview-minggu').innerHTML = html; 
 }
 
-async function saveJadwalHari(){ 
-  const tgl = document.getElementById('jadwal-tgl-select').value;
-  if(!tgl) return showToast('Pilih tanggal kalender dulu!','error');
+function saveJadwalHari(){ 
+  const hari = parseInt(document.getElementById('jadwal-hari-select').value);
   if(selectedAnggota.size===0) return showToast('Centang minimal 1 anggota!','error'); 
   
-  const anggotaData = Array.from(selectedAnggota).map(nia => {
-     const a = allAnggota.find(x => x.NIA === nia);
-     return {NIA: a.NIA, nama: a.nama, divisi: a.divisi};
-  });
+  // Simpan jadwal ke memori lokal
+  jadwalMingguan[hari] = Array.from(selectedAnggota);
+  localStorage.setItem('jadwalMingguan', JSON.stringify(jadwalMingguan));
 
-  const res = await api({action:'setJadwal', tanggal: tgl, anggota: JSON.stringify(anggotaData)}); 
-  if(res.ok) {
-     showToast('✅ Jadwal berhasil disimpan ke Server!','success'); 
-  } else {
-     showToast('❌ Gagal: ' + res.msg, 'error');
-  }
+  showToast('✅ Jadwal mingguan berhasil diperbarui!','success'); 
+  renderJadwalPreview();
 }
 
-// ADMIN: DASHBOARD & REKAP
+function downloadJadwalPDF(){ 
+  let html=`<html><head><meta charset="UTF-8"><title>Jadwal Piket KIPM-UP</title><style>body{font-family:sans-serif;padding:20px;}h1{color:#2d6a4f;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f1f8e9;}</style></head><body><h1>📋 Jadwal Piket KIPM-UP</h1><p>Cetak: ${new Date().toLocaleDateString('id-ID')}</p>`; 
+  const hariNama=['Senin','Selasa','Rabu','Kamis','Jumat']; 
+  for(let i=0;i<5;i++){ 
+    const h=i+1; const list=jadwalMingguan[h]||[]; 
+    if(list.length){ 
+      html+=`<h3>${hariNama[i]}</h3><table><tr><th>No</th><th>NIA</th><th>Nama</th><th>Divisi</th></tr>`; 
+      list.forEach((nia,idx)=>{ const a = allAnggota.find(x=>x.NIA===nia); html+=`<tr><td>${idx+1}</td><td>${nia}</td><td>${a?a.nama:'-'}</td><td>${a?a.divisi:'-'}</td></tr>`; }); 
+      html+=`</table><br>`; 
+    } 
+  } 
+  html+=`</body></html>`; 
+  const win=window.open(); win.document.write(html); win.document.close(); win.print(); 
+}
+
+// ADMIN: DASHBOARD (Kombinasi Server dan Jadwal Mingguan Lokal)
 async function loadDashboard(){ 
-  const res = await api({action:'getDashboardStats'}); 
-  if(res.ok){
-    document.getElementById('stats-grid').innerHTML=`<div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Hadir Hari Ini</div><div class="stat-value stat-green" style="font-size:28px; font-weight:600; color:var(--accent);">${res.hadirHariIni||0}</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">% Kehadiran</div><div class="stat-value stat-blue" style="font-size:28px; color:var(--accent2);">${res.persenHariIni||0}%</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Jadwal Hari Ini</div><div class="stat-value" style="font-size:28px; color:var(--accent3);">${res.jadwalHariIni||0}</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Total Anggota</div><div class="stat-value" style="font-size:28px;">${res.totalAnggota||0}</div></div>`; 
-  }
+  showToast('Memuat data...', 'info');
   const today = new Date().toISOString().split('T')[0];
   const rekap = await api({action:'getRekapAbsensi', from: today, to: today}); 
+  const dataAbsen = (rekap.ok && rekap.data) ? rekap.data : [];
+
+  const hadirSet = new Set(dataAbsen.filter(r=>r.tipe==='DATANG').map(r=>r.NIA));
+  const hadirHariIni = hadirSet.size;
+
+  const dow = new Date().getDay();
+  const jadwalHariIni = (jadwalMingguan[dow] || []).length;
+  const persen = jadwalHariIni > 0 ? Math.round((hadirHariIni / jadwalHariIni) * 100) : 0;
+  const totalAnggota = allAnggota.length;
+
+  document.getElementById('stats-grid').innerHTML=`
+    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Hadir Hari Ini</div><div class="stat-value stat-green" style="font-size:28px; font-weight:600; color:var(--accent);">${hadirHariIni}</div></div>
+    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">% Kehadiran</div><div class="stat-value stat-blue" style="font-size:28px; color:var(--accent2);">${persen}%</div></div>
+    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Jadwal Hari Ini</div><div class="stat-value" style="font-size:28px; color:var(--accent3);">${jadwalHariIni}</div></div>
+    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Total Anggota</div><div class="stat-value" style="font-size:28px;">${totalAnggota}</div></div>`;
+
   const tbody = document.getElementById('tbl-today'); 
-  if(rekap.ok && rekap.data.length) tbody.innerHTML = rekap.data.map(r=>`<tr><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); 
+  if(dataAbsen.length) tbody.innerHTML = dataAbsen.map(r=>`<tr><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); 
   else tbody.innerHTML='<tr><td colspan="4" class="empty-state">Belum ada absensi hari ini</td></tr>'; 
 }
 
 async function loadRekap(){ 
   const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; 
+  showToast('Memuat laporan...', 'info');
   const res=await api({action:'getRekapAbsensi', from, to}); 
   const tbody=document.getElementById('tbl-rekap'); 
   if(res.ok && res.data.length) tbody.innerHTML = res.data.map(r=>`<tr><td>${r.tanggal}</td><td><span class="badge ${r.tipe==='DATANG'?'badge-hadir':'badge-pulang'}">${r.tipe}</span></td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); 
@@ -771,7 +841,7 @@ async function exportCSV(){
 async function loadAnggotaTable(){ 
   const res = await api({action:'getAnggota'}); 
   const tbody = document.getElementById('tbl-anggota'); 
-  let targetData = (res.ok && res.data.length > 0) ? res.data : [...realAnggota];
+  let targetData = (res.ok && res.data && res.data.length > 0) ? res.data : [...realAnggota];
   
   if(targetData.length > 0) {
     tbody.innerHTML = targetData.map(a=>`<tr><td>${a.NIA}</td><td>${a.nama}</td><td>${a.divisi}</td><td>${a.telp||'-'}</td><td><button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">Hapus</button></td></tr>`).join(''); 
@@ -800,9 +870,9 @@ async function deleteAnggota(NIA){
   } 
 }
 
-window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.renderJadwalPreview=renderJadwalPreview;
+window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.downloadJadwalPDF=downloadJadwalPDF; window.renderJadwalPreview=renderJadwalPreview;
 
-console.log('✅ Sistem siap! Dilengkapi fallback data anggota.');
+console.log('✅ Sistem sukses memadukan UI Template Mingguan dengan Sinkronisasi Absensi Realtime dari Server.');
 </script>
 </body>
 </html>
