@@ -571,16 +571,27 @@ async function api(params) {
     return {ok:true};
   }
 
-  // ---- ABSENSI: VALIDASI SCAN → simpan ke GAS ----
+  // ---- ABSENSI: VALIDASI SCAN → serahkan sepenuhnya ke GAS ----
   if(params.action === 'validateBarcode'){
-    const validTokens = [
-      getCurrentQRToken(),
-      md5(Math.floor((Date.now() - QR_WINDOW_SEC*1000) / (QR_WINDOW_SEC*1000)) + QR_SECRET).substring(0,12).toUpperCase()
-    ];
-    if(!validTokens.includes(params.token)) return {ok:false, msg:'QR Code tidak valid atau sudah kedaluwarsa'};
-    const anggota = demoAnggotaList.find(a=>a.NIA===params.NIA);
-    if(!anggota) return {ok:false, msg:'NIA tidak terdaftar'};
-
+    // Kirim data langsung ke backend GAS
+    const result = await gasCall({
+      action: 'validateBarcode', 
+      token: params.token, 
+      NIA: params.NIA, 
+      tipe: params.tipe
+    });
+    
+    // Jika berhasil di GAS, update cache lokal agar UI terasa instan
+    if(result.ok) {
+      const waktu = new Date().toTimeString().slice(0,8);
+      const anggota = demoAnggotaList.find(a => a.NIA === params.NIA);
+      if(anggota) {
+        demoAbsensi.push({tanggal: today, waktu: waktu, NIA: params.NIA, nama: anggota.nama, tipe: params.tipe});
+        saveAbsensi();
+      }
+    }
+    return result;
+  }
     // Cek duplikat: tanya GAS apakah sudah absen hari ini
     const cek = await gasCall({action:'cekAbsensi', NIA:params.NIA, tanggal:today, tipe:params.tipe});
     if(cek.sudahAbsen) return {ok:false, msg:`Sudah absen ${params.tipe} hari ini`};
@@ -675,16 +686,25 @@ const QR_WINDOW_SEC = 30;
 const QR_SECRET = "KIPMUP2024";
 
 function getCurrentQRToken() {
-  const windowId = Math.floor(Date.now() / (QR_WINDOW_SEC * 1000));
-  return md5(windowId + QR_SECRET).substring(0, 12).toUpperCase();
+  const now = new Date();
+  // Konversi ke zona waktu WIB (UTC+7)
+  const wib = new Date(now.getTime() + 7 * 3600 * 1000);
+  
+  const y = wib.getUTCFullYear();
+  const m = String(wib.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(wib.getUTCDate()).padStart(2, '0');
+  const dateStr = `${y}${m}${d}`;
+  
+  // Perhitungan slot waktu 30 detik yang sama persis dengan GAS
+  const slot30 = Math.floor(wib.getUTCSeconds() / 30) + 
+                 Math.floor(wib.getUTCMinutes()) * 2 + 
+                 Math.floor(wib.getUTCHours()) * 120;
+                 
+  const SECRET_KEY = 'KIPMUP2017SECRET'; // Harus sama dengan di GAS
+  const raw = dateStr + '_' + slot30 + '_' + SECRET_KEY;
+  
+  return md5(raw).substring(0, 12).toUpperCase();
 }
-
-function getSecondsLeft() {
-  const now = Date.now();
-  const windowMs = QR_WINDOW_SEC * 1000;
-  return QR_WINDOW_SEC - Math.floor((now % windowMs) / 1000);
-}
-
 let qrCountdownInterval = null;
 let qrLastToken = null;
 
