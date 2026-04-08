@@ -507,7 +507,9 @@ const realAnggota = [
   {NIA:'082024014', nama:'M. Fabian Al Aziz', divisi:'DP', telp:'85156428245'},
   {NIA:'000000001', nama:'Alfan Tirta Admajaya Putra', divisi:'Founder', telp:'81918892779'},
 ];
-let demoAnggotaList = [...realAnggota];
+// Load demoAnggotaList dari localStorage, fallback ke realAnggota jika belum ada
+let demoAnggotaList = JSON.parse(localStorage.getItem('anggotaData') || 'null') || [...realAnggota];
+function saveAnggota() { localStorage.setItem('anggotaData', JSON.stringify(demoAnggotaList)); }
 // Load absensi dari localStorage agar tidak hilang saat refresh
 let demoAbsensi = JSON.parse(localStorage.getItem('absensiData') || '[]');
 // Bersihkan data absensi lebih dari 7 hari
@@ -546,9 +548,10 @@ function api(params) {
   if(params.action === 'addAnggota'){
     if(demoAnggotaList.find(a=>a.NIA===params.NIA)) return {ok:false, msg:'NIA sudah ada'};
     demoAnggotaList.push({NIA:params.NIA, nama:params.nama, divisi:params.divisi||'-', telp:params.telp||''});
+    saveAnggota();
     return {ok:true, msg:'Berhasil'};
   }
-  if(params.action === 'deleteAnggota'){ demoAnggotaList = demoAnggotaList.filter(a=>a.NIA!==params.NIA); return {ok:true};}
+  if(params.action === 'deleteAnggota'){ demoAnggotaList = demoAnggotaList.filter(a=>a.NIA!==params.NIA); saveAnggota(); return {ok:true};}
   if(params.action === 'setJadwal'){ jadwalMingguan[params.hari] = JSON.parse(params.anggota); localStorage.setItem('jadwalMingguan',JSON.stringify(jadwalMingguan)); return {ok:true};}
   if(params.action === 'exportAbsensi'){
     let data = demoAbsensi;
@@ -574,7 +577,7 @@ function api(params) {
     // Kirim ke Google Sheets via GAS (fire-and-forget, tidak block UI)
     if(GAS_URL) {
       const payload = new URLSearchParams({action:'addAbsensi', tanggal:record.tanggal, waktu:record.waktu, NIA:record.NIA, nama:record.nama, tipe:record.tipe});
-      fetch(GAS_URL, {method:'POST', body:payload}).catch(()=>{});
+      fetch(GAS_URL, {method:'POST', body:payload}).then(r=>r.text()).then(t=>{ if(!t.includes('OK') && !t.includes('success')) console.warn('GAS response:', t); }).catch(e=>{ console.warn('GAS sync gagal (data tetap tersimpan lokal):', e); });
     }
     return {ok:true, msg:`Absen ${params.tipe} berhasil, ${anggota.nama}!`};
   }
@@ -594,7 +597,13 @@ function goTo(page){
   document.getElementById('page-'+page).style.display='flex';
   document.getElementById('page-'+page).classList.add('active');
   if(page==='admin') initAdmin();
-  if(page==='scan'){ loadJadwalScan(); if(navigator.geolocation) navigator.geolocation.getCurrentPosition(()=>{},()=>{}); }
+  if(page==='scan'){ 
+    loadJadwalScan(); 
+    // Tampilkan tanggal hari ini
+    const tgl = document.getElementById('scan-tanggal');
+    if(tgl) tgl.innerText = new Date().toLocaleDateString('id-ID', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    if(navigator.geolocation) navigator.geolocation.getCurrentPosition(()=>{},()=>{}); 
+  }
   if(page==='qr'){ startQRLiveDisplay(); }
   if(page!=='qr' && qrRefreshInterval){ clearInterval(qrRefreshInterval); qrRefreshInterval=null; }
   if(page!=='qr' && qrCountdownInterval){ clearInterval(qrCountdownInterval); qrCountdownInterval=null; qrLastToken=null; }
