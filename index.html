@@ -112,6 +112,7 @@ body {
   font-family: var(--font);
   font-size: 14px;
   outline: none;
+  color-scheme: dark;
 }
 .form-input:focus { border-color: var(--accent); }
 .btn-sm {
@@ -320,6 +321,55 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
 <script>
 // --- URL GAS MILIK KAMU ---
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyS9eF5QUuTJrMzjwNXUL5-WyUPFMbFxVdSOqd5byXCQa_J1KwiiDfiYAIlGaiuZyyoVA/exec';
+
+// DATA BAWAAN (FALLBACK) JIKA SERVER GAS KOSONG
+const realAnggota = [
+  {NIA:'082024022', nama:'Rifqy Rachmat', divisi:'Ketua Umum', telp:'87886993450'},
+  {NIA:'082024015', nama:'Muhamad Alfan', divisi:'Wakil Ketua Umum I', telp:'85773694230'},
+  {NIA:'092025010', nama:'Khoirunnisa Assolihah', divisi:'Wakil Ketua Umum II', telp:'85779050415'},
+  {NIA:'082024012', nama:'Kinanti Ayuningtyas Puri', divisi:'Investment Manager I', telp:'85692447441'},
+  {NIA:'092025002', nama:'Afief Baharmus', divisi:'Investment Manager II', telp:'81285321417'},
+  {NIA:'082024017', nama:'Nisrina Zakiyah Rahmah', divisi:'Investment Manager III', telp:'81292936383'},
+  {NIA:'092025014', nama:'Melany Septiana Putri', divisi:'Secretary I', telp:'81387694749'},
+  {NIA:'092025013', nama:'Maudyna Tasya Ardianti', divisi:'Secretary II', telp:'81218510500'},
+  {NIA:'092025011', nama:'Majda Tsania', divisi:'Secretary III', telp:'87881633207'},
+  {NIA:'092025012', nama:'Mariyah Sujana', divisi:'Treasury I', telp:'817111899'},
+  {NIA:'092025005', nama:'Baim Daniel Musyafa', divisi:'Treasury II', telp:'87782121989'},
+  {NIA:'092025026', nama:'Nandini Melody Yordan', divisi:'Head of HR', telp:'81211077409'},
+  {NIA:'092025035', nama:'Sayyid Dzaky Ismail', divisi:'HR', telp:'81381984626'},
+  {NIA:'092025037', nama:'Siti Aprilia Temihila', divisi:'HR', telp:'85813099914'},
+  {NIA:'092025033', nama:'Ririn Dwi Lestari', divisi:'HR', telp:'82315117903'},
+  {NIA:'092025036', nama:'Selfia Herlanda', divisi:'HR', telp:'895330130991'},
+  {NIA:'092025003', nama:'Ahmad Farel Rabbani', divisi:'HR', telp:'85886307614'},
+  {NIA:'092025018', nama:'Muhammad Panji Robani', divisi:'HR', telp:'89525554553'},
+  {NIA:'092025015', nama:'Milka Nur Azizah', divisi:'Head of DC', telp:'81514099345'},
+  {NIA:'092025007', nama:'Darwita Sangadji', divisi:'DC', telp:'81388726799'},
+  {NIA:'092025019', nama:'Muhammad Rasya Raafi Ramadhan', divisi:'DC', telp:'82122956668'},
+  {NIA:'092025028', nama:'Natasya Nabila', divisi:'DC', telp:'81297977770'},
+  {NIA:'092025039', nama:'Syitna Fatimah Alu', divisi:'DC', telp:'81248513691'},
+  {NIA:'092025030', nama:'Rasya Baihaqi', divisi:'DC', telp:'895328945483'},
+  {NIA:'092025021', nama:'Muhammad Roffi Huda Kusuma', divisi:'DC', telp:'81927651901'},
+  {NIA:'092025016', nama:'Muhamad Raditia Ramadhan', divisi:'DC', telp:'85692722484'},
+  {NIA:'092025006', nama:'Chandra Lie', divisi:'Head of PR', telp:'81348390793'},
+  {NIA:'092025034', nama:'Salsabila Dinda Ayudia', divisi:'PR', telp:'85819865866'},
+  {NIA:'092025009', nama:'Hasya Balqis Khairunnisa', divisi:'PR', telp:'81232688225'},
+  {NIA:'092025025', nama:'Naila Zulfa Rahma', divisi:'PR', telp:'82136451822'},
+  {NIA:'092025024', nama:'Naila Fauziah', divisi:'PR', telp:'88213170889'},
+  {NIA:'092025023', nama:'Nada Jauza Syaqila', divisi:'PR', telp:'81282830972'},
+  {NIA:'082024029', nama:'Tofan Habibi', divisi:'Head of TnD', telp:'83115083899'},
+  {NIA:'092025027', nama:'Nasya Aliyah Inka', divisi:'TnD', telp:'85888072950'},
+  {NIA:'092025038', nama:'Syifa Khaulia', divisi:'TnD', telp:'89531920320'},
+  {NIA:'092025004', nama:'Ahmad Haidar Pasha', divisi:'TnD', telp:'85959914099'},
+  {NIA:'092025022', nama:'Mukti Hidayatulloh', divisi:'TnD', telp:'81285879617'},
+  {NIA:'092025001', nama:'Ismail Jamil', divisi:'Head of EnR', telp:'81586826673'},
+  {NIA:'092025040', nama:'Zuldan Ahmad Fauzan', divisi:'EnR', telp:'82110975842'},
+  {NIA:'092025017', nama:'Muhammad Abdul Muhyi', divisi:'EnR', telp:'85776422165'},
+  {NIA:'092025008', nama:'Dwi Savitri Denia', divisi:'EnR', telp:'81314520884'},
+  {NIA:'092025032', nama:'Reno Rafly Anggara', divisi:'EnR', telp:'82120764752'},
+  {NIA:'072023013', nama:'Retno Anggraeni', divisi:'Ketua DP', telp:'81383218527'},
+  {NIA:'082024014', nama:'M. Fabian Al Aziz', divisi:'DP', telp:'85156428245'},
+  {NIA:'000000001', nama:'Alfan Tirta Admajaya Putra', divisi:'Founder', telp:'81918892779'}
+];
 </script>
 
 <!-- LANDING (3 OPSI) -->
@@ -345,7 +395,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbyS9eF5QUuTJrMzjwNXUL5-
   <div class="scan-body" style="padding:20px; max-width:480px; margin:0 auto;">
     <div class="jadwal-card" style="background:var(--bg2); border-radius:12px; padding:16px; margin-bottom:16px;">
       <div class="jadwal-card-title">📋 Piket Hari Ini</div>
-      <div id="jadwal-today"><div class="loading">Memuat...</div></div>
+      <div id="jadwal-today"><div class="loading" style="color:var(--accent);">Memuat dari server...</div></div>
     </div>
     <div class="identity-section" style="background:var(--bg2); border-radius:12px; padding:16px;">
       <label class="form-label">NIA (Nomor Induk Anggota)</label>
@@ -356,7 +406,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbyS9eF5QUuTJrMzjwNXUL5-
           <button class="scan-type-btn" id="btn-tipe-pulang" onclick="setScanType('PULANG')" style="flex:1; padding:8px; background:var(--bg3); border:1px solid var(--border2); border-radius:8px;">🟣 Pulang</button>
         </div>
       </div>
-      <div class="gps-status" id="gps-status" style="font-size:11px; margin-top:6px;">📍 Mengambil lokasi...</div>
+      <div class="gps-status" id="gps-status" style="font-size:11px; margin-top:6px;">📍 Siap mengambil lokasi...</div>
     </div>
     <div class="scan-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-top:16px; text-align:center;">
       <div class="scan-label">Arahkan kamera ke QR Code yang ditampilkan admin / layar</div>
@@ -414,16 +464,19 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbyS9eF5QUuTJrMzjwNXUL5-
   <div class="admin-main">
     <div class="admin-topbar" style="padding:14px 24px; background:var(--bg2); display:flex; justify-content:space-between;"><div class="topbar-title" id="tab-title">Dashboard</div><div id="topbar-clock">--:--:--</div></div>
     <div class="admin-content">
+      
+      <!-- DASHBOARD TAB -->
       <div id="tab-dashboard" class="tab-panel active"><div class="stats-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;" id="stats-grid"></div><div class="table-card"><div class="table-card-header">Absensi Hari Ini</div><div class="table-scroll"><table><thead><tr><th>Tipe</th><th>Waktu</th><th>NIA</th><th>Nama</th></tr></thead><tbody id="tbl-today"></tbody></table></div></div></div>
+      
+      <!-- JADWAL TAB -->
       <div id="tab-jadwal" class="tab-panel">
         <div class="table-card" style="margin-bottom:20px;">
           <div class="table-card-header" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-            <div class="table-card-title">⚙️ Atur Jadwal Piket (Klik centang anggota)</div>
+            <div class="table-card-title">⚙️ Atur Jadwal Piket (Pilih Tanggal Dulu)</div>
             <div class="filter-row">
-              <select class="filter-input" id="jadwal-hari-select"><option value="1">Senin</option><option value="2">Selasa</option><option value="3">Rabu</option><option value="4">Kamis</option><option value="5">Jumat</option></select>
-              <button class="btn-sm primary" onclick="saveJadwalHari()">💾 Simpan Hari Ini</button>
-              <button class="btn-sm blue" onclick="downloadJadwalPDF()">📥 Download Jadwal PDF</button>
-              <button class="btn-sm" onclick="loadAnggotaPicker(true)">🔄 Refresh Anggota</button>
+              <input type="date" class="form-input" id="jadwal-tgl-select" style="width:auto; padding:6px 12px;">
+              <button class="btn-sm primary" onclick="saveJadwalHari()">💾 Simpan Jadwal</button>
+              <button class="btn-sm blue" onclick="renderJadwalPreview()">🔄 Refresh Tampilan</button>
             </div>
           </div>
           <div style="padding:16px;">
@@ -432,19 +485,22 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbyS9eF5QUuTJrMzjwNXUL5-
                 <div class="anggota-picker-title">✅ Pilih Anggota yang Piket (centang / hapus centang)</div>
                 <input class="filter-input" id="cari-anggota" placeholder="Cari nama atau NIA..." style="width:100%; margin-bottom:12px;" oninput="renderAnggotaPicker()">
                 <div class="anggota-list-pick" id="anggota-pick-list"><div class="loading">Memuat data anggota...</div></div>
-                <div style="margin-top:12px; font-size:11px; color:var(--text3);">Klik nama untuk memilih/membatalkan. Klik "Simpan Hari Ini" untuk menyimpan jadwal.</div>
               </div>
               <div>
                 <div class="anggota-picker">
-                  <div class="anggota-picker-title">📅 Pratinjau Jadwal Minggu Ini (setelah disimpan)</div>
-                  <div id="jadwal-preview-minggu" style="font-size:13px;">Memuat...</div>
+                  <div class="anggota-picker-title" id="preview-title">📅 Anggota Terpilih untuk Disimpan</div>
+                  <div id="jadwal-preview-minggu" style="font-size:13px; margin-top:12px;">Pilih anggota di samping...</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- REKAP TAB -->
       <div id="tab-rekap" class="tab-panel"><div class="table-card"><div class="table-card-header"><input type="date" id="rekap-from" class="filter-input"><input type="date" id="rekap-to" class="filter-input"><button class="btn-sm primary" onclick="loadRekap()">Filter</button><button class="btn-sm blue" onclick="exportCSV()">⬇ Export CSV</button></div><div class="table-scroll"><table><thead><tr><th>Tanggal</th><th>Tipe</th><th>Waktu</th><th>NIA</th><th>Nama</th></tr></thead><tbody id="tbl-rekap"></tbody></table></div></div></div>
+      
+      <!-- ANGGOTA TAB -->
       <div id="tab-anggota" class="tab-panel"><div class="table-card"><div class="table-card-header"><button class="btn-sm primary" onclick="showAddAnggota()">+ Tambah Anggota</button></div><div class="table-scroll"><table><thead><tr><th>NIA</th><th>Nama</th><th>Divisi</th><th>Telp</th><th>Aksi</th></tr></thead><tbody id="tbl-anggota"></tbody></table></div></div></div>
     </div>
   </div>
@@ -456,184 +512,30 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbyS9eF5QUuTJrMzjwNXUL5-
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-add-anggota"><div class="modal-box"><button class="modal-close" onclick="closeModal('modal-add-anggota')">✕</button><div class="modal-title">Tambah Anggota</div><input class="form-input" id="new-NIA" placeholder="NIA"><input class="form-input" id="new-nama" placeholder="Nama" style="margin-top:8px;"><input class="form-input" id="new-divisi" placeholder="Divisi" style="margin-top:8px;"><input class="form-input" id="new-telp" placeholder="No. Telp" style="margin-top:8px;"><button class="btn-sm primary" style="margin-top:16px; width:100%;" onclick="submitAddAnggota()">Simpan</button></div></div>
+<!-- MODAL TAMBAH ANGGOTA -->
+<div class="modal-overlay" id="modal-add-anggota"><div class="modal-box"><button class="modal-close" onclick="closeModal('modal-add-anggota')">✕</button><div class="modal-title">Tambah Anggota</div><input class="form-input" id="new-NIA" placeholder="NIA"><input class="form-input" id="new-nama" placeholder="Nama" style="margin-top:8px;"><input class="form-input" id="new-divisi" placeholder="Divisi" style="margin-top:8px;"><input class="form-input" id="new-telp" placeholder="No. Telp" style="margin-top:8px;"><button class="btn-sm primary" style="margin-top:16px; width:100%;" onclick="submitAddAnggota()">Simpan (ke Server)</button></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
-// ----------------------------- DATA + DEMO MODE -----------------------------
-const realAnggota = [
-  {NIA:'082024022', nama:'Rifqy Rachmat', divisi:'Ketua Umum', telp:'87886993450'},
-  {NIA:'082024015', nama:'Muhamad Alfan', divisi:'Wakil Ketua Umum I', telp:'85773694230'},
-  {NIA:'092025010', nama:'Khoirunnisa Assolihah', divisi:'Wakil Ketua Umum II', telp:'85779050415'},
-  {NIA:'082024012', nama:'Kinanti Ayuningtyas Puri', divisi:'Investment Manager I', telp:'85692447441'},
-  {NIA:'092025002', nama:'Afief Baharmus', divisi:'Investment Manager II', telp:'81285321417'},
-  {NIA:'082024017', nama:'Nisrina Zakiyah Rahmah', divisi:'Investment Manager III', telp:'81292936383'},
-  {NIA:'092025014', nama:'Melany Septiana Putri', divisi:'Secretary I', telp:'81387694749'},
-  {NIA:'092025013', nama:'Maudyna Tasya Ardianti', divisi:'Secretary II', telp:'81218510500'},
-  {NIA:'092025011', nama:'Majda Tsania', divisi:'Secretary III', telp:'87881633207'},
-  {NIA:'092025012', nama:'Mariyah Sujana', divisi:'Treasury I', telp:'817111899'},
-  {NIA:'092025005', nama:'Baim Daniel Musyafa', divisi:'Treasury II', telp:'87782121989'},
-  {NIA:'092025026', nama:'Nandini Melody Yordan', divisi:'Head of HR', telp:'81211077409'},
-  {NIA:'092025035', nama:'Sayyid Dzaky Ismail', divisi:'HR', telp:'81381984626'},
-  {NIA:'092025037', nama:'Siti Aprilia Temihila', divisi:'HR', telp:'85813099914'},
-  {NIA:'092025033', nama:'Ririn Dwi Lestari', divisi:'HR', telp:'82315117903'},
-  {NIA:'092025036', nama:'Selfia Herlanda', divisi:'HR', telp:'895330130991'},
-  {NIA:'092025003', nama:'Ahmad Farel Rabbani', divisi:'HR', telp:'85886307614'},
-  {NIA:'092025018', nama:'Muhammad Panji Robani', divisi:'HR', telp:'89525554553'},
-  {NIA:'092025015', nama:'Milka Nur Azizah', divisi:'Head of DC', telp:'81514099345'},
-  {NIA:'092025007', nama:'Darwita Sangadji', divisi:'DC', telp:'81388726799'},
-  {NIA:'092025019', nama:'Muhammad Rasya Raafi Ramadhan', divisi:'DC', telp:'82122956668'},
-  {NIA:'092025028', nama:'Natasya Nabila', divisi:'DC', telp:'81297977770'},
-  {NIA:'092025039', nama:'Syitna Fatimah Alu', divisi:'DC', telp:'81248513691'},
-  {NIA:'092025030', nama:'Rasya Baihaqi', divisi:'DC', telp:'895328945483'},
-  {NIA:'092025021', nama:'Muhammad Roffi Huda Kusuma', divisi:'DC', telp:'81927651901'},
-  {NIA:'092025016', nama:'Muhamad Raditia Ramadhan', divisi:'DC', telp:'85692722484'},
-  {NIA:'092025006', nama:'Chandra Lie', divisi:'Head of PR', telp:'81348390793'},
-  {NIA:'092025034', nama:'Salsabila Dinda Ayudia', divisi:'PR', telp:'85819865866'},
-  {NIA:'092025009', nama:'Hasya Balqis Khairunnisa', divisi:'PR', telp:'81232688225'},
-  {NIA:'092025025', nama:'Naila Zulfa Rahma', divisi:'PR', telp:'82136451822'},
-  {NIA:'092025024', nama:'Naila Fauziah', divisi:'PR', telp:'88213170889'},
-  {NIA:'092025023', nama:'Nada Jauza Syaqila', divisi:'PR', telp:'81282830972'},
-  {NIA:'082024029', nama:'Tofan Habibi', divisi:'Head of TnD', telp:'83115083899'},
-  {NIA:'092025027', nama:'Nasya Aliyah Inka', divisi:'TnD', telp:'85888072950'},
-  {NIA:'092025038', nama:'Syifa Khaulia', divisi:'TnD', telp:'89531920320'},
-  {NIA:'092025004', nama:'Ahmad Haidar Pasha', divisi:'TnD', telp:'85959914099'},
-  {NIA:'092025022', nama:'Mukti Hidayatulloh', divisi:'TnD', telp:'81285879617'},
-  {NIA:'092025001', nama:'Ismail Jamil', divisi:'Head of EnR', telp:'81586826673'},
-  {NIA:'092025040', nama:'Zuldan Ahmad Fauzan', divisi:'EnR', telp:'82110975842'},
-  {NIA:'092025017', nama:'Muhammad Abdul Muhyi', divisi:'EnR', telp:'85776422165'},
-  {NIA:'092025008', nama:'Dwi Savitri Denia', divisi:'EnR', telp:'81314520884'},
-  {NIA:'092025032', nama:'Reno Rafly Anggara', divisi:'EnR', telp:'82120764752'},
-  {NIA:'072023013', nama:'Retno Anggraeni', divisi:'Ketua DP', telp:'81383218527'},
-  {NIA:'082024014', nama:'M. Fabian Al Aziz', divisi:'DP', telp:'85156428245'},
-  {NIA:'000000001', nama:'Alfan Tirta Admajaya Putra', divisi:'Founder', telp:'81918892779'},
-];
-// Load demoAnggotaList dari localStorage, fallback ke realAnggota jika belum ada
-let demoAnggotaList = JSON.parse(localStorage.getItem('anggotaData') || 'null') || [...realAnggota];
-function saveAnggota() { localStorage.setItem('anggotaData', JSON.stringify(demoAnggotaList)); }
-// Load absensi dari localStorage agar tidak hilang saat refresh
-let demoAbsensi = JSON.parse(localStorage.getItem('absensiData') || '[]');
-// Bersihkan data absensi lebih dari 7 hari
-(function cleanOldAbsensi(){
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
-  demoAbsensi = demoAbsensi.filter(r => r.tanggal >= cutoffStr);
-  localStorage.setItem('absensiData', JSON.stringify(demoAbsensi));
-})();
-function saveAbsensi() {
-  localStorage.setItem('absensiData', JSON.stringify(demoAbsensi));
-}
-let jadwalMingguan = JSON.parse(localStorage.getItem('jadwalMingguan') || 'null') || {
-  1: ['082024022','092025002','092025014','092025007','082024029','092025027','092025038','092025004'],
-  2: ['082024015','092025010','092025026','092025033','092025015','092025001','092025040','092025017'],
-  3: ['082024012','092025012','092025011','092025013','092025006','092025018','092025021','092025030'],
-  4: ['082024017','092025034','092025036','092025005','092025009','092025019','092025023','092025016'],
-  5: ['082024029','092025027','092025038','092025004','092025022','092025001','092025040','092025017']
-};
+// =========================================================================
+// SCRIPT FINAL - KONEKSI SERVER DENGAN FALLBACK DATA LOKAL
+// =========================================================================
 
-// ---- GAS API (semua data baca/tulis ke Google Sheets) ----
 async function gasCall(params) {
   if(!GAS_URL) return {ok:false, msg:'GAS_URL belum dikonfigurasi'};
   try {
     const payload = new URLSearchParams(params);
     const res = await fetch(GAS_URL, {method:'POST', body:payload});
     const text = await res.text();
-    try { return JSON.parse(text); } catch(e) { return {ok:false, msg:'Response GAS tidak valid: '+text.substring(0,100)}; }
+    try { return JSON.parse(text); } catch(e) { return {ok:false, msg:'Response GAS tidak valid'}; }
   } catch(e) {
     return {ok:false, msg:'Koneksi ke server gagal: '+e.message};
   }
 }
 
 async function api(params) {
-  const today = new Date().toISOString().split('T')[0];
-
-  // ---- LOGIN (lokal, tidak perlu GAS) ----
-  if(params.action === 'adminLogin')
-    return (params.username==='adminhrd'&&params.password==='kipmup2017')?{ok:true,nama:'Administrator',role:'superadmin'}:{ok:false,msg:'Username/password salah'};
-
-  // ---- DATA ANGGOTA (lokal, daftar sudah hardcode) ----
-  if(params.action === 'getAnggota') return {ok:true, data: demoAnggotaList};
-  if(params.action === 'addAnggota'){
-    if(demoAnggotaList.find(a=>a.NIA===params.NIA)) return {ok:false, msg:'NIA sudah ada'};
-    demoAnggotaList.push({NIA:params.NIA, nama:params.nama, divisi:params.divisi||'-', telp:params.telp||''});
-    saveAnggota();
-    return {ok:true, msg:'Berhasil'};
-  }
-  if(params.action === 'deleteAnggota'){
-    demoAnggotaList = demoAnggotaList.filter(a=>a.NIA!==params.NIA);
-    saveAnggota();
-    return {ok:true};
-  }
-
-  // ---- JADWAL (localStorage, tidak bergantung device lain) ----
-  if(params.action === 'setJadwal'){
-    jadwalMingguan[params.hari] = JSON.parse(params.anggota);
-    localStorage.setItem('jadwalMingguan',JSON.stringify(jadwalMingguan));
-    return {ok:true};
-  }
-
-  // ---- ABSENSI: VALIDASI SCAN → serahkan sepenuhnya ke GAS ----
-  if(params.action === 'validateBarcode'){
-    // Kirim data langsung ke backend GAS
-    const result = await gasCall({
-      action: 'validateBarcode', 
-      token: params.token, 
-      NIA: params.NIA, 
-      tipe: params.tipe
-    });
-    
-    // Jika berhasil di GAS, update cache lokal agar UI terasa instan
-    if(result.ok) {
-      const waktu = new Date().toTimeString().slice(0,8);
-      const anggota = demoAnggotaList.find(a => a.NIA === params.NIA);
-      if(anggota) {
-        demoAbsensi.push({tanggal: today, waktu: waktu, NIA: params.NIA, nama: anggota.nama, tipe: params.tipe});
-        saveAbsensi();
-      }
-    }
-    return result;
-  }
-
-  // ---- JADWAL HARI INI: baca dari GAS ----
-  if(params.action === 'getJadwalHariIni'){
-    const dow = new Date().getDay();
-    const list = jadwalMingguan[dow] || [];
-    if(!list.length) return {ok:true, data:[]};
-    // Ambil data hadir hari ini dari GAS
-    const res = await gasCall({action:'getRekapAbsensi', from:today, to:today});
-    const hadirNIA = new Set((res.ok && res.data ? res.data : []).filter(r=>r.tipe==='DATANG').map(r=>r.NIA));
-    const data = list.map(nia=>{
-      const a = demoAnggotaList.find(x=>x.NIA===nia);
-      return a ? {NIA:a.NIA, nama:a.nama, divisi:a.divisi, status: hadirNIA.has(nia)?'HADIR':'BELUM'} : null;
-    }).filter(Boolean);
-    return {ok:true, data};
-  }
-
-  // ---- REKAP ABSENSI: baca dari GAS ----
-  if(params.action === 'getRekapAbsensi'){
-    const res = await gasCall({action:'getRekapAbsensi', from:params.from||today, to:params.to||today});
-    if(!res.ok) return {ok:true, data:[]};
-    return {ok:true, data: res.data||[]};
-  }
-
-  // ---- DASHBOARD STATS: baca dari GAS ----
-  if(params.action === 'getDashboardStats'){
-    const res = await gasCall({action:'getRekapAbsensi', from:today, to:today});
-    const data = res.ok && res.data ? res.data : [];
-    const hadirHari = new Set(data.filter(r=>r.tipe==='DATANG').map(r=>r.NIA)).size;
-    const jadwalHari = (jadwalMingguan[new Date().getDay()]||[]).length || 8;
-    return {ok:true, hadirHariIni:hadirHari, totalAnggota:demoAnggotaList.length, persenHariIni: jadwalHari>0?Math.round(hadirHari/jadwalHari*100):0};
-  }
-
-  // ---- EXPORT CSV: baca dari GAS ----
-  if(params.action === 'exportAbsensi'){
-    const res = await gasCall({action:'getRekapAbsensi', from:params.from||today, to:params.to||today});
-    const data = res.ok && res.data ? res.data : [];
-    const csv='Tanggal,Tipe,Waktu,NIA,Nama\n'+data.map(r=>`${r.tanggal},${r.tipe},${r.waktu},${r.NIA},${r.nama}`).join('\n');
-    return {ok:true, csv};
-  }
-
-  return {ok:false, msg:'Action tidak dikenal'};
+  showToast('Menghubungkan ke server...', 'info');
+  return await gasCall(params);
 }
 
 // GLOBAL VARS
@@ -643,6 +545,7 @@ let currentScanType = 'DATANG';
 let scannerActive = false, html5Scanner = null;
 let qrRefreshInterval = null;
 
+// UTILS
 function showToast(msg, type='info'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000);}
 function goTo(page){
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active'); p.style.display='none';});
@@ -651,65 +554,76 @@ function goTo(page){
   if(page==='admin') initAdmin();
   if(page==='scan'){ 
     loadJadwalScan(); 
-    // Tampilkan tanggal hari ini
     const tgl = document.getElementById('scan-tanggal');
     if(tgl) tgl.innerText = new Date().toLocaleDateString('id-ID', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-    if(navigator.geolocation) navigator.geolocation.getCurrentPosition(()=>{},()=>{}); 
   }
   if(page==='qr'){ startQRLiveDisplay(); }
   if(page!=='qr' && qrRefreshInterval){ clearInterval(qrRefreshInterval); qrRefreshInterval=null; }
   if(page!=='qr' && qrCountdownInterval){ clearInterval(qrCountdownInterval); qrCountdownInterval=null; qrLastToken=null; }
 }
 function setScanType(t){ currentScanType=t; document.getElementById('btn-tipe-datang').style.borderColor=t==='DATANG'?'var(--accent)':'var(--border2)'; document.getElementById('btn-tipe-pulang').style.borderColor=t==='PULANG'?'#c084fc':'var(--border2)';}
-async function loadJadwalScan(){ const res=await api({action:'getJadwalHariIni'}); const el=document.getElementById('jadwal-today'); if(res.ok && res.data.length) el.innerHTML=res.data.map(j=>`<div class="jadwal-item" style="display:flex;justify-content:space-between;padding:6px 0;"><div><b>${j.nama}</b><div style="font-size:11px;">${j.NIA} · ${j.divisi}</div></div><span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span></div>`).join(''); else el.innerHTML='<div class="empty-state">Tidak ada jadwal hari ini</div>';}
-function toggleScan(){ if(scannerActive){ if(html5Scanner) html5Scanner.stop().catch(e=>{}); scannerActive=false; document.getElementById('btn-start-scan').innerHTML='▶ Mulai Scan'; }else{ const nia=document.getElementById('input-NIA').value.trim(); if(!nia){ showToast('Isi NIA dulu','error'); return; } html5Scanner=new Html5Qrcode('qr-reader'); html5Scanner.start({facingMode:'environment'},{fps:10,qrbox:220}, async (text)=>{ const res=await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); showToast(res.ok?`✅ ${res.msg}`:`❌ ${res.msg}`, res.ok?'success':'error'); if(res.ok){ toggleScan(); loadJadwalScan(); } }).catch(e=>{ showToast('Gagal akses kamera','error'); }); scannerActive=true; document.getElementById('btn-start-scan').innerHTML='⏹ Stop Scan'; }}
 
-// QR LIVE DISPLAY
-// Token deterministik: semua device dalam window 30 detik yang sama → token IDENTIK
+async function loadJadwalScan(){ 
+  const res = await api({action:'getJadwalHariIni'}); 
+  const el = document.getElementById('jadwal-today'); 
+  if(res.ok && res.data && res.data.length > 0) {
+    el.innerHTML = res.data.map(j => `<div class="jadwal-item" style="display:flex;justify-content:space-between;padding:6px 0; border-bottom: 1px solid var(--border);"><div><b>${j.nama}</b><div style="font-size:11px; color:var(--text2);">${j.NIA} · ${j.divisi}</div></div><span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}" style="align-self:center;">${j.status}</span></div>`).join(''); 
+  } else { 
+    el.innerHTML = '<div class="empty-state" style="padding:10px;">Tidak ada jadwal tersetting untuk hari ini. Hubungi Admin.</div>';
+  }
+}
+
+function toggleScan(){ 
+  if(scannerActive){ 
+    if(html5Scanner) html5Scanner.stop().catch(e=>{}); 
+    scannerActive = false; 
+    document.getElementById('btn-start-scan').innerHTML = '▶ Mulai Scan'; 
+  } else { 
+    const nia = document.getElementById('input-NIA').value.trim(); 
+    if(!nia){ showToast('Isi NIA dulu','error'); return; } 
+    html5Scanner = new Html5Qrcode('qr-reader'); 
+    html5Scanner.start({facingMode:'environment'},{fps:10, qrbox:220}, async (text)=>{ 
+      html5Scanner.stop();
+      scannerActive = false;
+      document.getElementById('btn-start-scan').innerHTML = '▶ Mulai Scan';
+      const res = await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); 
+      showToast(res.ok ? `✅ ${res.msg}` : `❌ ${res.msg}`, res.ok ? 'success' : 'error'); 
+      if(res.ok){ loadJadwalScan(); } 
+    }).catch(e=>{ showToast('Gagal akses kamera','error'); }); 
+    scannerActive = true; 
+    document.getElementById('btn-start-scan').innerHTML = '⏹ Stop Scan'; 
+  }
+}
+
+// QR LIVE
 function getCurrentQRToken() {
   const now = new Date();
-  // Konversi ke zona waktu WIB (UTC+7)
   const wib = new Date(now.getTime() + 7 * 3600 * 1000);
-  
   const y = wib.getUTCFullYear();
   const m = String(wib.getUTCMonth() + 1).padStart(2, '0');
   const d = String(wib.getUTCDate()).padStart(2, '0');
   const dateStr = `${y}${m}${d}`;
-  
-  // Perhitungan slot waktu 30 detik yang sama persis dengan GAS
-  const slot30 = Math.floor(wib.getUTCSeconds() / 30) + 
-                 Math.floor(wib.getUTCMinutes()) * 2 + 
-                 Math.floor(wib.getUTCHours()) * 120;
-                 
-  const SECRET_KEY = 'KIPMUP2017SECRET'; // Harus sama persis dengan Backend GAS
+  const slot30 = Math.floor(wib.getUTCSeconds() / 30) + Math.floor(wib.getUTCMinutes()) * 2 + Math.floor(wib.getUTCHours()) * 120;
+  const SECRET_KEY = 'KIPMUP2017SECRET'; 
   const raw = dateStr + '_' + slot30 + '_' + SECRET_KEY;
-  
   return md5(raw).substring(0, 12).toUpperCase();
 }
-
-function getSecondsLeft() {
-  const now = Date.now();
-  const windowMs = 30 * 1000;
-  return 30 - Math.floor((now % windowMs) / 1000);
-}
-
+function getSecondsLeft() { return 30 - Math.floor((Date.now() % 30000) / 1000); }
 let qrCountdownInterval = null;
 let qrLastToken = null;
-
 function renderQRCodeOnPublic() {
   const token = getCurrentQRToken();
-  if(token === qrLastToken) return; // skip kalau token belum ganti
+  if(token === qrLastToken) return;
   qrLastToken = token;
   const canvasDiv = document.getElementById('qr-display-canvas');
   if(canvasDiv){
-    const wrapper = document.createElement('div');
     canvasDiv.innerHTML = '';
+    const wrapper = document.createElement('div');
     canvasDiv.appendChild(wrapper);
     new QRCode(wrapper, { text: token, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.H });
     document.getElementById('qr-token-text-live').innerText = token;
   }
 }
-
 function startQRLiveDisplay() {
   if(qrRefreshInterval) clearInterval(qrRefreshInterval);
   if(qrCountdownInterval) clearInterval(qrCountdownInterval);
@@ -722,29 +636,173 @@ function startQRLiveDisplay() {
   }, 1000);
 }
 
-// ADMIN LOGIC
-async function adminLogin(){ const u=document.getElementById('admin-username').value, p=document.getElementById('admin-password').value; const res=await api({action:'adminLogin', username:u, password:p}); if(res.ok){ goTo('admin'); }else{ document.getElementById('login-err').style.display='block'; }}
+// ADMIN PANEL
+async function adminLogin(){ 
+  const u=document.getElementById('admin-username').value;
+  const p=document.getElementById('admin-password').value; 
+  const res=await api({action:'adminLogin', username:u, password:p}); 
+  if(res.ok){ goTo('admin'); }else{ document.getElementById('login-err').style.display='block'; }
+}
 function adminLogout(){ goTo('landing'); if(qrRefreshInterval) clearInterval(qrRefreshInterval); }
-async function initAdmin(){ await loadAnggotaForPicker(); startClock(); switchTab('dashboard'); loadDashboard(); }
-function startClock(){ setInterval(()=>{ const d=new Date(); document.getElementById('topbar-clock').innerText=d.toLocaleTimeString('id-ID'); },1000); }
-function switchTab(tab){ document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); document.getElementById(`tab-${tab}`).classList.add('active'); document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active'); document.getElementById('tab-title').innerText=tab==='dashboard'?'Dashboard':tab==='jadwal'?'Jadwal Piket':tab==='rekap'?'Rekap Absensi':tab==='anggota'?'Data Anggota':''; if(tab==='dashboard') loadDashboard(); if(tab==='rekap') loadRekap(); if(tab==='anggota') loadAnggotaTable(); if(tab==='jadwal'){ loadAnggotaForPicker(); renderJadwalPreview(); } }
-async function loadAnggotaForPicker(){ const res=await api({action:'getAnggota'}); if(res.ok){ allAnggota=res.data; const hari=parseInt(document.getElementById('jadwal-hari-select').value); selectedAnggota=new Set(jadwalMingguan[hari]||[]); renderAnggotaPicker(); renderJadwalPreview(); }else{ showToast('Gagal load anggota','error'); } }
-function renderAnggotaPicker(){ const query=document.getElementById('cari-anggota')?.value.toLowerCase()||''; let filtered=allAnggota; if(query) filtered=allAnggota.filter(a=>a.nama.toLowerCase().includes(query)||a.NIA.includes(query)); const container=document.getElementById('anggota-pick-list'); if(!filtered.length){ container.innerHTML='<div class="empty-state">Tidak ada anggota</div>'; return; } container.innerHTML=filtered.map(a=>`<div class="anggota-pick-item ${selectedAnggota.has(a.NIA)?'selected':''}" onclick="togglePickAnggota('${a.NIA}')"><div class="pick-check">${selectedAnggota.has(a.NIA)?'✓':''}</div><div><div class="pick-name">${a.nama}</div><div class="pick-divisi">${a.NIA} · ${a.divisi}</div></div></div>`).join(''); }
-function togglePickAnggota(NIA){ if(selectedAnggota.has(NIA)) selectedAnggota.delete(NIA); else selectedAnggota.add(NIA); renderAnggotaPicker(); }
-async function saveJadwalHari(){ const hari=parseInt(document.getElementById('jadwal-hari-select').value); if(selectedAnggota.size===0){ showToast('Pilih minimal 1 anggota!','error'); return; } jadwalMingguan[hari]=[...selectedAnggota]; localStorage.setItem('jadwalMingguan',JSON.stringify(jadwalMingguan)); await api({action:'setJadwal', hari, anggota:JSON.stringify([...selectedAnggota])}); showToast('✅ Jadwal berhasil disimpan!','success'); renderJadwalPreview(); }
-function renderJadwalPreview(){ const hariNama=['','Senin','Selasa','Rabu','Kamis','Jumat']; const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=''; for(let h=1;h<=5;h++){ const list=jadwalMingguan[h]||[]; html+=`<div style="margin-bottom:12px;padding:10px;background:var(--bg2);border-radius:8px;"><div style="font-weight:600;">${hariNama[h]} (${list.length})</div>${list.map(nia=>{const a=anggotaMap.get(nia); return `<div>📌 ${a?`${a.nama} (${a.divisi})`:`${nia}`}</div>`;}).join('')||'<div class="empty-state">Kosong</div>'}</div>`; } document.getElementById('jadwal-preview-minggu').innerHTML=html; }
-function downloadJadwalPDF(){ const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a])); let html=`<html><head><meta charset="UTF-8"><title>Jadwal Piket KIPM-UP</title><style>body{font-family:sans-serif;padding:20px;}h1{color:#2d6a4f;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f1f8e9;}</style></head><body><h1>📋 Jadwal Piket KIPM-UP</h1><p>Cetak: ${new Date().toLocaleDateString('id-ID')}</p>`; const hariNama=['Senin','Selasa','Rabu','Kamis','Jumat']; for(let i=0;i<5;i++){ const h=i+1; const list=jadwalMingguan[h]||[]; if(list.length){ html+=`<h3>${hariNama[i]}</h3><table><tr><th>No</th><th>NIA</th><th>Nama</th><th>Divisi</th></tr>`; list.forEach((nia,idx)=>{ const a=anggotaMap.get(nia); html+=`<tr><td>${idx+1}</td><td>${nia}</td><td>${a?a.nama:'-'}</td><td>${a?a.divisi:'-'}</td></tr>`; }); html+=`</table><br>`; } } html+=`</body></html>`; const win=window.open(); win.document.write(html); win.document.close(); win.print(); }
-async function loadDashboard(){ const res=await api({action:'getDashboardStats'}); document.getElementById('stats-grid').innerHTML=`<div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Hadir Hari Ini</div><div class="stat-value stat-green" style="font-size:28px; font-weight:600;">${res.hadirHariIni||0}</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label">% Kehadiran</div><div class="stat-value stat-blue" style="font-size:28px;">${res.persenHariIni||0}%</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label">Total Anggota</div><div class="stat-value" style="font-size:28px;">${res.totalAnggota||0}</div></div>`; const rekap=await api({action:'getRekapAbsensi', from:new Date().toISOString().split('T')[0], to:new Date().toISOString().split('T')[0]}); const tbody=document.getElementById('tbl-today'); if(rekap.data.length) tbody.innerHTML=rekap.data.map(r=>`<tr><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); else tbody.innerHTML='<tr><td colspan="4" class="empty-state">Belum ada absensi</td></tr>'; }
-async function loadRekap(){ const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; const res=await api({action:'getRekapAbsensi', from, to}); const tbody=document.getElementById('tbl-rekap'); if(res.data.length) tbody.innerHTML=res.data.map(r=>`<tr><td>${r.tanggal}</td><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); else tbody.innerHTML='<tr><td colspan="5" class="empty-state">Tidak ada data</td></tr>'; }
-async function exportCSV(){ const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; const res=await api({action:'exportAbsensi', from, to}); if(res.ok){ const blob=new Blob([res.csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='rekap_absensi.csv'; a.click(); showToast('CSV terunduh','success'); } }
-async function loadAnggotaTable(){ const res=await api({action:'getAnggota'}); const tbody=document.getElementById('tbl-anggota'); if(res.data.length) tbody.innerHTML=res.data.map(a=>`<tr><td>${a.NIA}</td><td>${a.nama}</td><td>${a.divisi}</td><td>${a.telp||'-'}</td><td><button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">Hapus</button></td></tr>`).join(''); else tbody.innerHTML='<tr><td colspan="5" class="empty-state">Kosong</td></tr>'; }
+async function initAdmin(){ 
+  document.getElementById('jadwal-tgl-select').value = new Date().toISOString().split('T')[0];
+  await loadAnggotaForPicker(); 
+  startClock(); 
+  switchTab('dashboard'); 
+}
+function startClock(){ setInterval(()=>{ document.getElementById('topbar-clock').innerText = new Date().toLocaleTimeString('id-ID'); },1000); }
+function switchTab(tab){ 
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); 
+  document.getElementById(`tab-${tab}`).classList.add('active'); 
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); 
+  document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active'); 
+  
+  const titles = {'dashboard':'Dashboard', 'jadwal':'Jadwal Piket', 'rekap':'Rekap Absensi', 'anggota':'Data Anggota'};
+  document.getElementById('tab-title').innerText = titles[tab] || ''; 
+  
+  if(tab==='dashboard') loadDashboard(); 
+  if(tab==='rekap') loadRekap(); 
+  if(tab==='anggota') loadAnggotaTable(); 
+  if(tab==='jadwal'){ loadAnggotaForPicker(); renderJadwalPreview(); } 
+}
+
+// ADMIN: JADWAL LOGIC
+async function loadAnggotaForPicker(){ 
+  const res = await api({action:'getAnggota'}); 
+  if(res.ok && res.data && res.data.length > 0){ 
+    allAnggota = res.data; 
+  } else { 
+    // FALLBACK: JIKA GOOGLE SHEETS KOSONG, PAKAI DATA BAWAAN
+    showToast('Data di server kosong. Menggunakan data cadangan.','info');
+    allAnggota = [...realAnggota]; 
+  } 
+  renderAnggotaPicker(); 
+  renderJadwalPreview(); 
+}
+
+function renderAnggotaPicker(){ 
+  const query = document.getElementById('cari-anggota')?.value.toLowerCase()||''; 
+  let filtered = allAnggota; 
+  if(query) filtered = allAnggota.filter(a => a.nama.toLowerCase().includes(query) || a.NIA.includes(query)); 
+  const container = document.getElementById('anggota-pick-list'); 
+  if(!filtered.length){ container.innerHTML='<div class="empty-state">Tidak ada anggota</div>'; return; } 
+  container.innerHTML = filtered.map(a => `<div class="anggota-pick-item ${selectedAnggota.has(a.NIA)?'selected':''}" onclick="togglePickAnggota('${a.NIA}')"><div class="pick-check">${selectedAnggota.has(a.NIA)?'✓':''}</div><div><div class="pick-name">${a.nama}</div><div class="pick-divisi">${a.NIA} · ${a.divisi}</div></div></div>`).join(''); 
+}
+function togglePickAnggota(NIA){ 
+  if(selectedAnggota.has(NIA)) selectedAnggota.delete(NIA); 
+  else selectedAnggota.add(NIA); 
+  renderAnggotaPicker(); 
+  renderJadwalPreview();
+}
+document.getElementById('jadwal-tgl-select')?.addEventListener('change', () => {
+  selectedAnggota.clear(); 
+  renderAnggotaPicker();
+  renderJadwalPreview();
+});
+
+function renderJadwalPreview(){ 
+  const tgl = document.getElementById('jadwal-tgl-select').value;
+  let html = `<div style="margin-bottom:12px;padding:10px;background:var(--bg2);border-radius:8px;"><div style="font-weight:600; color:var(--accent);">Tanggal: ${tgl}</div><div style="font-size:11px; margin-bottom:8px;">Terpilih: ${selectedAnggota.size} Anggota</div>`; 
+  if(selectedAnggota.size === 0) {
+     html += '<div class="empty-state" style="padding:10px;">Belum ada yang dipilih</div>';
+  } else {
+     Array.from(selectedAnggota).forEach(nia => { 
+       const a = allAnggota.find(x => x.NIA === nia); 
+       html += `<div>📌 ${a ? `${a.nama} <span style="font-size:10px;color:var(--text2)">(${a.divisi})</span>` : nia}</div>`; 
+     }); 
+  }
+  html += '</div>'; 
+  document.getElementById('jadwal-preview-minggu').innerHTML = html; 
+}
+
+async function saveJadwalHari(){ 
+  const tgl = document.getElementById('jadwal-tgl-select').value;
+  if(!tgl) return showToast('Pilih tanggal kalender dulu!','error');
+  if(selectedAnggota.size===0) return showToast('Centang minimal 1 anggota!','error'); 
+  
+  const anggotaData = Array.from(selectedAnggota).map(nia => {
+     const a = allAnggota.find(x => x.NIA === nia);
+     return {NIA: a.NIA, nama: a.nama, divisi: a.divisi};
+  });
+
+  const res = await api({action:'setJadwal', tanggal: tgl, anggota: JSON.stringify(anggotaData)}); 
+  if(res.ok) {
+     showToast('✅ Jadwal berhasil disimpan ke Server!','success'); 
+  } else {
+     showToast('❌ Gagal: ' + res.msg, 'error');
+  }
+}
+
+// ADMIN: DASHBOARD & REKAP
+async function loadDashboard(){ 
+  const res = await api({action:'getDashboardStats'}); 
+  if(res.ok){
+    document.getElementById('stats-grid').innerHTML=`<div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Hadir Hari Ini</div><div class="stat-value stat-green" style="font-size:28px; font-weight:600; color:var(--accent);">${res.hadirHariIni||0}</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">% Kehadiran</div><div class="stat-value stat-blue" style="font-size:28px; color:var(--accent2);">${res.persenHariIni||0}%</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Jadwal Hari Ini</div><div class="stat-value" style="font-size:28px; color:var(--accent3);">${res.jadwalHariIni||0}</div></div><div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div class="stat-label" style="font-size:12px;">Total Anggota</div><div class="stat-value" style="font-size:28px;">${res.totalAnggota||0}</div></div>`; 
+  }
+  const today = new Date().toISOString().split('T')[0];
+  const rekap = await api({action:'getRekapAbsensi', from: today, to: today}); 
+  const tbody = document.getElementById('tbl-today'); 
+  if(rekap.ok && rekap.data.length) tbody.innerHTML = rekap.data.map(r=>`<tr><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); 
+  else tbody.innerHTML='<tr><td colspan="4" class="empty-state">Belum ada absensi hari ini</td></tr>'; 
+}
+
+async function loadRekap(){ 
+  const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; 
+  const res=await api({action:'getRekapAbsensi', from, to}); 
+  const tbody=document.getElementById('tbl-rekap'); 
+  if(res.ok && res.data.length) tbody.innerHTML = res.data.map(r=>`<tr><td>${r.tanggal}</td><td><span class="badge ${r.tipe==='DATANG'?'badge-hadir':'badge-pulang'}">${r.tipe}</span></td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join(''); 
+  else tbody.innerHTML='<tr><td colspan="5" class="empty-state">Tidak ada data di tanggal tersebut</td></tr>'; 
+}
+
+async function exportCSV(){ 
+  const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value; 
+  const res=await api({action:'exportAbsensi', from, to}); 
+  if(res.ok){ 
+    const blob=new Blob([res.csv],{type:'text/csv'}); 
+    const a=document.createElement('a'); 
+    a.href=URL.createObjectURL(blob); 
+    a.download='rekap_absensi_KIPM.csv'; 
+    a.click(); 
+    showToast('CSV terunduh','success'); 
+  } 
+}
+
+// ADMIN: DATA ANGGOTA
+async function loadAnggotaTable(){ 
+  const res = await api({action:'getAnggota'}); 
+  const tbody = document.getElementById('tbl-anggota'); 
+  let targetData = (res.ok && res.data.length > 0) ? res.data : [...realAnggota];
+  
+  if(targetData.length > 0) {
+    tbody.innerHTML = targetData.map(a=>`<tr><td>${a.NIA}</td><td>${a.nama}</td><td>${a.divisi}</td><td>${a.telp||'-'}</td><td><button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">Hapus</button></td></tr>`).join(''); 
+  } else {
+    tbody.innerHTML='<tr><td colspan="5" class="empty-state">Belum ada data anggota</td></tr>'; 
+  }
+}
 function showAddAnggota(){ document.getElementById('modal-add-anggota').classList.add('show'); }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
-async function submitAddAnggota(){ const NIA=document.getElementById('new-NIA').value.trim(), nama=document.getElementById('new-nama').value.trim(), divisi=document.getElementById('new-divisi').value.trim(), telp=document.getElementById('new-telp').value.trim(); if(!NIA||!nama){ showToast('NIA dan Nama wajib','error'); return; } const res=await api({action:'addAnggota', NIA, nama, divisi, telp}); if(res.ok){ showToast('Anggota ditambahkan','success'); closeModal('modal-add-anggota'); await loadAnggotaForPicker(); loadAnggotaTable(); }else showToast(res.msg||'Gagal','error'); }
-async function deleteAnggota(NIA){ if(confirm('Hapus anggota?')){ await api({action:'deleteAnggota', NIA}); await loadAnggotaForPicker(); loadAnggotaTable(); showToast('Dihapus','success'); } }
-document.getElementById('jadwal-hari-select')?.addEventListener('change',()=>{ const hari=parseInt(document.getElementById('jadwal-hari-select').value); selectedAnggota=new Set(jadwalMingguan[hari]||[]); renderAnggotaPicker(); });
-window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.downloadJadwalPDF=downloadJadwalPDF; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV;
-console.log('✅ Sistem siap | QR Live dan Absensi tersambung ke backend');
+async function submitAddAnggota(){ 
+  const NIA=document.getElementById('new-NIA').value.trim(), nama=document.getElementById('new-nama').value.trim(), divisi=document.getElementById('new-divisi').value.trim(), telp=document.getElementById('new-telp').value.trim(); 
+  if(!NIA||!nama){ showToast('NIA dan Nama wajib diisi','error'); return; } 
+  const res = await api({action:'addAnggota', NIA, nama, divisi, telp}); 
+  if(res.ok){ 
+    showToast('Berhasil disimpan ke Google Sheets','success'); 
+    closeModal('modal-add-anggota'); 
+    document.getElementById('new-NIA').value = ''; document.getElementById('new-nama').value = '';
+    loadAnggotaTable(); 
+  } else showToast(res.msg||'Gagal','error'); 
+}
+async function deleteAnggota(NIA){ 
+  if(confirm('Yakin ingin menghapus anggota ini dari Server?')){ 
+    const res = await api({action:'deleteAnggota', NIA}); 
+    if(res.ok) { showToast('Anggota dihapus','success'); loadAnggotaTable(); }
+    else showToast('Gagal menghapus','error');
+  } 
+}
+
+window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.renderJadwalPreview=renderJadwalPreview;
+
+console.log('✅ Sistem siap! Dilengkapi fallback data anggota.');
 </script>
 </body>
 </html>
