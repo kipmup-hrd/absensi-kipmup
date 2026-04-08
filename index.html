@@ -438,7 +438,7 @@ let allAnggota = [...realAnggota];
     <!-- Ucapan Selamat Datang -->
     <div style="background:rgba(74,222,128,0.1); border:1px solid var(--accent); padding:16px; border-radius:12px; text-align:center; margin-bottom:20px;">
       <h2 style="color:var(--accent); margin-bottom:4px; font-size:20px;">Absensi Berhasil! 🎉</h2>
-      <p style="font-size:14px; color:var(--text2);">Selamat datang, <b id="kalender-nama-user" style="color:var(--text);">Anggota KIPM</b>.</p>
+      <p style="font-size:14px; color:var(--text2);">Selamat <b id="kalender-tipe-absen" style="color:var(--text);">Datang</b>, <b id="kalender-nama-user" style="color:var(--text);">Anggota KIPM</b>!</p>
     </div>
 
     <!-- Kalender Kegiatan KIPM -->
@@ -587,7 +587,38 @@ let allAnggota = [...realAnggota];
 </div>
 
 <!-- MODAL TAMBAH ANGGOTA -->
-<div class="modal-overlay" id="modal-add-anggota"><div class="modal-box"><button class="modal-close" onclick="closeModal('modal-add-anggota')">✕</button><div class="modal-title">Tambah Anggota</div><input class="form-input" id="new-NIA" placeholder="NIA"><input class="form-input" id="new-nama" placeholder="Nama" style="margin-top:8px;"><input class="form-input" id="new-divisi" placeholder="Divisi" style="margin-top:8px;"><input class="form-input" id="new-telp" placeholder="No. Telp" style="margin-top:8px;"><button class="btn-sm primary" style="margin-top:16px; width:100%;" onclick="submitAddAnggota()">Simpan</button></div></div>
+<div class="modal-overlay" id="modal-add-anggota">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-add-anggota')">✕</button>
+    <div class="modal-title">➕ Tambah Anggota</div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+      <input class="form-input" id="new-NIA" placeholder="NIA (misal: 092025001)">
+      <input class="form-input" id="new-nama" placeholder="Nama Lengkap">
+      <input class="form-input" id="new-divisi" placeholder="Divisi (misal: HR, DC, PR)">
+      <input class="form-input" id="new-telp" placeholder="No. Telp (tanpa +62)">
+    </div>
+    <button class="btn-sm primary" style="margin-top:16px; width:100%; padding:10px;" onclick="submitAddAnggota()">💾 Simpan Anggota</button>
+  </div>
+</div>
+
+<!-- MODAL EDIT ANGGOTA -->
+<div class="modal-overlay" id="modal-edit-anggota">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-edit-anggota')">✕</button>
+    <div class="modal-title">✏️ Edit Data Anggota</div>
+    <div style="margin-top:4px; font-size:12px; color:var(--text2); margin-bottom:12px;">NIA tidak bisa diubah</div>
+    <input class="form-input" id="edit-NIA" placeholder="NIA" readonly style="opacity:0.5; cursor:not-allowed;">
+    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+      <input class="form-input" id="edit-nama" placeholder="Nama Lengkap">
+      <input class="form-input" id="edit-divisi" placeholder="Divisi">
+      <input class="form-input" id="edit-telp" placeholder="No. Telp">
+    </div>
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button class="btn-sm" style="flex:1; padding:10px;" onclick="closeModal('modal-edit-anggota')">Batal</button>
+      <button class="btn-sm primary" style="flex:2; padding:10px;" onclick="submitEditAnggota()">💾 Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -622,6 +653,16 @@ async function gasCall(params) {
 }
 
 async function api(params) { return await gasCall(params); }
+
+// Helper: tanggal hari ini dalam WIB (sama seperti GAS backend)
+function getTodayWIB() {
+  const now = new Date();
+  const wib = new Date(now.getTime() + 7 * 3600 * 1000);
+  const y = wib.getUTCFullYear();
+  const m = String(wib.getUTCMonth()+1).padStart(2,'0');
+  const d = String(wib.getUTCDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
 
 let selectedAnggota = new Set();
 let currentScanType = 'DATANG';
@@ -663,32 +704,39 @@ async function loadJadwalScan(){
   }
 
   // Render jadwal lokal dulu (cepat), lalu update status dari server
-  const renderJadwal = (hadirNIA) => {
+  const renderJadwal = (datangNIA = new Set(), pulangNIA = new Set()) => {
     const displayData = list.map(nia => {
       const a = allAnggota.find(x => x.NIA === nia);
-      return a ? {NIA: a.NIA, nama: a.nama, divisi: a.divisi, status: hadirNIA.has(nia) ? 'HADIR' : 'BELUM'} : null;
+      if(!a) return null;
+      let status = 'BELUM';
+      if(pulangNIA.has(nia)) status = 'PULANG';
+      else if(datangNIA.has(nia)) status = 'DATANG';
+      return {NIA: a.NIA, nama: a.nama, divisi: a.divisi, status};
     }).filter(Boolean);
 
     if(!displayData.length) {
       el.innerHTML = '<div class="empty-state" style="padding:10px;">Tidak ada data anggota untuk jadwal hari ini.</div>';
       return;
     }
-    el.innerHTML = displayData.map(j => `<div class="jadwal-item" style="display:flex;justify-content:space-between;padding:6px 0; border-bottom: 1px solid var(--border);"><div><b>${j.nama}</b><div style="font-size:11px; color:var(--text2);">${j.NIA} · ${j.divisi}</div></div><span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}" style="align-self:center;">${j.status}</span></div>`).join('');
+    const badgeClass = s => s==='DATANG'?'badge-hadir': s==='PULANG'?'badge-pulang':'badge-belum';
+    const badgeLabel = s => s==='DATANG'?'✅ DATANG': s==='PULANG'?'🟣 PULANG':'BELUM';
+    el.innerHTML = displayData.map(j => `<div class="jadwal-item" style="display:flex;justify-content:space-between;padding:8px 0; border-bottom: 1px solid var(--border);"><div><b>${j.nama}</b><div style="font-size:11px; color:var(--text2);">${j.NIA} · ${j.divisi}</div></div><span class="badge ${badgeClass(j.status)}" style="align-self:center;">${badgeLabel(j.status)}</span></div>`).join('');
   };
 
-  // Render dulu tanpa status hadir
-  renderJadwal(new Set());
+  // Render dulu tanpa status
+  renderJadwal();
 
-  // Coba ambil status dari server
+  // Coba ambil status dari server (pakai WIB bukan UTC!)
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayWIB();
     const res = await api({action:'getRekapAbsensi', from:today, to:today});
     if(res && res.ok && Array.isArray(res.data)) {
-      const hadirNIA = new Set(res.data.filter(r=>r.tipe==='DATANG').map(r=>r.NIA));
-      renderJadwal(hadirNIA);
+      // Track DATANG dan PULANG per NIA
+      const datangNIA = new Set(res.data.filter(r=>r.tipe==='DATANG').map(r=>r.NIA));
+      const pulangNIA = new Set(res.data.filter(r=>r.tipe==='PULANG').map(r=>r.NIA));
+      renderJadwal(datangNIA, pulangNIA);
     }
   } catch(e) {
-    // Tetap tampilkan jadwal lokal, hanya status yang tidak diketahui
     console.warn('Server tidak dapat dihubungi, menampilkan jadwal lokal tanpa status hadir.');
   }
 }
@@ -722,10 +770,19 @@ function toggleScan(){
         const res = await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); 
         
         if(res.ok){ 
-            showToast(`✅ ${res.msg}`, 'success'); 
+            showToast(`✅ ${res.msg}`, 'success');
             
-            // REDIRECT KE ROOM KALENDER (Setelah 1.5 Detik agar animasi terasa halus)
+            // Refresh status jadwal supaya badge langsung berubah
+            loadJadwalScan();
+
+            // Otomatis switch ke tipe PULANG setelah berhasil DATANG
+            if(currentScanType === 'DATANG') {
+              setTimeout(() => setScanType('PULANG'), 200);
+            }
+
+            // REDIRECT KE ROOM KALENDER (Setelah 1.5 Detik)
             document.getElementById('kalender-nama-user').innerText = res.nama || nia;
+            document.getElementById('kalender-tipe-absen').innerText = currentScanType === 'DATANG' ? 'Datang' : 'Pulang';
             setTimeout(() => {
                 goTo('kalender');
             }, 1500);
@@ -915,7 +972,7 @@ function downloadJadwalPDF(){
 
 // ADMIN: DASHBOARD
 async function loadDashboard(){ 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayWIB();
   const rekap = await api({action:'getRekapAbsensi', from: today, to: today}); 
   const dataAbsen = (rekap.ok && rekap.data) ? rekap.data : [];
 
@@ -967,12 +1024,55 @@ async function loadAnggotaTable(){
   let targetData = (res.ok && res.data && res.data.length > 0) ? res.data : [...realAnggota];
   
   if(targetData.length > 0) {
-    tbody.innerHTML = targetData.map(a=>`<tr><td>${a.NIA}</td><td>${a.nama}</td><td>${a.divisi}</td><td>${a.telp||'-'}</td><td><button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">Hapus</button></td></tr>`).join(''); 
+    tbody.innerHTML = targetData.map(a=>`<tr>
+      <td style="font-family:var(--mono); font-size:12px;">${a.NIA}</td>
+      <td>${a.nama}</td>
+      <td><span style="font-size:12px; color:var(--text2);">${a.divisi}</span></td>
+      <td style="font-size:12px; color:var(--text2);">${a.telp||'-'}</td>
+      <td style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn-sm primary" onclick="showEditAnggota('${a.NIA}','${a.nama.replace(/'/g,"\\'")}','${(a.divisi||'').replace(/'/g,"\\'")}','${a.telp||''}')">✏️ Edit</button>
+        <button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">🗑️ Hapus</button>
+      </td>
+    </tr>`).join(''); 
   } else {
     tbody.innerHTML='<tr><td colspan="5" class="empty-state">Belum ada data anggota</td></tr>'; 
   }
 }
 function showAddAnggota(){ document.getElementById('modal-add-anggota').classList.add('show'); }
+
+function showEditAnggota(NIA, nama, divisi, telp){ 
+  document.getElementById('edit-NIA').value = NIA;
+  document.getElementById('edit-nama').value = nama;
+  document.getElementById('edit-divisi').value = divisi;
+  document.getElementById('edit-telp').value = telp;
+  document.getElementById('modal-edit-anggota').classList.add('show'); 
+}
+
+async function submitEditAnggota(){ 
+  const NIA = document.getElementById('edit-NIA').value.trim();
+  const nama = document.getElementById('edit-nama').value.trim();
+  const divisi = document.getElementById('edit-divisi').value.trim();
+  const telp = document.getElementById('edit-telp').value.trim();
+  if(!nama){ showToast('Nama wajib diisi','error'); return; }
+  
+  // Delete + re-add sebagai cara update (GAS tidak punya update endpoint)
+  showToast('Menyimpan perubahan...', 'info');
+  const delRes = await api({action:'deleteAnggota', NIA});
+  if(!delRes.ok && delRes.msg !== 'Anggota tidak ditemukan') {
+    showToast('Gagal menghapus data lama: ' + delRes.msg, 'error'); return;
+  }
+  const addRes = await api({action:'addAnggota', NIA, nama, divisi, telp});
+  if(addRes.ok){ 
+    // Update lokal juga
+    const idx = allAnggota.findIndex(a => a.NIA === NIA);
+    if(idx >= 0) allAnggota[idx] = {NIA, nama, divisi, telp};
+    showToast('✅ Data anggota berhasil diperbarui!', 'success'); 
+    closeModal('modal-edit-anggota'); 
+    loadAnggotaTable(); 
+  } else {
+    showToast('Gagal menyimpan: ' + (addRes.msg||'Error'), 'error');
+  }
+}
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 async function submitAddAnggota(){ 
   const NIA=document.getElementById('new-NIA').value.trim(), nama=document.getElementById('new-nama').value.trim(), divisi=document.getElementById('new-divisi').value.trim(), telp=document.getElementById('new-telp').value.trim(); 
@@ -1022,7 +1122,7 @@ function renderKalenderJadwal(){
   el.innerHTML = html;
 }
 
-window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.downloadJadwalPDF=downloadJadwalPDF; window.renderJadwalPreview=renderJadwalPreview;
+window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.showEditAnggota=showEditAnggota; window.submitEditAnggota=submitEditAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.downloadJadwalPDF=downloadJadwalPDF; window.renderJadwalPreview=renderJadwalPreview;
 
 console.log('✅ UI/UX Baru Aktif + Room Kalender siap menanti!');
 </script>
