@@ -17,7 +17,6 @@
   --border2: rgba(255,255,255,0.13);
   --accent: #4ade80;
   --accent2: #22d3ee;
-  --accent3: #f59e0b;
   --red: #f87171;
   --text: #f0f4f8;
   --text2: #8a96a8;
@@ -35,9 +34,6 @@ body {
   min-height: 100vh;
   line-height: 1.6;
 }
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 4px; }
 .page { display: none; min-height: 100vh; }
 .page.active { display: flex; flex-direction: column; }
 #page-admin.active { flex-direction: row; }
@@ -47,7 +43,6 @@ body {
   align-items: center;
   justify-content: center;
   background: var(--bg);
-  position: relative;
 }
 .landing-card {
   background: var(--bg2);
@@ -101,7 +96,6 @@ body {
 .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; font-family: var(--mono); white-space: nowrap; }
 .badge-hadir { background: rgba(74,222,128,0.15); color: var(--accent); }
 .badge-belum { background: rgba(248,113,113,0.15); color: var(--red); }
-.badge-pulang { background: rgba(167,139,250,0.2); color: #c084fc; }
 .form-input {
   width: 100%;
   background: var(--bg3);
@@ -127,7 +121,6 @@ body {
   transition: all 0.15s;
 }
 .btn-sm.primary { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3); color: var(--accent); }
-.btn-sm.primary:hover { background: rgba(74,222,128,0.2); }
 .btn-sm.danger { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: var(--red); }
 .table-card {
   background: var(--bg2);
@@ -240,8 +233,6 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
   font-size: 12px;
 }
 .anggota-pick-item.selected .pick-check { background: var(--accent); border-color: var(--accent); color: #0a1a0f; }
-.pick-name { font-size: 13px; font-weight: 500; }
-.pick-divisi { font-size: 11px; color: var(--text2); }
 .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -520,7 +511,7 @@ td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text)
 <div class="toast" id="toast"></div>
 
 <script>
-// ----------------------------- DATA ANGGOTA -----------------------------
+// ======================= DATA ANGGOTA =======================
 const realAnggota = [
   {NIA:'082024022', nama:'Rifqy Rachmat', divisi:'Ketua Umum', telp:'87886993450'},
   {NIA:'082024015', nama:'Muhamad Alfan', divisi:'Wakil Ketua Umum I', telp:'85773694230'},
@@ -578,21 +569,29 @@ let jadwalMingguan = JSON.parse(localStorage.getItem('jadwalMingguan') || 'null'
   5: ['082024029','092025027','092025038','092025004','092025022','092025001','092025040','092025017']
 };
 
-// ========== QR TOKEN (30 detik, dengan window) ==========
+// ======================= QR TOKEN (PERBAIKAN UTAMA) =======================
 let currentLiveToken = null;
 let tokenExpiryTime = 0;
 let countdownInterval = null;
 let qrRefreshTimer = null;
 
+// Fungsi untuk menghasilkan token berdasarkan window 30 detik
+function generateTokenForWindow(windowIndex) {
+  return md5(windowIndex + "KIPM_SECURE_SALT_2025").substring(0, 12).toUpperCase();
+}
+
 function updateLiveToken() {
   const now = Date.now();
   const windowIndex = Math.floor(now / 30000);
-  const rawToken = md5(windowIndex + "KIPM_SECURE_SALT_2025").substring(0, 12).toUpperCase();
-  currentLiveToken = rawToken;
+  const newToken = generateTokenForWindow(windowIndex);
+  currentLiveToken = newToken;
   tokenExpiryTime = (windowIndex + 1) * 30000;
+  
+  // Simpan ke localStorage
   localStorage.setItem('kipm_live_token', currentLiveToken);
   localStorage.setItem('kipm_token_expiry', tokenExpiryTime);
   
+  // Update tampilan QR
   const canvasDiv = document.getElementById('qr-display-canvas');
   if(canvasDiv){
     canvasDiv.innerHTML = '';
@@ -606,6 +605,7 @@ function updateCountdownDisplay() {
   const remaining = Math.max(0, Math.ceil((tokenExpiryTime - Date.now()) / 1000));
   const timerEl = document.getElementById('countdown-timer');
   if(timerEl) timerEl.innerText = remaining;
+  // Refresh otomatis jika waktu habis dan halaman QR aktif
   if(remaining <= 0 && document.getElementById('page-qr').classList.contains('active')) {
     updateLiveToken();
   }
@@ -625,103 +625,191 @@ function forceRefreshToken() {
   showToast('Token QR diperbarui!', 'success');
 }
 
-// ========== API SIMULASI ==========
+// ======================= API SIMULASI (dengan validasi token yang benar) =======================
 function api(params) {
   const today = new Date().toISOString().split('T')[0];
+  
   if(params.action === 'getAnggota') return {ok:true, data: demoAnggotaList};
+  
   if(params.action === 'getJadwalHariIni'){
     const dow = new Date().getDay();
     const list = jadwalMingguan[dow] || [];
-    const data = list.map(nia=>{const a=demoAnggotaList.find(x=>x.NIA===nia); return a?{NIA:a.NIA,nama:a.nama,divisi:a.divisi,status:demoAbsensi.some(r=>r.tanggal===today && r.NIA===nia && r.tipe==='DATANG')?'HADIR':'BELUM'}:null}).filter(Boolean);
+    const data = list.map(nia=>{
+      const a=demoAnggotaList.find(x=>x.NIA===nia);
+      return a?{
+        NIA:a.NIA,
+        nama:a.nama,
+        divisi:a.divisi,
+        status:demoAbsensi.some(r=>r.tanggal===today && r.NIA===nia && r.tipe==='DATANG')?'HADIR':'BELUM'
+      }:null;
+    }).filter(Boolean);
     return {ok:true, data};
   }
+  
   if(params.action === 'getDashboardStats'){
     const hadirHari = new Set(demoAbsensi.filter(r=>r.tanggal===today && r.tipe==='DATANG').map(r=>r.NIA)).size;
     const totalJadwal = (jadwalMingguan[new Date().getDay()] || []).length;
-    return {ok:true, hadirHariIni:hadirHari, totalJadwal:totalJadwal||1, totalAnggota:demoAnggotaList.length, persenHariIni:totalJadwal?Math.round((hadirHari/totalJadwal)*100):0};
+    return {
+      ok:true,
+      hadirHariIni:hadirHari,
+      totalJadwal:totalJadwal||1,
+      totalAnggota:demoAnggotaList.length,
+      persenHariIni:totalJadwal?Math.round((hadirHari/totalJadwal)*100):0
+    };
   }
-  if(params.action === 'getRekapAbsensi') return {ok:true, data:demoAbsensi.filter(r=>(!params.from||r.tanggal>=params.from)&&(!params.to||r.tanggal<=params.to))};
-  if(params.action === 'adminLogin') return (params.username==='adminhrd'&&params.password==='kipmup2017')?{ok:true,nama:'Administrator'}:{ok:false};
+  
+  if(params.action === 'getRekapAbsensi'){
+    let data = demoAbsensi;
+    if(params.from) data = data.filter(r=>r.tanggal >= params.from);
+    if(params.to) data = data.filter(r=>r.tanggal <= params.to);
+    return {ok:true, data};
+  }
+  
+  if(params.action === 'adminLogin'){
+    return (params.username==='adminhrd' && params.password==='kipmup2017') ? 
+      {ok:true, nama:'Administrator'} : {ok:false};
+  }
+  
   if(params.action === 'addAnggota'){
     if(demoAnggotaList.find(a=>a.NIA===params.NIA)) return {ok:false, msg:'NIA sudah ada'};
-    demoAnggotaList.push({NIA:params.NIA, nama:params.nama, divisi:params.divisi||'-', telp:params.telp||''});
+    demoAnggotaList.push({
+      NIA:params.NIA,
+      nama:params.nama,
+      divisi:params.divisi||'-',
+      telp:params.telp||''
+    });
     return {ok:true, msg:'Berhasil'};
   }
-  if(params.action === 'deleteAnggota'){ demoAnggotaList = demoAnggotaList.filter(a=>a.NIA!==params.NIA); return {ok:true};}
-  if(params.action === 'setJadwal'){ jadwalMingguan[params.hari] = JSON.parse(params.anggota); localStorage.setItem('jadwalMingguan',JSON.stringify(jadwalMingguan)); return {ok:true};}
+  
+  if(params.action === 'deleteAnggota'){
+    demoAnggotaList = demoAnggotaList.filter(a=>a.NIA!==params.NIA);
+    return {ok:true};
+  }
+  
+  if(params.action === 'setJadwal'){
+    jadwalMingguan[params.hari] = JSON.parse(params.anggota);
+    localStorage.setItem('jadwalMingguan', JSON.stringify(jadwalMingguan));
+    return {ok:true};
+  }
+  
   if(params.action === 'exportAbsensi'){
     let data = demoAbsensi;
-    if(params.from) data=data.filter(r=>r.tanggal>=params.from);
-    if(params.to) data=data.filter(r=>r.tanggal<=params.to);
-    const csv='Tanggal,Tipe,Waktu,NIA,Nama\n'+data.map(r=>`${r.tanggal},${r.tipe},${r.waktu},${r.NIA},${r.nama}`).join('\n');
+    if(params.from) data = data.filter(r=>r.tanggal >= params.from);
+    if(params.to) data = data.filter(r=>r.tanggal <= params.to);
+    const csv = 'Tanggal,Tipe,Waktu,NIA,Nama\n' + 
+      data.map(r=>`${r.tanggal},${r.tipe},${r.waktu},${r.NIA},${r.nama}`).join('\n');
     return {ok:true, csv};
   }
+  
   if(params.action === 'validateBarcode'){
     const scannedToken = (params.token || '').trim();
     const storedToken = localStorage.getItem('kipm_live_token');
     const expiry = parseInt(localStorage.getItem('kipm_token_expiry') || '0');
     const now = Date.now();
+    
+    // Validasi token: cek apakah sama dengan stored token ATAU masih dalam grace period 3 detik setelah expiry
     let tokenValid = false;
-    if(scannedToken === storedToken) tokenValid = true;
-    else if(expiry > 0 && now < expiry + 2000) {
-      const possibleWindow = Math.floor(now / 30000);
-      const oldToken = md5(possibleWindow - 1 + "KIPM_SECURE_SALT_2025").substring(0,12).toUpperCase();
-      if(scannedToken === oldToken) tokenValid = true;
+    if(scannedToken === storedToken) {
+      tokenValid = true;
+    } else if(now < expiry + 3000) {
+      // Cek apakah token adalah token dari window sebelumnya (grace period)
+      const currentWindow = Math.floor(now / 30000);
+      const prevToken = generateTokenForWindow(currentWindow - 1);
+      if(scannedToken === prevToken) tokenValid = true;
     }
-    if(!tokenValid) return {ok:false, msg:'QR Code tidak valid atau sudah kadaluarsa. Silakan refresh halaman QR dan scan ulang.'};
+    
+    if(!tokenValid) {
+      return {
+        ok: false,
+        msg: 'QR Code tidak valid atau sudah kadaluarsa. Silakan refresh halaman QR dan scan ulang.'
+      };
+    }
+    
+    // Cek NIA
     const anggota = demoAnggotaList.find(a=>a.NIA===params.NIA);
     if(!anggota) return {ok:false, msg:'NIA tidak terdaftar di sistem'};
-    if(demoAbsensi.some(r=>r.tanggal===today && r.NIA===params.NIA && r.tipe===params.tipe)) return {ok:false, msg:`Sudah absen ${params.tipe} hari ini`};
-    if(params.tipe==='PULANG' && !demoAbsensi.some(r=>r.tanggal===today && r.NIA===params.NIA && r.tipe==='DATANG')) return {ok:false, msg:'Harus absen DATANG terlebih dahulu'};
-    demoAbsensi.push({tanggal:today, waktu:new Date().toTimeString().slice(0,8), NIA:params.NIA, nama:anggota.nama, tipe:params.tipe});
+    
+    // Cek duplikasi absen
+    if(demoAbsensi.some(r=>r.tanggal===today && r.NIA===params.NIA && r.tipe===params.tipe)) {
+      return {ok:false, msg:`Sudah absen ${params.tipe} hari ini`};
+    }
+    
+    // Cek urutan: pulang harus setelah datang
+    if(params.tipe==='PULANG' && !demoAbsensi.some(r=>r.tanggal===today && r.NIA===params.NIA && r.tipe==='DATANG')) {
+      return {ok:false, msg:'Harus absen DATANG terlebih dahulu'};
+    }
+    
+    // Simpan absensi
+    demoAbsensi.push({
+      tanggal: today,
+      waktu: new Date().toTimeString().slice(0,8),
+      NIA: params.NIA,
+      nama: anggota.nama,
+      tipe: params.tipe
+    });
     return {ok:true, msg:`Absen ${params.tipe} berhasil, ${anggota.nama}!`};
   }
+  
   return {ok:false};
 }
 
-// ========== GLOBAL VARIABLES & FUNCTIONS ==========
+// ======================= GLOBAL VARIABLES =======================
 let allAnggota = [];
 let selectedAnggota = new Set();
 let currentScanType = 'DATANG';
 let scannerActive = false;
 let html5Scanner = null;
 
+// ======================= HELPER FUNCTIONS =======================
 function showToast(msg, type='info'){
-  const t=document.getElementById('toast');
-  t.textContent=msg;
-  t.className='toast '+type;
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
   t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
+  setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
 function goTo(page){
-  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active'); p.style.display='none';});
+  // Sembunyikan semua halaman
+  document.querySelectorAll('.page').forEach(p=>{
+    p.classList.remove('active');
+    p.style.display = 'none';
+  });
   const target = document.getElementById('page-'+page);
   if(target) {
     target.style.display = 'flex';
     target.classList.add('active');
-  } else { console.error('Page not found:', page); return; }
+  } else {
+    console.error('Page not found:', page);
+    return;
+  }
   
-  if(page==='admin') initAdmin();
-  if(page==='scan'){ 
+  // Inisialisasi sesuai halaman
+  if(page === 'admin') initAdmin();
+  if(page === 'scan'){ 
     loadJadwalScan(); 
     document.getElementById('scan-tanggal').innerText = new Date().toLocaleDateString('id-ID');
-    if(navigator.geolocation) navigator.geolocation.getCurrentPosition(()=>{},()=>{});
+    if(navigator.geolocation) navigator.geolocation.getCurrentPosition(()=>{}, ()=>{});
     validateNIA();
   }
-  if(page==='qr'){ 
+  if(page === 'qr'){ 
     if(qrRefreshTimer) clearInterval(qrRefreshTimer);
     updateLiveToken(); 
     startCountdown();
     qrRefreshTimer = setInterval(() => {
-      if(document.getElementById('page-qr').classList.contains('active') && Date.now() >= tokenExpiryTime) updateLiveToken();
+      if(document.getElementById('page-qr').classList.contains('active') && Date.now() >= tokenExpiryTime) {
+        updateLiveToken();
+      }
     }, 1000);
   }
-  if(page!=='qr'){ if(qrRefreshTimer) clearInterval(qrRefreshTimer); if(countdownInterval) clearInterval(countdownInterval); }
+  if(page !== 'qr'){ 
+    if(qrRefreshTimer) clearInterval(qrRefreshTimer); 
+    if(countdownInterval) clearInterval(countdownInterval); 
+  }
 }
 
 function setScanType(t){
-  currentScanType=t;
+  currentScanType = t;
   const btnDtg = document.getElementById('btn-tipe-datang');
   const btnPlg = document.getElementById('btn-tipe-pulang');
   if(btnDtg) btnDtg.style.borderColor = t==='DATANG' ? 'var(--accent)' : 'var(--border2)';
@@ -731,7 +819,10 @@ function setScanType(t){
 function validateNIA(){
   const nia = document.getElementById('input-NIA')?.value.trim();
   const statusDiv = document.getElementById('nia-validasi-status');
-  if(!nia){ if(statusDiv) statusDiv.innerHTML=''; return false; }
+  if(!nia){ 
+    if(statusDiv) statusDiv.innerHTML = ''; 
+    return false; 
+  }
   const found = demoAnggotaList.find(a=>a.NIA===nia);
   if(found){
     statusDiv.innerHTML = `✅ ${found.nama} (${found.divisi})`;
@@ -745,43 +836,74 @@ function validateNIA(){
 }
 
 async function loadJadwalScan(){
-  const res=await api({action:'getJadwalHariIni'});
-  const el=document.getElementById('jadwal-today');
+  const res = await api({action:'getJadwalHariIni'});
+  const el = document.getElementById('jadwal-today');
   if(res.ok && res.data.length){
-    el.innerHTML=res.data.map(j=>`<div style="display:flex;justify-content:space-between;padding:6px 0;"><div><b>${j.nama}</b><div style="font-size:11px;">${j.NIA} · ${j.divisi}</div></div><span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span></div>`).join('');
-  } else el.innerHTML='<div class="empty-state">Tidak ada jadwal hari ini</div>';
+    el.innerHTML = res.data.map(j=>`
+      <div style="display:flex; justify-content:space-between; padding:6px 0;">
+        <div>
+          <b>${j.nama}</b>
+          <div style="font-size:11px;">${j.NIA} · ${j.divisi}</div>
+        </div>
+        <span class="badge ${j.status==='HADIR'?'badge-hadir':'badge-belum'}">${j.status}</span>
+      </div>
+    `).join('');
+  } else {
+    el.innerHTML = '<div class="empty-state">Tidak ada jadwal hari ini</div>';
+  }
 }
 
 function toggleScan(){
   if(scannerActive){
     if(html5Scanner) html5Scanner.stop().catch(e=>{});
-    scannerActive=false;
-    document.getElementById('btn-start-scan').innerHTML='▶ Mulai Scan';
+    scannerActive = false;
+    document.getElementById('btn-start-scan').innerHTML = '▶ Mulai Scan';
   } else {
-    const nia=document.getElementById('input-NIA').value.trim();
+    const nia = document.getElementById('input-NIA').value.trim();
     if(!nia){ showToast('Isi NIA dulu','error'); return; }
     if(!validateNIA()){ showToast('NIA tidak terdaftar di sistem','error'); return; }
+    
     html5Scanner = new Html5Qrcode('qr-reader');
-    html5Scanner.start({facingMode:'environment'},{fps:10,qrbox:220}, async (text)=>{
-      const res=await api({action:'validateBarcode', token:text.trim(), NIA:nia, tipe:currentScanType});
-      showToast(res.ok?`✅ ${res.msg}`:`❌ ${res.msg}`, res.ok?'success':'error');
-      if(res.ok){ toggleScan(); loadJadwalScan(); }
-    }).catch(e=>{ showToast('Gagal akses kamera','error'); });
-    scannerActive=true;
-    document.getElementById('btn-start-scan').innerHTML='⏹ Stop Scan';
+    html5Scanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: 220 },
+      async (text) => {
+        const res = await api({
+          action: 'validateBarcode',
+          token: text.trim(),
+          NIA: nia,
+          tipe: currentScanType
+        });
+        showToast(res.ok ? `✅ ${res.msg}` : `❌ ${res.msg}`, res.ok ? 'success' : 'error');
+        if(res.ok){ 
+          toggleScan(); 
+          loadJadwalScan(); 
+        }
+      }
+    ).catch(e=>{ 
+      showToast('Gagal akses kamera', 'error');
+      console.error(e);
+    });
+    scannerActive = true;
+    document.getElementById('btn-start-scan').innerHTML = '⏹ Stop Scan';
   }
 }
 
-// ========== ADMIN FUNCTIONS ==========
+// ======================= ADMIN FUNCTIONS =======================
 async function adminLogin(){
-  const u=document.getElementById('admin-username').value;
-  const p=document.getElementById('admin-password').value;
-  const res=await api({action:'adminLogin', username:u, password:p});
-  if(res.ok){ goTo('admin'); }
-  else{ document.getElementById('login-err').style.display='block'; }
+  const u = document.getElementById('admin-username').value;
+  const p = document.getElementById('admin-password').value;
+  const res = await api({action:'adminLogin', username:u, password:p});
+  if(res.ok){ 
+    goTo('admin'); 
+  } else { 
+    document.getElementById('login-err').style.display = 'block'; 
+  }
 }
 
-function adminLogout(){ goTo('landing'); }
+function adminLogout(){ 
+  goTo('landing'); 
+}
 
 async function initAdmin(){
   await loadAnggotaForPicker();
@@ -792,45 +914,69 @@ async function initAdmin(){
 
 function startClock(){
   setInterval(()=>{
-    const d=new Date();
-    const clockEl=document.getElementById('topbar-clock');
-    if(clockEl) clockEl.innerText=d.toLocaleTimeString('id-ID');
-  },1000);
+    const d = new Date();
+    const clockEl = document.getElementById('topbar-clock');
+    if(clockEl) clockEl.innerText = d.toLocaleTimeString('id-ID');
+  }, 1000);
 }
 
 function switchTab(tab){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   const targetPanel = document.getElementById(`tab-${tab}`);
   if(targetPanel) targetPanel.classList.add('active');
+  
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const activeNav = document.querySelector(`[data-tab="${tab}"]`);
   if(activeNav) activeNav.classList.add('active');
-  const titleMap = {dashboard:'Dashboard', jadwal:'Jadwal Piket', rekap:'Rekap Absensi', anggota:'Data Anggota'};
+  
+  const titleMap = {
+    dashboard:'Dashboard',
+    jadwal:'Jadwal Piket',
+    rekap:'Rekap Absensi',
+    anggota:'Data Anggota'
+  };
   document.getElementById('tab-title').innerText = titleMap[tab] || 'Dashboard';
+  
   if(tab==='dashboard') loadDashboard();
   if(tab==='rekap') loadRekap();
   if(tab==='anggota') loadAnggotaTable();
-  if(tab==='jadwal'){ loadAnggotaForPicker(); renderJadwalPreview(); }
+  if(tab==='jadwal'){ 
+    loadAnggotaForPicker(); 
+    renderJadwalPreview(); 
+  }
 }
 
 async function loadAnggotaForPicker(){
-  const res=await api({action:'getAnggota'});
+  const res = await api({action:'getAnggota'});
   if(res.ok){
-    allAnggota=res.data;
-    const hari=parseInt(document.getElementById('jadwal-hari-select').value);
-    selectedAnggota=new Set(jadwalMingguan[hari]||[]);
+    allAnggota = res.data;
+    const hari = parseInt(document.getElementById('jadwal-hari-select').value);
+    selectedAnggota = new Set(jadwalMingguan[hari]||[]);
     renderAnggotaPicker();
     renderJadwalPreview();
-  } else showToast('Gagal load anggota','error');
+  } else {
+    showToast('Gagal load anggota','error');
+  }
 }
 
 function renderAnggotaPicker(){
-  const query=document.getElementById('cari-anggota')?.value.toLowerCase()||'';
-  let filtered=allAnggota;
-  if(query) filtered=allAnggota.filter(a=>a.nama.toLowerCase().includes(query)||a.NIA.includes(query));
-  const container=document.getElementById('anggota-pick-list');
-  if(!filtered.length){ container.innerHTML='<div class="empty-state">Tidak ada anggota</div>'; return; }
-  container.innerHTML=filtered.map(a=>`<div class="anggota-pick-item ${selectedAnggota.has(a.NIA)?'selected':''}" onclick="togglePickAnggota('${a.NIA}')"><div class="pick-check">${selectedAnggota.has(a.NIA)?'✓':''}</div><div><div class="pick-name">${a.nama}</div><div class="pick-divisi">${a.NIA} · ${a.divisi}</div></div></div>`).join('');
+  const query = document.getElementById('cari-anggota')?.value.toLowerCase() || '';
+  let filtered = allAnggota;
+  if(query) filtered = allAnggota.filter(a=>a.nama.toLowerCase().includes(query) || a.NIA.includes(query));
+  const container = document.getElementById('anggota-pick-list');
+  if(!filtered.length){
+    container.innerHTML = '<div class="empty-state">Tidak ada anggota</div>';
+    return;
+  }
+  container.innerHTML = filtered.map(a=>`
+    <div class="anggota-pick-item ${selectedAnggota.has(a.NIA)?'selected':''}" onclick="togglePickAnggota('${a.NIA}')">
+      <div class="pick-check">${selectedAnggota.has(a.NIA)?'✓':''}</div>
+      <div>
+        <div class="pick-name">${a.nama}</div>
+        <div class="pick-divisi">${a.NIA} · ${a.divisi}</div>
+      </div>
+    </div>
+  `).join('');
 }
 
 function togglePickAnggota(NIA){
@@ -840,109 +986,192 @@ function togglePickAnggota(NIA){
 }
 
 async function saveJadwalHari(){
-  const hari=parseInt(document.getElementById('jadwal-hari-select').value);
-  if(selectedAnggota.size===0){ showToast('Pilih minimal 1 anggota!','error'); return; }
-  jadwalMingguan[hari]=[...selectedAnggota];
-  localStorage.setItem('jadwalMingguan',JSON.stringify(jadwalMingguan));
+  const hari = parseInt(document.getElementById('jadwal-hari-select').value);
+  if(selectedAnggota.size === 0){
+    showToast('Pilih minimal 1 anggota!','error');
+    return;
+  }
+  jadwalMingguan[hari] = [...selectedAnggota];
+  localStorage.setItem('jadwalMingguan', JSON.stringify(jadwalMingguan));
   await api({action:'setJadwal', hari, anggota:JSON.stringify([...selectedAnggota])});
   showToast('✅ Jadwal berhasil disimpan!','success');
   renderJadwalPreview();
 }
 
 function renderJadwalPreview(){
-  const hariNama=['','Senin','Selasa','Rabu','Kamis','Jumat'];
-  const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a]));
-  let html='';
-  for(let h=1;h<=5;h++){
-    const list=jadwalMingguan[h]||[];
-    html+=`<div style="margin-bottom:12px;padding:10px;background:var(--bg2);border-radius:8px;"><div style="font-weight:600;">${hariNama[h]} (${list.length})</div>${list.map(nia=>{const a=anggotaMap.get(nia); return `<div>📌 ${a?`${a.nama} (${a.divisi})`:`${nia}`}</div>`;}).join('')||'<div class="empty-state">Kosong</div>'}</div>`;
+  const hariNama = ['','Senin','Selasa','Rabu','Kamis','Jumat'];
+  const anggotaMap = new Map(allAnggota.map(a=>[a.NIA,a]));
+  let html = '';
+  for(let h=1; h<=5; h++){
+    const list = jadwalMingguan[h] || [];
+    html += `
+      <div style="margin-bottom:12px; padding:10px; background:var(--bg2); border-radius:8px;">
+        <div style="font-weight:600;">${hariNama[h]} (${list.length})</div>
+        ${list.map(nia=>{
+          const a = anggotaMap.get(nia);
+          return `<div>📌 ${a ? `${a.nama} (${a.divisi})` : nia}</div>`;
+        }).join('') || '<div class="empty-state">Kosong</div>'}
+      </div>
+    `;
   }
-  document.getElementById('jadwal-preview-minggu').innerHTML=html;
+  document.getElementById('jadwal-preview-minggu').innerHTML = html;
 }
 
 function downloadJadwalPDF(){
-  const anggotaMap=new Map(allAnggota.map(a=>[a.NIA,a]));
-  let html=`<html><head><meta charset="UTF-8"><title>Jadwal Piket KIPM-UP</title><style>body{font-family:sans-serif;padding:20px;}h1{color:#2d6a4f;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f1f8e9;}</style></head><body><h1>📋 Jadwal Piket KIPM-UP</h1><p>Cetak: ${new Date().toLocaleDateString('id-ID')}</p>`;
-  const hariNama=['Senin','Selasa','Rabu','Kamis','Jumat'];
-  for(let i=0;i<5;i++){
-    const h=i+1;
-    const list=jadwalMingguan[h]||[];
+  const anggotaMap = new Map(allAnggota.map(a=>[a.NIA,a]));
+  let html = `<!DOCTYPE html>
+  <html>
+  <head><meta charset="UTF-8"><title>Jadwal Piket KIPM-UP</title>
+  <style>
+    body{font-family:sans-serif;padding:20px;}
+    h1{color:#2d6a4f;}
+    table{border-collapse:collapse;width:100%;}
+    th,td{border:1px solid #ccc;padding:8px;text-align:left;}
+    th{background:#f1f8e9;}
+  </style>
+  </head>
+  <body>
+  <h1>📋 Jadwal Piket KIPM-UP</h1>
+  <p>Cetak: ${new Date().toLocaleDateString('id-ID')}</p>`;
+  const hariNama = ['Senin','Selasa','Rabu','Kamis','Jumat'];
+  for(let i=0; i<5; i++){
+    const h = i+1;
+    const list = jadwalMingguan[h] || [];
     if(list.length){
-      html+=`<h3>${hariNama[i]}</h3><table><thead><tr><th>No</th><th>NIA</th><th>Nama</th><th>Divisi</th></tr></thead><tbody>`;
-      list.forEach((nia,idx)=>{
-        const a=anggotaMap.get(nia);
-        html+=`<tr><td>${idx+1}</td><td>${nia}</td><td>${a?a.nama:'-'}</td><td>${a?a.divisi:'-'}</td></tr>`;
+      html += `<h3>${hariNama[i]}</h3>
+      <table>
+        <thead><tr><th>No</th><th>NIA</th><th>Nama</th><th>Divisi</th></tr></thead>
+        <tbody>`;
+      list.forEach((nia, idx)=>{
+        const a = anggotaMap.get(nia);
+        html += `<tr>
+          <td>${idx+1}</td>
+          <td>${nia}</td>
+          <td>${a ? a.nama : '-'}</td>
+          <td>${a ? a.divisi : '-'}</td>
+        </tr>`;
       });
-      html+=`</tbody></table><br>`;
+      html += `</tbody></table><br>`;
     }
   }
-  html+=`</body></html>`;
-  const win=window.open();
+  html += `</body></html>`;
+  const win = window.open();
   win.document.write(html);
   win.document.close();
   win.print();
 }
 
 async function loadDashboard(){
-  const res=await api({action:'getDashboardStats'});
-  document.getElementById('stats-grid').innerHTML=`
-    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div style="font-size:12px;">Hadir Hari Ini</div><div style="font-size:28px; font-weight:600;">${res.hadirHariIni||0}</div></div>
-    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div style="font-size:12px;">% Kehadiran</div><div style="font-size:28px;">${res.persenHariIni||0}%</div></div>
-    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;"><div style="font-size:12px;">Total Anggota</div><div style="font-size:28px;">${res.totalAnggota||0}</div></div>
+  const res = await api({action:'getDashboardStats'});
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;">
+      <div style="font-size:12px;">Hadir Hari Ini</div>
+      <div style="font-size:28px; font-weight:600;">${res.hadirHariIni||0}</div>
+    </div>
+    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;">
+      <div style="font-size:12px;">% Kehadiran</div>
+      <div style="font-size:28px;">${res.persenHariIni||0}%</div>
+    </div>
+    <div class="stat-card" style="background:var(--bg3); padding:14px; border-radius:12px;">
+      <div style="font-size:12px;">Total Anggota</div>
+      <div style="font-size:28px;">${res.totalAnggota||0}</div>
+    </div>
   `;
-  const today=new Date().toISOString().split('T')[0];
-  const rekap=await api({action:'getRekapAbsensi', from:today, to:today});
-  const tbody=document.getElementById('tbl-today');
-  if(rekap.data.length) tbody.innerHTML=rekap.data.map(r=>`<tr><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join('');
-  else tbody.innerHTML='<tr><td colspan="4" class="empty-state">Belum ada absensi</td></tr>';
+  const today = new Date().toISOString().split('T')[0];
+  const rekap = await api({action:'getRekapAbsensi', from:today, to:today});
+  const tbody = document.getElementById('tbl-today');
+  if(rekap.data.length){
+    tbody.innerHTML = rekap.data.map(r=>`
+      <tr>
+        <td>${r.tipe}</td>
+        <td>${r.waktu}</td>
+        <td>${r.NIA}</td>
+        <td>${r.nama}</td>
+      </tr>
+    `).join('');
+  } else {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Belum ada absensi</td></tr>';
+  }
 }
 
 async function loadRekap(){
-  const from=document.getElementById('rekap-from').value;
-  const to=document.getElementById('rekap-to').value;
-  const res=await api({action:'getRekapAbsensi', from, to});
-  const tbody=document.getElementById('tbl-rekap');
-  if(res.data.length) tbody.innerHTML=res.data.map(r=>`<tr><td>${r.tanggal}</td><td>${r.tipe}</td><td>${r.waktu}</td><td>${r.NIA}</td><td>${r.nama}</td></tr>`).join('');
-  else tbody.innerHTML='<tr><td colspan="5" class="empty-state">Tidak ada data</td></tr>';
+  const from = document.getElementById('rekap-from').value;
+  const to = document.getElementById('rekap-to').value;
+  const res = await api({action:'getRekapAbsensi', from, to});
+  const tbody = document.getElementById('tbl-rekap');
+  if(res.data.length){
+    tbody.innerHTML = res.data.map(r=>`
+      <tr>
+        <td>${r.tanggal}</td>
+        <td>${r.tipe}</td>
+        <td>${r.waktu}</td>
+        <td>${r.NIA}</td>
+        <td>${r.nama}</td>
+      </tr>
+    `).join('');
+  } else {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Tidak ada data</td></tr>';
+  }
 }
 
 async function exportCSV(){
-  const from=document.getElementById('rekap-from').value;
-  const to=document.getElementById('rekap-to').value;
-  const res=await api({action:'exportAbsensi', from, to});
+  const from = document.getElementById('rekap-from').value;
+  const to = document.getElementById('rekap-to').value;
+  const res = await api({action:'exportAbsensi', from, to});
   if(res.ok){
-    const blob=new Blob([res.csv],{type:'text/csv'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='rekap_absensi.csv';
+    const blob = new Blob([res.csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'rekap_absensi.csv';
     a.click();
     showToast('CSV terunduh','success');
   }
 }
 
 async function loadAnggotaTable(){
-  const res=await api({action:'getAnggota'});
-  const tbody=document.getElementById('tbl-anggota');
-  if(res.data.length) tbody.innerHTML=res.data.map(a=>`<tr><td>${a.NIA}</td><td>${a.nama}</td><td>${a.divisi}</td><td>${a.telp||'-'}</td><td><button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">Hapus</button></td></tr>`).join('');
-  else tbody.innerHTML='<tr><td colspan="5" class="empty-state">Kosong</td></tr>';
+  const res = await api({action:'getAnggota'});
+  const tbody = document.getElementById('tbl-anggota');
+  if(res.data.length){
+    tbody.innerHTML = res.data.map(a=>`
+      <tr>
+        <td>${a.NIA}</td>
+        <td>${a.nama}</td>
+        <td>${a.divisi}</td>
+        <td>${a.telp||'-'}</td>
+        <td><button class="btn-sm danger" onclick="deleteAnggota('${a.NIA}')">Hapus</button></td>
+      </tr>
+    `).join('');
+  } else {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Kosong</td></tr>';
+  }
 }
 
-function showAddAnggota(){ document.getElementById('modal-add-anggota').classList.add('show'); }
-function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function showAddAnggota(){ 
+  document.getElementById('modal-add-anggota').classList.add('show'); 
+}
+
+function closeModal(id){ 
+  document.getElementById(id).classList.remove('show'); 
+}
 
 async function submitAddAnggota(){
-  const NIA=document.getElementById('new-NIA').value.trim();
-  const nama=document.getElementById('new-nama').value.trim();
-  const divisi=document.getElementById('new-divisi').value.trim();
-  const telp=document.getElementById('new-telp').value.trim();
-  if(!NIA||!nama){ showToast('NIA dan Nama wajib','error'); return; }
-  const res=await api({action:'addAnggota', NIA, nama, divisi, telp});
+  const NIA = document.getElementById('new-NIA').value.trim();
+  const nama = document.getElementById('new-nama').value.trim();
+  const divisi = document.getElementById('new-divisi').value.trim();
+  const telp = document.getElementById('new-telp').value.trim();
+  if(!NIA || !nama){ 
+    showToast('NIA dan Nama wajib','error'); 
+    return; 
+  }
+  const res = await api({action:'addAnggota', NIA, nama, divisi, telp});
   if(res.ok){
     showToast('Anggota ditambahkan','success');
     closeModal('modal-add-anggota');
     await loadAnggotaForPicker();
     loadAnggotaTable();
-  } else showToast(res.msg||'Gagal','error');
+  } else {
+    showToast(res.msg||'Gagal','error');
+  }
 }
 
 async function deleteAnggota(NIA){
@@ -954,16 +1183,16 @@ async function deleteAnggota(NIA){
   }
 }
 
-// Event listeners
-document.getElementById('jadwal-hari-select')?.addEventListener('change',()=>{
-  const hari=parseInt(document.getElementById('jadwal-hari-select').value);
-  selectedAnggota=new Set(jadwalMingguan[hari]||[]);
+// ======================= EVENT LISTENERS =======================
+document.getElementById('jadwal-hari-select')?.addEventListener('change', ()=>{
+  const hari = parseInt(document.getElementById('jadwal-hari-select').value);
+  selectedAnggota = new Set(jadwalMingguan[hari]||[]);
   renderAnggotaPicker();
 });
 document.getElementById('input-NIA')?.addEventListener('input', validateNIA);
 document.getElementById('cari-anggota')?.addEventListener('input', ()=>renderAnggotaPicker());
 
-// Expose global functions
+// ======================= EXPOSE GLOBAL FUNCTIONS =======================
 window.goTo = goTo;
 window.setScanType = setScanType;
 window.toggleScan = toggleScan;
@@ -981,7 +1210,7 @@ window.exportCSV = exportCSV;
 window.forceRefreshToken = forceRefreshToken;
 window.adminLogout = adminLogout;
 
-console.log('✅ Sistem siap | Landing 3 tombol berfungsi | QR Live + Countdown | Validasi token toleran');
+console.log('✅ Sistem siap | QR Live dengan validasi token + grace period | Landing 3 tombol berfungsi');
 </script>
 </body>
 </html>
