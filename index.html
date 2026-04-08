@@ -332,7 +332,7 @@ const realAnggota = [
   {NIA:'082024017', nama:'Nisrina Zakiyah Rahmah', divisi:'Investment Manager III', telp:'81292936383'},
   {NIA:'092025014', nama:'Melany Septiana Putri', divisi:'Secretary I', telp:'81387694749'},
   {NIA:'092025013', nama:'Maudyna Tasya Ardianti', divisi:'Secretary II', telp:'81218510500'},
-  {NIA:'092025011', nama:'Majda Tsania', divisi:'Secretary III', telp:'87881633207'},
+  {NIA:'092025011', nama:'Majda Tsania', Secretary III:'87881633207'},
   {NIA:'092025012', nama:'Mariyah Sujana', divisi:'Treasury I', telp:'817111899'},
   {NIA:'092025005', nama:'Baim Daniel Musyafa', divisi:'Treasury II', telp:'87782121989'},
   {NIA:'092025026', nama:'Nandini Melody Yordan', divisi:'Head of HR', telp:'81211077409'},
@@ -423,6 +423,44 @@ let allAnggota = [...realAnggota];
       <div class="scan-label">Arahkan kamera ke QR Code yang ditampilkan admin / layar</div>
       <div id="qr-reader-wrapper" style="width:260px; height:260px; margin:12px auto; position:relative;"><div id="qr-reader"></div></div>
       <button class="btn-scan" id="btn-start-scan" onclick="toggleScan()" style="background:var(--accent); color:#0a1a0f; padding:10px 20px; border-radius:30px; border:none;">▶ Mulai Scan</button>
+    </div>
+  </div>
+</div>
+
+<!-- HALAMAN BARU: INFORMASI & KALENDER KIPM -->
+<div id="page-kalender" class="page">
+  <div style="padding:16px 20px; background:var(--bg2); display:flex; gap:12px; align-items:center;">
+    <div class="back-btn" onclick="goTo('landing')">←</div>
+    <div><div style="font-weight:600;">Informasi & Kalender KIPM</div></div>
+  </div>
+  <div style="padding:20px; max-width:480px; margin:0 auto; width:100%;">
+    
+    <!-- Ucapan Selamat Datang -->
+    <div style="background:rgba(74,222,128,0.1); border:1px solid var(--accent); padding:16px; border-radius:12px; text-align:center; margin-bottom:20px;">
+      <h2 style="color:var(--accent); margin-bottom:4px; font-size:20px;">Absensi Berhasil! 🎉</h2>
+      <p style="font-size:14px; color:var(--text2);">Selamat datang, <b id="kalender-nama-user" style="color:var(--text);">Anggota KIPM</b>.</p>
+    </div>
+
+    <!-- Kalender Kegiatan KIPM -->
+    <div class="table-card" style="padding:20px; background:var(--bg2);">
+      <h3 style="margin-bottom:16px; font-size:16px; border-bottom:1px solid var(--border); padding-bottom:12px;">📅 Agenda Komunitas (KIPM)</h3>
+      <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:12px;">
+        <li style="background:var(--bg3); padding:14px; border-radius:8px; border-left:4px solid var(--accent2);">
+          <div style="font-weight:600; font-size:14px;">Rapat Evaluasi Mingguan</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:4px;">Setiap Jumat · 16:00 WIB di Ruang KIPM</div>
+        </li>
+        <li style="background:var(--bg3); padding:14px; border-radius:8px; border-left:4px solid var(--accent3);">
+          <div style="font-weight:600; font-size:14px;">Trading Bersama (Live)</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:4px;">Setiap Rabu · 09:00 WIB via Google Meet</div>
+        </li>
+        <li style="background:var(--bg3); padding:14px; border-radius:8px; border-left:4px solid var(--accent);">
+          <div style="font-weight:600; font-size:14px;">Kelas Edukasi Pasar Modal</div>
+          <div style="font-size:12px; color:var(--text2); margin-top:4px;">Minggu ke-2 & ke-4 · Pemateri Eksternal</div>
+        </li>
+      </ul>
+      <div style="margin-top:20px; text-align:center;">
+        <button class="btn-sm" style="width:100%; padding:10px;" onclick="goTo('landing')">Kembali ke Beranda</button>
+      </div>
     </div>
   </div>
 </div>
@@ -535,13 +573,14 @@ let allAnggota = [...realAnggota];
 
 <script>
 // =========================================================================
-// LOGIKA SISTEM (ANTI-CRASH KAMERA & SINKRONISASI SERVER)
+// LOGIKA SISTEM UTAMA & REDIRECT KE KALENDER
 // =========================================================================
 
+// Gunakan parameter 't' di ujung URL agar browser HP tidak pakai cache lama
 async function gasCall(params) {
   try {
     const payload = new URLSearchParams(params);
-    const res = await fetch(GAS_URL, {method:'POST', body:payload});
+    const res = await fetch(GAS_URL + "?t=" + new Date().getTime(), {method:'POST', body:payload});
     const text = await res.text();
     try { return JSON.parse(text); } catch(e) { return {ok:false, msg:'Response GAS tidak valid'}; }
   } catch(e) {
@@ -551,19 +590,19 @@ async function gasCall(params) {
 
 async function api(params) { return await gasCall(params); }
 
-// GLOBAL VARS
 let selectedAnggota = new Set();
 let currentScanType = 'DATANG';
 let scannerActive = false, html5Scanner = null;
 let qrRefreshInterval = null;
-let isProcessingQR = false; // FLAG ANTI-CRASH CAMERA
+let isProcessingQR = false;
 
-// UTILS
 function showToast(msg, type='info'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000);}
+
 function goTo(page){
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active'); p.style.display='none';});
   document.getElementById('page-'+page).style.display='flex';
   document.getElementById('page-'+page).classList.add('active');
+  
   if(page==='admin') initAdmin();
   if(page==='scan'){ 
     loadJadwalScan(); 
@@ -574,6 +613,7 @@ function goTo(page){
   if(page!=='qr' && qrRefreshInterval){ clearInterval(qrRefreshInterval); qrRefreshInterval=null; }
   if(page!=='qr' && qrCountdownInterval){ clearInterval(qrCountdownInterval); qrCountdownInterval=null; qrLastToken=null; }
 }
+
 function setScanType(t){ currentScanType=t; document.getElementById('btn-tipe-datang').style.borderColor=t==='DATANG'?'var(--accent)':'var(--border2)'; document.getElementById('btn-tipe-pulang').style.borderColor=t==='PULANG'?'#c084fc':'var(--border2)';}
 
 async function loadJadwalScan(){ 
@@ -604,40 +644,46 @@ async function loadJadwalScan(){
   }
 }
 
-// ============================================================
-// FIX UTAMA: SISTEM SCAN ANTI-CRASH CAMERA
-// ============================================================
+// LOGIKA SCAN YANG SUDAH DITAMBAHKAN REDIRECT KE KALENDER
 function toggleScan(){ 
   if(scannerActive){ 
     if(html5Scanner) { html5Scanner.stop().catch(e=>console.log(e)); }
     scannerActive = false; 
-    isProcessingQR = false; // Reset lock
+    isProcessingQR = false; 
     document.getElementById('btn-start-scan').innerHTML = '▶ Mulai Scan'; 
   } else { 
     const nia = document.getElementById('input-NIA').value.trim(); 
     if(!nia){ showToast('Isi NIA dulu','error'); return; } 
 
-    isProcessingQR = false; // Pastikan lock terbuka saat mulai
+    isProcessingQR = false; 
     html5Scanner = new Html5Qrcode('qr-reader'); 
     
     html5Scanner.start({facingMode:'environment'},{fps:10, qrbox:220}, async (text)=>{ 
-      // CEGAH SPAM: Jika sedang memproses data, abaikan deteksi QR selanjutnya
       if (isProcessingQR) return; 
-      isProcessingQR = true; // KUNCI PROSES
+      isProcessingQR = true; 
       
       showToast('⏳ QR Terbaca! Mengirim ke server...', 'info');
 
-      // Stop kamera DENGAN AMAN di background agar tidak membekukan (freeze) browser
       html5Scanner.stop().then(() => {
           scannerActive = false;
           document.getElementById('btn-start-scan').innerHTML = '▶ Mulai Scan';
       }).catch(e => console.log('Stop camera error:', e));
 
-      // Kirim Data ke Google Sheets
       try {
         const res = await api({action:'validateBarcode', token:text, NIA:nia, tipe:currentScanType}); 
-        showToast(res.ok ? `✅ ${res.msg}` : `❌ ${res.msg}`, res.ok ? 'success' : 'error'); 
-        if(res.ok){ loadJadwalScan(); }
+        
+        if(res.ok){ 
+            showToast(`✅ ${res.msg}`, 'success'); 
+            
+            // REDIRECT KE ROOM KALENDER (Setelah 1.5 Detik agar animasi terasa halus)
+            document.getElementById('kalender-nama-user').innerText = res.nama || nia;
+            setTimeout(() => {
+                goTo('kalender');
+            }, 1500);
+
+        } else {
+            showToast(`❌ ${res.msg}`, 'error'); 
+        }
       } catch (err) {
         showToast('Koneksi ke server gagal atau terputus', 'error');
       }
@@ -885,7 +931,7 @@ async function deleteAnggota(NIA){
 
 window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.downloadJadwalPDF=downloadJadwalPDF; window.renderJadwalPreview=renderJadwalPreview;
 
-console.log('✅ Sistem scan anti-crash dan fix bug timezone aktif!');
+console.log('✅ UI/UX Baru Aktif + Room Kalender siap menanti!');
 </script>
 </body>
 </html>
