@@ -493,10 +493,67 @@ let allAnggota = [...realAnggota];
       </div>
       <div class="gps-status" id="gps-status" style="font-size:11px; margin-top:6px;">📍 Siap mengambil lokasi...</div>
     </div>
-    <div class="scan-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-top:16px; text-align:center;">
+    <!-- STEP 1: FOTO SELFIE -->
+    <div id="selfie-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-top:16px; text-align:center;">
+      <div style="font-size:13px; font-weight:600; color:var(--text2); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px;">Step 1 dari 2</div>
+      <div style="font-size:16px; font-weight:600; margin-bottom:4px;">📸 Foto Selfie Dulu</div>
+      <div style="font-size:12px; color:var(--text2); margin-bottom:16px;">Ambil foto langsung dari kamera — tidak bisa dari galeri</div>
+
+      <!-- Preview kamera selfie -->
+      <div id="selfie-cam-wrapper" style="position:relative; width:240px; height:240px; margin:0 auto 14px; border-radius:50%; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); display:flex; align-items:center; justify-content:center;">
+        <video id="selfie-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none;"></video>
+        <div id="selfie-placeholder" style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text3);">
+          <div style="font-size:40px;">👤</div>
+          <div style="font-size:11px;">Kamera belum aktif</div>
+        </div>
+        <!-- Preview hasil foto -->
+        <img id="selfie-preview" style="display:none; width:100%; height:100%; object-fit:cover;" alt="Selfie">
+        <!-- Countdown overlay -->
+        <div id="selfie-countdown" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; font-size:64px; font-weight:700; color:white;"></div>
+      </div>
+
+      <!-- Canvas tersembunyi untuk capture -->
+      <canvas id="selfie-canvas" style="display:none;"></canvas>
+
+      <!-- Status foto -->
+      <div id="selfie-status" style="font-size:12px; color:var(--text3); margin-bottom:12px;">Belum ada foto</div>
+
+      <!-- Tombol aksi -->
+      <div id="selfie-btn-group" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <button id="btn-buka-kamera" onclick="bukaKameraSelfie()" style="background:rgba(34,211,238,0.12); color:var(--accent2); border:1px solid rgba(34,211,238,0.3); font-family:var(--font); font-size:13px; font-weight:500; padding:10px 20px; border-radius:30px; cursor:pointer; transition:all 0.2s;">
+          📷 Buka Kamera
+        </button>
+        <button id="btn-ambil-foto" onclick="ambilFotoSelfie()" style="display:none; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:13px; font-weight:600; padding:10px 20px; border-radius:30px; cursor:pointer; transition:all 0.2s;">
+          📸 Ambil Foto
+        </button>
+        <button id="btn-ulang-foto" onclick="ulangFotoSelfie()" style="display:none; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:13px; padding:10px 18px; border-radius:30px; cursor:pointer; transition:all 0.2s;">
+          🔄 Ulangi
+        </button>
+      </div>
+
+      <!-- Tombol lanjut ke scan (muncul setelah foto berhasil) -->
+      <button id="btn-lanjut-scan" onclick="lanjutKeScan()" style="display:none; width:100%; margin-top:16px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:12px 20px; border-radius:30px; cursor:pointer; transition:all 0.2s;">
+        ✅ Foto OK — Lanjut Scan QR →
+      </button>
+    </div>
+
+    <!-- STEP 2: SCAN QR (tersembunyi sampai foto selesai) -->
+    <div id="scan-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-top:16px; text-align:center; display:none;">
+      <div style="font-size:13px; font-weight:600; color:var(--text2); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px;">Step 2 dari 2</div>
+
+      <!-- Thumbnail selfie kecil sebagai konfirmasi -->
+      <div style="display:flex; align-items:center; gap:10px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.2); border-radius:10px; padding:10px 14px; margin-bottom:14px; text-align:left;">
+        <img id="selfie-thumb" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid var(--accent);" alt="">
+        <div>
+          <div style="font-size:12px; font-weight:600; color:var(--accent);">✅ Foto selfie tersimpan</div>
+          <div style="font-size:11px; color:var(--text2);">Sekarang scan QR Code di layar admin</div>
+        </div>
+        <button onclick="kembaliKeSelfie()" style="margin-left:auto; background:none; border:none; color:var(--text3); font-size:11px; cursor:pointer; text-decoration:underline;">Ganti foto</button>
+      </div>
+
       <div class="scan-label">Arahkan kamera ke QR Code yang ditampilkan admin / layar</div>
       <div id="qr-reader-wrapper" style="width:260px; height:260px; margin:12px auto; position:relative;"><div id="qr-reader"></div></div>
-      <button class="btn-scan" id="btn-start-scan" onclick="toggleScan()" style="background:var(--accent); color:#0a1a0f; padding:10px 20px; border-radius:30px; border:none;">▶ Mulai Scan</button>
+      <button class="btn-scan" id="btn-start-scan" onclick="toggleScan()" style="background:var(--accent); color:#0a1a0f; padding:10px 20px; border-radius:30px; border:none; font-family:var(--font); font-size:14px; font-weight:600; cursor:pointer;">▶ Mulai Scan</button>
     </div>
   </div>
 </div>
@@ -881,7 +938,166 @@ function startGPSWatch() {
 
 function showToast(msg, type='info'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000);}
 
-// Fungsi khusus dari halaman kalender ke scan dengan mode PULANG
+// =========================================================================
+// SELFIE LIVE — Foto wajib sebelum scan, tidak bisa dari galeri
+// =========================================================================
+let selfieStream = null;
+let selfieDataURL = null;
+let selfieBlob = null;
+
+async function bukaKameraSelfie() {
+  try {
+    // Paksa facingMode: user (kamera depan), tidak ada fallback ke file input
+    selfieStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
+      audio: false
+    });
+    const video = document.getElementById('selfie-video');
+    video.srcObject = selfieStream;
+    video.style.display = 'block';
+    document.getElementById('selfie-placeholder').style.display = 'none';
+    document.getElementById('btn-buka-kamera').style.display = 'none';
+    document.getElementById('btn-ambil-foto').style.display = 'inline-block';
+    document.getElementById('selfie-status').textContent = '📷 Kamera aktif — posisikan wajah di lingkaran';
+    document.getElementById('selfie-status').style.color = 'var(--accent2)';
+  } catch(err) {
+    showToast('❌ Gagal akses kamera: ' + err.message, 'error');
+    document.getElementById('selfie-status').textContent = '⚠️ Kamera tidak dapat diakses';
+  }
+}
+
+function ambilFotoSelfie() {
+  const video = document.getElementById('selfie-video');
+  const canvas = document.getElementById('selfie-canvas');
+  if (!selfieStream || !video.srcObject) { showToast('Kamera belum aktif', 'error'); return; }
+
+  // Countdown 3 detik
+  let count = 3;
+  const countdownEl = document.getElementById('selfie-countdown');
+  countdownEl.style.display = 'flex';
+  countdownEl.textContent = count;
+  const interval = setInterval(() => {
+    count--;
+    if (count > 0) {
+      countdownEl.textContent = count;
+    } else {
+      clearInterval(interval);
+      countdownEl.style.display = 'none';
+
+      // Capture frame
+      canvas.width = video.videoWidth || 480;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      // Mirror (balik kiri-kanan) supaya selfie natural
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Simpan sebagai dataURL
+      selfieDataURL = canvas.toDataURL('image/jpeg', 0.7);
+      selfieBlob = selfieDataURL; // kirim sebagai base64
+
+      // Matikan kamera
+      stopSelfieCam();
+
+      // Tampilkan preview
+      const preview = document.getElementById('selfie-preview');
+      preview.src = selfieDataURL;
+      preview.style.display = 'block';
+      document.getElementById('selfie-placeholder').style.display = 'none';
+
+      // Update UI
+      document.getElementById('btn-ambil-foto').style.display = 'none';
+      document.getElementById('btn-ulang-foto').style.display = 'inline-block';
+      document.getElementById('btn-lanjut-scan').style.display = 'block';
+      document.getElementById('selfie-status').textContent = '✅ Foto berhasil diambil!';
+      document.getElementById('selfie-status').style.color = 'var(--accent)';
+
+      // Flash effect
+      document.getElementById('selfie-cam-wrapper').style.border = '3px solid var(--accent)';
+      setTimeout(() => {
+        document.getElementById('selfie-cam-wrapper').style.border = '3px solid var(--border2)';
+      }, 600);
+    }
+  }, 1000);
+}
+
+function stopSelfieCam() {
+  if (selfieStream) {
+    selfieStream.getTracks().forEach(t => t.stop());
+    selfieStream = null;
+  }
+  const video = document.getElementById('selfie-video');
+  video.srcObject = null;
+  video.style.display = 'none';
+}
+
+function ulangFotoSelfie() {
+  // Reset state
+  selfieDataURL = null;
+  selfieBlob = null;
+  document.getElementById('selfie-preview').style.display = 'none';
+  document.getElementById('selfie-preview').src = '';
+  document.getElementById('btn-ulang-foto').style.display = 'none';
+  document.getElementById('btn-lanjut-scan').style.display = 'none';
+  document.getElementById('btn-buka-kamera').style.display = 'inline-block';
+  document.getElementById('selfie-status').textContent = 'Belum ada foto';
+  document.getElementById('selfie-status').style.color = 'var(--text3)';
+  document.getElementById('selfie-cam-wrapper').style.border = '3px solid var(--border2)';
+  // Reset scan section juga kalau sudah terbuka
+  document.getElementById('scan-section').style.display = 'none';
+  document.getElementById('selfie-section').style.display = 'block';
+}
+
+function lanjutKeScan() {
+  if (!selfieDataURL) { showToast('Ambil foto selfie dulu!', 'error'); return; }
+  // Tempel thumbnail di step 2
+  document.getElementById('selfie-thumb').src = selfieDataURL;
+  // Sembunyikan step 1, tampilkan step 2
+  document.getElementById('selfie-section').style.display = 'none';
+  document.getElementById('scan-section').style.display = 'block';
+  // Refresh GPS sekali lagi
+  startGPSWatch();
+}
+
+function kembaliKeSelfie() {
+  // Stop scanner kalau aktif
+  if (scannerActive && html5Scanner) {
+    html5Scanner.stop().catch(()=>{});
+    scannerActive = false;
+    document.getElementById('btn-start-scan').innerHTML = '▶ Mulai Scan';
+  }
+  ulangFotoSelfie();
+}
+
+// Reset selfie state saat halaman scan dibuka
+function resetSelfieState() {
+  stopSelfieCam();
+  selfieDataURL = null;
+  selfieBlob = null;
+  const preview = document.getElementById('selfie-preview');
+  if (preview) { preview.style.display = 'none'; preview.src = ''; }
+  const placeholder = document.getElementById('selfie-placeholder');
+  if (placeholder) placeholder.style.display = 'flex';
+  const video = document.getElementById('selfie-video');
+  if (video) video.style.display = 'none';
+  const btnBuka = document.getElementById('btn-buka-kamera');
+  if (btnBuka) btnBuka.style.display = 'inline-block';
+  const btnAmbil = document.getElementById('btn-ambil-foto');
+  if (btnAmbil) btnAmbil.style.display = 'none';
+  const btnUlang = document.getElementById('btn-ulang-foto');
+  if (btnUlang) btnUlang.style.display = 'none';
+  const btnLanjut = document.getElementById('btn-lanjut-scan');
+  if (btnLanjut) btnLanjut.style.display = 'none';
+  const statusEl = document.getElementById('selfie-status');
+  if (statusEl) { statusEl.textContent = 'Belum ada foto'; statusEl.style.color = 'var(--text3)'; }
+  const selfieSec = document.getElementById('selfie-section');
+  if (selfieSec) selfieSec.style.display = 'block';
+  const scanSec = document.getElementById('scan-section');
+  if (scanSec) scanSec.style.display = 'none';
+  const wrapper = document.getElementById('selfie-cam-wrapper');
+  if (wrapper) wrapper.style.border = '3px solid var(--border2)';
+}
 function goToAbsenPulang(){
   // Set tipe PULANG DULU sebelum goTo, agar tidak ditimpa
   currentScanType = 'PULANG';
@@ -904,11 +1120,13 @@ function goTo(page){
   if(page==='scan'){ 
     loadJadwalScan(); 
     startGPSWatch();
+    resetSelfieState();
     const tgl = document.getElementById('scan-tanggal');
     if(tgl) tgl.innerText = new Date().toLocaleDateString('id-ID', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
   }
   if(page==='qr'){ startQRLiveDisplay(); }
   if(page==='kalender'){ renderKalenderJadwal(); renderAgendaPublic(); }
+  if(page!=='scan') stopSelfieCam();
   if(page!=='qr' && qrRefreshInterval){ clearInterval(qrRefreshInterval); qrRefreshInterval=null; }
   if(page!=='qr' && qrCountdownInterval){ clearInterval(qrCountdownInterval); qrCountdownInterval=null; qrLastToken=null; }
 }
@@ -975,6 +1193,13 @@ function toggleScan(){
   } else { 
     const nia = document.getElementById('input-NIA').value.trim(); 
     if(!nia){ showToast('Isi NIA dulu','error'); return; }
+
+    // Guard: selfie wajib ada
+    if(!selfieDataURL){ 
+      showToast('⚠️ Ambil foto selfie dulu di Step 1!','error'); 
+      kembaliKeSelfie();
+      return; 
+    }
 
     // ⚠️ Capture tipe SEKARANG saat scan dimulai, bukan nanti saat QR terbaca
     const scanTipe = currentScanType;
@@ -1408,6 +1633,7 @@ function renderKalenderJadwal(){
 }
 
 window.goTo=goTo; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.showEditAnggota=showEditAnggota; window.submitEditAnggota=submitEditAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.downloadJadwalPDF=downloadJadwalPDF; window.renderJadwalPreview=renderJadwalPreview; window.goToAbsenPulang=goToAbsenPulang; window.adminLogout=adminLogout; window.addAgendaItem=addAgendaItem; window.saveAgendaItem=saveAgendaItem; window.deleteAgendaItem=deleteAgendaItem; window.savePengumuman=savePengumuman; window.previewAgendaWarna=previewAgendaWarna;
+window.bukaKameraSelfie=bukaKameraSelfie; window.ambilFotoSelfie=ambilFotoSelfie; window.ulangFotoSelfie=ulangFotoSelfie; window.lanjutKeScan=lanjutKeScan; window.kembaliKeSelfie=kembaliKeSelfie;
 
 console.log('✅ UI/UX Baru Aktif + Room Kalender siap menanti!');
 </script>
