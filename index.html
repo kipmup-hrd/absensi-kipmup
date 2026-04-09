@@ -905,6 +905,7 @@ let allAnggota = [...realAnggota];
       <button class="nav-item" onclick="switchTab('izin')" data-tab="izin">📝 Izin & Ketidakhadiran</button>
       <button class="nav-item" onclick="switchTab('anggota')" data-tab="anggota">👥 Data Anggota (Edit)</button>
       <button class="nav-item" onclick="switchTab('konten')" data-tab="konten">🖊️ Edit Konten Halaman</button>
+      <button class="nav-item" onclick="switchTab('ranking')" data-tab="ranking">🏆 Papan Peringkat</button>
     </nav>
     <div class="sidebar-footer" style="padding:16px; border-top:1px solid var(--border);">
       <div id="admin-nama-display">Admin</div>
@@ -1134,6 +1135,79 @@ let allAnggota = [...realAnggota];
       
       <!-- ANGGOTA TAB -->
       <div id="tab-anggota" class="tab-panel"><div class="table-card"><div class="table-card-header"><button class="btn-sm primary" onclick="showAddAnggota()">+ Tambah Anggota</button></div><div class="table-scroll"><table><thead><tr><th>NIA</th><th>Nama</th><th>Divisi</th><th>Telp</th><th>Aksi</th></tr></thead><tbody id="tbl-anggota"></tbody></table></div></div></div>
+
+      <!-- RANKING TAB -->
+      <div id="tab-ranking" class="tab-panel">
+        <!-- Filter periode -->
+        <div class="table-card" style="padding:16px; margin-bottom:16px;">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <div style="font-weight:600; font-size:14px;">🏆 Papan Peringkat KIPM-UP</div>
+            <div style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;">
+              <select class="form-input" id="rank-periode" style="width:auto;" onchange="loadAllRankings()">
+                <option value="1">1 Bulan Ini</option>
+                <option value="3">3 Bulan Terakhir</option>
+                <option value="8">8 Bulan Terakhir</option>
+              </select>
+              <button class="btn-sm primary" onclick="loadAllRankings()">🔄 Refresh</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 kolom ranking -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+
+          <!-- RANK 1: Durasi Piket Terlama (in-jadwal) -->
+          <div class="table-card" style="padding:0; overflow:hidden;">
+            <div style="background:linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.05)); padding:14px 16px; border-bottom:1px solid var(--border);">
+              <div style="font-size:13px; font-weight:700; color:#f0c040;">🥇 Durasi Piket Terlama</div>
+              <div style="font-size:11px; color:var(--text3); margin-top:2px;">Anggota yang piket paling lama (sesuai jadwal)</div>
+            </div>
+            <div id="rank-piket" style="padding:12px;">
+              <div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Memuat...</div>
+            </div>
+          </div>
+
+          <!-- RANK 2: Durasi Non-Piket Terlama -->
+          <div class="table-card" style="padding:0; overflow:hidden;">
+            <div style="background:linear-gradient(135deg,rgba(34,211,238,0.2),rgba(34,211,238,0.03)); padding:14px 16px; border-bottom:1px solid var(--border);">
+              <div style="font-size:13px; font-weight:700; color:var(--accent2);">⚡ Durasi Non-Piket Terlama</div>
+              <div style="font-size:11px; color:var(--text3); margin-top:2px;">Hadir piket di luar jadwal mereka</div>
+            </div>
+            <div id="rank-nonpiket" style="padding:12px;">
+              <div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Memuat...</div>
+            </div>
+          </div>
+
+          <!-- RANK 3: Kehadiran Rapat/Kelas -->
+          <div class="table-card" style="padding:0; overflow:hidden;">
+            <div style="background:linear-gradient(135deg,rgba(192,132,252,0.2),rgba(192,132,252,0.03)); padding:14px 16px; border-bottom:1px solid var(--border);">
+              <div style="font-size:13px; font-weight:700; color:#c084fc;">🎯 Kehadiran Rapat & Kelas</div>
+              <div style="font-size:11px; color:var(--text3); margin-top:2px;">% kehadiran di kegiatan (rapat, kelas EnR/TnD)</div>
+            </div>
+            <div id="rank-kegiatan" style="padding:12px;">
+              <div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Memuat...</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Rekap bulanan historis -->
+        <div class="table-card" style="padding:16px;">
+          <div style="font-weight:600; font-size:14px; margin-bottom:12px;">📊 Rekap Historis per Bulan</div>
+          <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+            <select class="form-input" id="hist-kategori" style="width:auto;">
+              <option value="piket">Piket (In-Jadwal)</option>
+              <option value="nonpiket">Non-Piket</option>
+              <option value="kegiatan">Kegiatan (Rapat/Kelas)</option>
+            </select>
+            <select class="form-input" id="hist-bulan" style="width:auto;"></select>
+            <button class="btn-sm primary" onclick="loadHistorisRank()">Tampilkan</button>
+          </div>
+          <div id="rank-historis-table">
+            <div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Pilih bulan dan klik Tampilkan</div>
+          </div>
+        </div>
+      </div>
 
       <!-- KONTEN TAB -->
       <div id="tab-konten" class="tab-panel">
@@ -1826,7 +1900,7 @@ function switchTab(tab){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); 
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active'); 
   
-  const titles = {'dashboard':'Dashboard', 'jadwal':'Jadwal Piket', 'rekap':'Rekap Absensi Piket', 'kegiatan':'Absensi Kegiatan', 'izin':'Izin & Ketidakhadiran', 'anggota':'Data Anggota', 'konten':'Edit Konten Halaman'};
+  const titles = {'dashboard':'Dashboard', 'jadwal':'Jadwal Piket', 'rekap':'Rekap Absensi Piket', 'kegiatan':'Absensi Kegiatan', 'izin':'Izin & Ketidakhadiran', 'anggota':'Data Anggota', 'konten':'Edit Konten Halaman', 'ranking':'🏆 Papan Peringkat'};
   document.getElementById('tab-title').innerText = titles[tab] || ''; 
   
   if(tab==='dashboard') loadDashboard(); 
@@ -1836,6 +1910,7 @@ function switchTab(tab){
   if(tab==='konten') renderAgendaEditor();
   if(tab==='kegiatan'){ renderPesertaSesiPicker(); switchSubKegiatan('buat'); }
   if(tab==='izin'){ switchSubIzin('masuk'); document.getElementById('izin-tanggal').value = getTodayWIB(); }
+  if(tab==='ranking'){ initRankingBulan(); loadAllRankings(); }
 }
 
 // ADMIN: JADWAL LOGIC
@@ -2323,11 +2398,14 @@ function toggleDetailSesi(sesiId) {
 }
 
 function hapusSesi(sesiId) {
-  if(!confirm('Hapus sesi ini?')) return;
+  if(!confirm('Hapus sesi ini?\n(Data absensi akan tersimpan ke Google Sheets terlebih dahulu)')) return;
+  const sesi = sesiList.find(s => s.id === sesiId);
+  // Simpan ke GAS dulu sebelum hapus dari memory
+  if(sesi) gasSaveSesiKegiatan(sesi);
   sesiList = sesiList.filter(s => s.id !== sesiId);
   saveSesi();
   renderSesiAktif();
-  showToast('Sesi dihapus','success');
+  showToast('Sesi dihapus & data tersimpan ke Sheets','success');
 }
 
 // ── QR Display untuk Sesi Kegiatan ──
@@ -2463,6 +2541,9 @@ function submitIzinAdmin() {
   });
   saveSesi();
 
+  // Simpan ke GAS
+  gasSaveIzin({NIA:izin.NIA, nama:izin.nama, tanggal:izin.tanggal, kegiatan:izin.jenisKegiatan, jenis:izin.jenisIzin, keterangan:izin.keterangan, oleh:'Admin'});
+
   showToast('✅ Izin ' + izinAnggotaTerpilih.nama + ' berhasil disimpan', 'success');
   izinAnggotaTerpilih = null;
   document.getElementById('izin-anggota-dipilih').innerHTML = 'Belum dipilih';
@@ -2535,6 +2616,9 @@ function submitIzinAnggota() {
     }
   });
   saveSesi();
+
+  // Simpan ke GAS
+  gasSaveIzin({NIA:nia, nama:anggota.nama, tanggal, kegiatan:izin.jenisKegiatan, jenis:izin.jenisIzin, keterangan, oleh:'Anggota'});
 
   showToast('✅ Izin berhasil dikirim! Jangan lupa kabari admin.', 'success');
   document.getElementById('izin-anggota-keterangan').value = '';
@@ -2774,7 +2858,353 @@ function renderDashboardSesiAktif() {
     </div>`).join('');
 }
 
-window.switchSubKegiatan=switchSubKegiatan; window.switchSubIzin=switchSubIzin;
+// =========================================================================
+// SISTEM RANKING — Piket, Non-Piket, Kegiatan
+// =========================================================================
+
+// Parse durasi string "2j 15m" or "45m" ke menit
+function parseDurasiToMenit(str) {
+  if(!str || str==='-' || str==='NaNm' || str==='NaN m') return 0;
+  let total = 0;
+  const jam = str.match(/(\d+)j/);
+  const menit = str.match(/(\d+)m/);
+  if(jam) total += parseInt(jam[1]) * 60;
+  if(menit) total += parseInt(menit[1]);
+  return total;
+}
+
+function formatMenitToStr(total) {
+  if(!total || total <= 0) return '-';
+  const j = Math.floor(total/60), m = total%60;
+  return j > 0 ? `${j}j ${m}m` : `${m}m`;
+}
+
+// Hitung range tanggal berdasarkan jumlah bulan ke belakang
+function getRangeFromMonths(bulan) {
+  const now = new Date();
+  const wib = new Date(now.getTime() + 7*3600*1000);
+  const toStr = `${wib.getUTCFullYear()}-${String(wib.getUTCMonth()+1).padStart(2,'0')}-${String(wib.getUTCDate()).padStart(2,'0')}`;
+  const from = new Date(wib);
+  from.setUTCMonth(from.getUTCMonth() - (bulan-1));
+  from.setUTCDate(1);
+  const fromStr = `${from.getUTCFullYear()}-${String(from.getUTCMonth()+1).padStart(2,'0')}-01`;
+  return {from: fromStr, to: toStr};
+}
+
+// Isi dropdown bulan historis (8 bulan ke belakang)
+function initRankingBulan() {
+  const sel = document.getElementById('hist-bulan');
+  if(!sel || sel.options.length > 0) return;
+  const now = new Date();
+  const wib = new Date(now.getTime() + 7*3600*1000);
+  const bulanNama = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  for(let i=0; i<8; i++){
+    const d = new Date(wib);
+    d.setUTCMonth(d.getUTCMonth() - i);
+    const y = d.getUTCFullYear(), m = d.getUTCMonth();
+    const val = `${y}-${String(m+1).padStart(2,'0')}`;
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = `${bulanNama[m]} ${y}`;
+    sel.appendChild(opt);
+  }
+}
+
+// Render satu baris ranking
+function renderRankRow(idx, nama, nia, divisi, nilai, satuan, warna) {
+  const medals = ['🥇','🥈','🥉'];
+  const medal = idx < 3 ? medals[idx] : `<span style="color:var(--text3); font-weight:700;">${idx+1}</span>`;
+  const pct = Math.min(100, Math.round(nilai));
+  const barColor = warna || 'var(--accent)';
+  return `<div style="padding:8px 0; border-bottom:1px solid var(--border);">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+      <span style="width:22px; text-align:center; font-size:14px;">${medal}</span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nama}</div>
+        <div style="font-size:10px; color:var(--text3);">${nia} · ${divisi}</div>
+      </div>
+      <div style="font-size:12px; font-weight:600; color:${barColor}; white-space:nowrap;">${satuan}</div>
+    </div>
+    <div style="height:4px; background:var(--bg3); border-radius:4px; margin-left:30px;">
+      <div style="height:4px; border-radius:4px; background:${barColor}; width:${pct}%; transition:width 0.6s;"></div>
+    </div>
+  </div>`;
+}
+
+async function loadAllRankings() {
+  const bulan = parseInt(document.getElementById('rank-periode')?.value || '1');
+  const {from, to} = getRangeFromMonths(bulan);
+
+  // Set loading
+  ['rank-piket','rank-nonpiket','rank-kegiatan'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Memuat...</div>';
+  });
+
+  // Load rekap absensi piket dari GAS
+  try {
+    const res = await api({action:'getRekapAbsensi', from, to});
+    const data = (res.ok && Array.isArray(res.data)) ? res.data : [];
+
+    // Build jadwal set: NIA → tanggal[] (dari data lokal jadwalMingguan di semua hari)
+    // Untuk simplifikasi: cek berdasarkan data rekap — status "HADIR" = in-jadwal, "HADIR (luar jadwal)" = non-piket
+    const piketMap = {}; // NIA → total menit (in-jadwal)
+    const nonPiketMap = {}; // NIA → total menit (luar jadwal)
+
+    // Kumpulkan semua baris DATANG per hari per NIA
+    const pairs = {}; // key = NIA+tanggal → {datang, pulang, status}
+    data.forEach(r => {
+      const key = r.NIA + '_' + r.tanggal;
+      if(!pairs[key]) pairs[key] = {NIA:r.NIA, nama:r.nama, divisi:'', tanggal:r.tanggal, status:r.status||'', datangWaktu:null, durasi:0};
+      if(r.tipe==='DATANG') pairs[key].datangWaktu = r.waktu;
+      if(r.tipe==='PULANG' && r.durasi && r.durasi!=='-') pairs[key].durasi = parseDurasiToMenit(r.durasi);
+    });
+
+    // Lookup divisi dari allAnggota
+    Object.values(pairs).forEach(p => {
+      const a = allAnggota.find(x => x.NIA === p.NIA);
+      if(a) p.divisi = a.divisi;
+
+      const isLuarJadwal = p.status && p.status.toLowerCase().includes('luar jadwal');
+      if(isLuarJadwal) {
+        if(!nonPiketMap[p.NIA]) nonPiketMap[p.NIA] = {nama:p.nama, divisi:p.divisi, total:0};
+        nonPiketMap[p.NIA].total += p.durasi;
+      } else {
+        if(!piketMap[p.NIA]) piketMap[p.NIA] = {nama:p.nama, divisi:p.divisi, total:0};
+        piketMap[p.NIA].total += p.durasi;
+      }
+    });
+
+    // Render rank piket
+    const piketList = Object.entries(piketMap)
+      .map(([nia, v]) => ({nia, ...v}))
+      .filter(x => x.total > 0)
+      .sort((a,b) => b.total-a.total)
+      .slice(0,10);
+
+    const elPiket = document.getElementById('rank-piket');
+    if(elPiket) {
+      if(!piketList.length) {
+        elPiket.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Belum ada data durasi piket</div>';
+      } else {
+        const maxP = piketList[0].total;
+        elPiket.innerHTML = piketList.map((x,i) =>
+          renderRankRow(i, x.nama, x.nia, x.divisi||'-', (x.total/maxP)*100, formatMenitToStr(x.total), '#f0c040')
+        ).join('');
+      }
+    }
+
+    // Render rank non-piket
+    const nonPiketList = Object.entries(nonPiketMap)
+      .map(([nia, v]) => ({nia, ...v}))
+      .filter(x => x.total > 0)
+      .sort((a,b) => b.total-a.total)
+      .slice(0,10);
+
+    const elNon = document.getElementById('rank-nonpiket');
+    if(elNon) {
+      if(!nonPiketList.length) {
+        elNon.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Belum ada data non-piket</div>';
+      } else {
+        const maxN = nonPiketList[0].total;
+        elNon.innerHTML = nonPiketList.map((x,i) =>
+          renderRankRow(i, x.nama, x.nia, x.divisi||'-', (x.total/maxN)*100, formatMenitToStr(x.total), 'var(--accent2)')
+        ).join('');
+      }
+    }
+  } catch(e) {
+    ['rank-piket','rank-nonpiket'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:20px;">Gagal memuat data</div>';
+    });
+  }
+
+  // Rank kegiatan — dari sesiList (sessionStorage) + GAS jika ada endpoint
+  loadRankingKegiatan(from, to);
+}
+
+async function loadRankingKegiatan(from, to) {
+  const elKeg = document.getElementById('rank-kegiatan');
+
+  // Hitung dari sesiList lokal (sessionStorage)
+  const kegiatanMap = {}; // NIA → {hadir, total_diundang}
+
+  sesiList.forEach(sesi => {
+    if(!sesi.startTime) return;
+    const tgl = new Date(sesi.startTime);
+    const tglStr = `${tgl.getFullYear()}-${String(tgl.getMonth()+1).padStart(2,'0')}-${String(tgl.getDate()).padStart(2,'0')}`;
+    if(tglStr < from || tglStr > to) return;
+
+    // Peserta wajib hadir
+    (sesi.peserta || []).forEach(nia => {
+      if(!kegiatanMap[nia]) kegiatanMap[nia] = {hadir:0, total:0};
+      kegiatanMap[nia].total++;
+    });
+    // Yang hadir (absen)
+    (sesi.absensi || []).forEach(ab => {
+      if(!kegiatanMap[ab.NIA]) kegiatanMap[ab.NIA] = {hadir:0, total:0};
+      kegiatanMap[ab.NIA].hadir++;
+    });
+  });
+
+  const kegList = Object.entries(kegiatanMap)
+    .map(([nia, v]) => {
+      const a = allAnggota.find(x => x.NIA === nia);
+      const pct = v.total > 0 ? Math.round((v.hadir/v.total)*100) : 0;
+      return {nia, nama: a?a.nama:nia, divisi: a?a.divisi:'-', hadir:v.hadir, total:v.total, pct};
+    })
+    .filter(x => x.total > 0)
+    .sort((a,b) => b.pct-a.pct || b.hadir-a.hadir)
+    .slice(0,10);
+
+  if(elKeg) {
+    if(!kegList.length) {
+      elKeg.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Belum ada data kegiatan di periode ini.<br><span style="font-size:10px;">Data tersimpan per sesi browser.</span></div>';
+    } else {
+      elKeg.innerHTML = kegList.map((x,i) =>
+        renderRankRow(i, x.nama, x.nia, x.divisi, x.pct, `${x.pct}% (${x.hadir}/${x.total})`, '#c084fc')
+      ).join('');
+    }
+  }
+}
+
+async function loadHistorisRank() {
+  const kategori = document.getElementById('hist-kategori').value;
+  const bulanVal = document.getElementById('hist-bulan').value; // "2025-03"
+  const el = document.getElementById('rank-historis-table');
+  if(!el) return;
+  el.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px;">Memuat...</div>';
+
+  const from = bulanVal + '-01';
+  // Hari terakhir bulan tersebut
+  const [y, m] = bulanVal.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  const to = `${bulanVal}-${String(lastDay).padStart(2,'0')}`;
+
+  const bulanNama = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const judulBulan = `${bulanNama[m]} ${y}`;
+
+  if(kategori === 'piket' || kategori === 'nonpiket') {
+    try {
+      const res = await api({action:'getRekapAbsensi', from, to});
+      const data = (res.ok && Array.isArray(res.data)) ? res.data : [];
+      const map = {};
+      const pairs = {};
+      data.forEach(r => {
+        const key = r.NIA + '_' + r.tanggal;
+        if(!pairs[key]) pairs[key] = {NIA:r.NIA, nama:r.nama, status:r.status||'', durasi:0};
+        if(r.tipe==='PULANG' && r.durasi && r.durasi!=='-') pairs[key].durasi = parseDurasiToMenit(r.durasi);
+      });
+      Object.values(pairs).forEach(p => {
+        const isLuar = p.status.toLowerCase().includes('luar jadwal');
+        if((kategori==='nonpiket') !== isLuar) return;
+        if(!map[p.NIA]) { const a=allAnggota.find(x=>x.NIA===p.NIA); map[p.NIA]={nama:p.nama,divisi:a?a.divisi:'-',total:0}; }
+        map[p.NIA].total += p.durasi;
+      });
+
+      const list = Object.entries(map).map(([nia,v])=>({nia,...v})).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+      if(!list.length){ el.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px;">Tidak ada data untuk periode ini</div>'; return; }
+
+      const label = kategori==='piket' ? '⏱ Durasi Piket' : '⚡ Durasi Non-Piket';
+      const warna = kategori==='piket' ? '#f0c040' : 'var(--accent2)';
+      el.innerHTML = `<div style="font-size:12px; color:var(--text2); margin-bottom:10px; font-weight:600;">${label} — ${judulBulan}</div>` +
+        `<table style="width:100%; font-size:12px;"><thead><tr><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">#</th><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Nama</th><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Divisi</th><th style="text-align:right; padding:6px 10px; background:var(--bg3); color:${warna};">${label}</th></tr></thead><tbody>` +
+        list.map((x,i) => `<tr><td style="padding:7px 10px; border-top:1px solid var(--border);">${i+1}</td><td style="padding:7px 10px; border-top:1px solid var(--border);">${x.nama}</td><td style="padding:7px 10px; border-top:1px solid var(--border); color:var(--text2);">${x.divisi}</td><td style="padding:7px 10px; border-top:1px solid var(--border); text-align:right; color:${warna}; font-weight:600;">${formatMenitToStr(x.total)}</td></tr>`).join('') +
+        '</tbody></table>';
+    } catch(e) {
+      el.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:16px;">Gagal memuat data dari server</div>';
+    }
+  } else {
+    // kegiatan — dari sesiList
+    const map = {};
+    sesiList.forEach(sesi => {
+      const tgl = new Date(sesi.startTime);
+      const tglStr = `${tgl.getFullYear()}-${String(tgl.getMonth()+1).padStart(2,'0')}-${String(tgl.getDate()).padStart(2,'0')}`;
+      if(tglStr < from || tglStr > to) return;
+      (sesi.peserta||[]).forEach(nia => { if(!map[nia]) map[nia]={hadir:0,total:0}; map[nia].total++; });
+      (sesi.absensi||[]).forEach(ab => { if(!map[ab.NIA]) map[ab.NIA]={hadir:0,total:0}; map[ab.NIA].hadir++; });
+    });
+    const list = Object.entries(map).map(([nia,v])=>{
+      const a=allAnggota.find(x=>x.NIA===nia);
+      return {nia,nama:a?a.nama:nia,divisi:a?a.divisi:'-',hadir:v.hadir,total:v.total,pct:v.total>0?Math.round(v.hadir/v.total*100):0};
+    }).filter(x=>x.total>0).sort((a,b)=>b.pct-a.pct||b.hadir-a.hadir);
+
+    if(!list.length){ el.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px;">Tidak ada data kegiatan bulan ini di sesi ini</div>'; return; }
+    el.innerHTML = `<div style="font-size:12px; color:var(--text2); margin-bottom:10px; font-weight:600;">🎯 Kehadiran Kegiatan — ${judulBulan}</div>` +
+      `<table style="width:100%; font-size:12px;"><thead><tr><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">#</th><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Nama</th><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Divisi</th><th style="text-align:right; padding:6px 10px; background:var(--bg3); color:#c084fc;">Hadir</th><th style="text-align:right; padding:6px 10px; background:var(--bg3); color:#c084fc;">%</th></tr></thead><tbody>` +
+      list.map((x,i)=>`<tr><td style="padding:7px 10px; border-top:1px solid var(--border);">${i+1}</td><td style="padding:7px 10px; border-top:1px solid var(--border);">${x.nama}</td><td style="padding:7px 10px; border-top:1px solid var(--border); color:var(--text2);">${x.divisi}</td><td style="padding:7px 10px; border-top:1px solid var(--border); text-align:right; color:#c084fc;">${x.hadir}/${x.total}</td><td style="padding:7px 10px; border-top:1px solid var(--border); text-align:right; font-weight:600; color:#c084fc;">${x.pct}%</td></tr>`).join('') +
+      '</tbody></table>';
+  }
+}
+
+window.loadAllRankings = loadAllRankings;
+window.loadHistorisRank = loadHistorisRank;
+
+// =========================================================================
+// GAS PERSISTENCE — Sesi Kegiatan & Izin ke Google Sheets
+// =========================================================================
+
+// Simpan sesi kegiatan ke GAS (dipanggil saat tutup sesi / hapus sesi)
+async function gasSaveSesiKegiatan(sesi) {
+  try {
+    // Kirim ke GAS action saveSesiKegiatan
+    const payload = {
+      action: 'saveSesiKegiatan',
+      sesiId: sesi.id,
+      nama: sesi.nama,
+      jenis: sesi.jenis,
+      tanggal: new Date(sesi.startTime).toISOString().split('T')[0],
+      startTime: sesi.startTime,
+      endTime: sesi.endTime,
+      peserta: JSON.stringify(sesi.peserta||[]),
+      absensi: JSON.stringify((sesi.absensi||[]).map(a => ({NIA:a.NIA, nama:a.nama, waktu:a.waktu, gpsLat:a.gpsLat||'', gpsLng:a.gpsLng||''}))),
+      totalPeserta: (sesi.peserta||[]).length,
+      totalHadir: (sesi.absensi||[]).length
+    };
+    const res = await api(payload);
+    if(res && res.ok) console.log('✅ Sesi tersimpan ke Sheets:', sesi.nama);
+    else console.warn('⚠️ GAS saveSesiKegiatan:', res?.msg);
+  } catch(e) {
+    console.warn('GAS saveSesiKegiatan gagal (offline?):', e.message);
+  }
+}
+
+// Simpan izin ke GAS
+async function gasSaveIzin(izin) {
+  try {
+    const res = await api({
+      action: 'saveIzin',
+      NIA: izin.NIA,
+      nama: izin.nama||'',
+      tanggal: izin.tanggal,
+      jenis_kegiatan: izin.kegiatan,
+      jenis_izin: izin.jenis,
+      keterangan: izin.keterangan||'',
+      oleh: izin.oleh||'anggota'
+    });
+    if(res && res.ok) console.log('✅ Izin tersimpan ke Sheets');
+    else console.warn('⚠️ GAS saveIzin:', res?.msg);
+  } catch(e) {
+    console.warn('GAS saveIzin gagal (offline?):', e.message);
+  }
+}
+
+function tutupSesiAdmin(sesiId) {
+  const sesi = sesiList.find(s => s.id === sesiId);
+  if(!sesi){ showToast('Sesi tidak ditemukan','error'); return; }
+  if(!confirm(`Tutup sesi "${sesi.nama}" dan simpan ke Google Sheets?`)) return;
+  // Force end time ke sekarang
+  sesi.endTime = Date.now();
+  saveSesi();
+  // Simpan ke GAS
+  gasSaveSesiKegiatan(sesi).then(() => {
+    showToast('✅ Sesi ditutup & tersimpan ke Sheets', 'success');
+    renderSesiAktif();
+  });
+}
+window.tutupSesiAdmin = tutupSesiAdmin;
+
+window.switchSubIzin=switchSubIzin;
 window.pilihPesertaByDivisi=pilihPesertaByDivisi; window.togglePesertaSesi=togglePesertaSesi;
 window.ambilLokasiSesiAdmin=ambilLokasiSesiAdmin; window.buatSesiKegiatan=buatSesiKegiatan;
 window.showQRSesi=showQRSesi; window.closeQRSesi=closeQRSesi;
@@ -2788,8 +3218,10 @@ window.kegiatanBukaKamera=kegiatanBukaKamera; window.kegiatanAmbilFoto=kegiatanA
 window.kegiatanUlangFoto=kegiatanUlangFoto; window.kegiatanLanjutScan=kegiatanLanjutScan;
 window.kegiatanToggleScan=kegiatanToggleScan; window.previewSelfieKegiatan=previewSelfieKegiatan; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.showEditAnggota=showEditAnggota; window.submitEditAnggota=submitEditAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.downloadJadwalPDF=downloadJadwalPDF; window.renderJadwalPreview=renderJadwalPreview; window.goToAbsenPulang=goToAbsenPulang; window.adminLogout=adminLogout; window.addAgendaItem=addAgendaItem; window.saveAgendaItem=saveAgendaItem; window.deleteAgendaItem=deleteAgendaItem; window.savePengumuman=savePengumuman; window.previewAgendaWarna=previewAgendaWarna;
 window.bukaKameraSelfie=bukaKameraSelfie; window.ambilFotoSelfie=ambilFotoSelfie; window.ulangFotoSelfie=ulangFotoSelfie; window.lanjutKeScan=lanjutKeScan; window.kembaliKeSelfie=kembaliKeSelfie;
+window.switchSubKegiatan=switchSubKegiatan;
+window.loadAllRankings=loadAllRankings; window.loadHistorisRank=loadHistorisRank; window.initRankingBulan=initRankingBulan;
 
-console.log('✅ UI/UX Baru Aktif + Room Kalender siap menanti!');
+console.log('✅ KIPM-UP v3.0 — Ranking System + GAS Persistence aktif!');
 </script>
 </body>
 </html>
