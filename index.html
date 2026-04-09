@@ -71,7 +71,7 @@ body {
   transform: scale(1.1) rotate(-3deg) !important;
   animation-play-state: paused;
 }
-#logo-img { display:block; width:100px; height:100px; }
+#logo-img { display:block; width:100px; height:100px; object-fit:contain; border-radius:8px; }
 @keyframes logo-float {
   0%,100% { transform:translateY(0); }
   50%      { transform:translateY(-8px); }
@@ -1673,6 +1673,12 @@ function goTo(page){
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active'); p.style.display='none';});
   document.getElementById('page-'+page).style.display='flex';
   document.getElementById('page-'+page).classList.add('active');
+  // Simpan halaman saat ini di hash URL agar tidak hilang saat refresh
+  if(page !== 'landing') {
+    history.replaceState(null, '', '#' + page);
+  } else {
+    history.replaceState(null, '', window.location.pathname);
+  }
   
   if(page==='admin') initAdmin();
   if(page==='scan'){ 
@@ -3243,33 +3249,21 @@ async function processRankingPiket(data) {
     if(r.status && r.status.trim()) pairs[key].status = r.status;
   });
 
-  // Auto-checkout: jika tidak ada PULANG, hitung durasi dari jam datang → 19:00
+  // Auto-checkout: HANYA untuk hari LALU yang tidak punya PULANG
+  // Tidak berlaku untuk hari ini (durasi real masih berjalan)
+  // Tidak timpa durasi yang sudah ada dari PULANG
+  const todayCheck = getTodayWIB();
   Object.values(pairs).forEach(p => {
-    if (!p.adaPulang && p.jamDatang && p.tanggal) {
+    if (!p.adaPulang && p.jamDatang && p.tanggal && p.tanggal < todayCheck) {
       try {
-        // Cek apakah hari absen sudah lewat (bukan hari ini)
-        const today = getTodayWIB();
-        const isHariIni = p.tanggal === today;
-        const jamSekarangMenit = (() => {
-          const now = new Date();
-          const wib = new Date(now.getTime() + 7 * 3600 * 1000);
-          return wib.getUTCHours() * 60 + wib.getUTCMinutes();
-        })();
-
-        // Auto-pulang berlaku: untuk hari lalu, atau hari ini setelah jam 19:00
-        const sudahLewatJamKerja = !isHariIni || jamSekarangMenit >= JAM_SELESAI_MENIT;
-        if (sudahLewatJamKerja) {
-          // Parse jam datang
-          const wMatch = String(p.jamDatang).match(/(\d{1,2}):(\d{2})/);
-          if (wMatch) {
-            const jamDatangMenit = parseInt(wMatch[1]) * 60 + parseInt(wMatch[2]);
-            // Klem ke range jam kerja
-            const masukEfektif = Math.max(jamDatangMenit, JAM_MULAI_MENIT);
-            const durasi = JAM_SELESAI_MENIT - masukEfektif;
-            if (durasi > 0) p.durasi = durasi;
-          }
+        const wMatch = String(p.jamDatang).match(/(\d{1,2}):(\d{2})/);
+        if (wMatch) {
+          const jamDatangMenit = parseInt(wMatch[1]) * 60 + parseInt(wMatch[2]);
+          const masukEfektif = Math.max(jamDatangMenit, JAM_MULAI_MENIT);
+          const durasi = JAM_SELESAI_MENIT - masukEfektif;
+          if (durasi > 0) p.durasi = durasi;
         }
-      } catch(e) { /* biarkan durasi = 0 */ }
+      } catch(e) {}
     }
   });
 
@@ -3277,15 +3271,9 @@ async function processRankingPiket(data) {
     const a = allAnggota.find(x => x.NIA === p.NIA);
     const divisi = a ? a.divisi : '-';
 
-    // Tentukan apakah ini hari piket atau bukan
-    let isLuarJadwal = false;
-    if (p.status && p.status.trim()) {
-      // Percayai data dari GAS jika ada
-      isLuarJadwal = p.status.toLowerCase().includes('luar jadwal');
-    } else {
-      // Fallback: gunakan helper jadwal (GAS data → lokal)
-      isLuarJadwal = !isTanggalPiket(p.NIA, p.tanggal);
-    }
+    // Klasifikasi MURNI dari jadwal (GAS data → lokal)
+    // Status dari GAS tidak dipakai karena GAS tidak selalu tahu jadwal piket
+    const isLuarJadwal = !isTanggalPiket(p.NIA, p.tanggal);
 
     if (isLuarJadwal) {
       if (!nonPiketMap[p.NIA]) nonPiketMap[p.NIA] = { nama: p.nama, divisi, total: 0 };
@@ -3500,13 +3488,21 @@ async function loadHistorisRank() {
         return true; // tidak ada data → anggap piket
       }
 
+      // Auto-checkout historis: hanya hari lalu yang tidak punya PULANG
+      const todayCheckH = getTodayWIB();
       Object.values(pairs).forEach(p => {
-        let isLuar = false;
-        if(p.status && p.status.trim()) {
-          isLuar = p.status.toLowerCase().includes('luar jadwal');
-        } else {
-          isLuar = !isTanggalPiket2(p.NIA, p.tanggal);
+        if(!p.adaPulang && p.jamDatang && p.tanggal && p.tanggal < todayCheckH) {
+          try {
+            const JAM_M = 7*60, JAM_S = 19*60;
+            const wm = String(p.jamDatang).match(/(\d{1,2}):(\d{2})/);
+            if(wm) { const masuk=Math.max(parseInt(wm[1])*60+parseInt(wm[2]),JAM_M); const d=JAM_S-masuk; if(d>0) p.durasi=d; }
+          } catch(e) {}
         }
+      });
+
+      Object.values(pairs).forEach(p => {
+        // Klasifikasi MURNI dari jadwal, abaikan status GAS
+        const isLuar = !isTanggalPiket2(p.NIA, p.tanggal);
         if((kategori==='nonpiket') !== isLuar) return;
         if(!map[p.NIA]) { const a=allAnggota.find(x=>x.NIA===p.NIA); map[p.NIA]={nama:p.nama,divisi:a?a.divisi:'-',total:0}; }
         map[p.NIA].total += p.durasi;
@@ -3615,6 +3611,17 @@ function tutupSesiAdmin(sesiId) {
 window.tutupSesiAdmin = tutupSesiAdmin;
 
 window.goTo=goTo;
+
+// Restore halaman dari hash URL saat refresh
+(function restorePageFromHash() {
+  const hash = window.location.hash.replace('#', '');
+  const allowedPages = ['scan', 'qr', 'kalender', 'kegiatan-scan', 'izin-anggota'];
+  // Hanya restore halaman publik (bukan admin) untuk keamanan
+  if (hash && allowedPages.includes(hash)) {
+    // Delay sedikit agar DOM siap
+    setTimeout(() => { try { goTo(hash); } catch(e) {} }, 100);
+  }
+})();
 window.switchSubIzin=switchSubIzin;
 window.pilihPesertaByDivisi=pilihPesertaByDivisi; window.togglePesertaSesi=togglePesertaSesi;
 window.ambilLokasiSesiAdmin=ambilLokasiSesiAdmin; window.buatSesiKegiatan=buatSesiKegiatan;
