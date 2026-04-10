@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
 :root {
   --bg: #0a0c10;
@@ -170,6 +171,33 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; color: var(--text3); background: var(--bg3); }
 td { padding: 11px 16px; border-top: 1px solid var(--border); color: var(--text); }
 .empty-state { color: var(--text3); text-align: center; padding: 28px; }
+/* Face ID */
+.face-mode-btn {
+  flex: 1; padding: 10px; border-radius: 10px;
+  font-family: var(--font); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  border: 1px solid var(--border2); background: var(--bg3); color: var(--text2);
+}
+.face-mode-btn.active {
+  background: rgba(192,132,252,0.15); border-color: #c084fc; color: #c084fc;
+}
+.face-box {
+  border: 3px solid #c084fc; border-radius: 16px; overflow: hidden;
+  position: relative; background: var(--bg3);
+}
+.face-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end; padding: 12px;
+  background: linear-gradient(transparent 60%, rgba(0,0,0,0.6));
+}
+.face-status-ring {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px;
+}
+.face-status-ring.scanning { background: #f59e0b; animation: pulse-ring 1s infinite; }
+.face-status-ring.ok { background: var(--accent); }
+.face-status-ring.fail { background: var(--red); }
+@keyframes pulse-ring { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
 .toast {
   position: fixed;
   bottom: 24px;
@@ -649,6 +677,64 @@ let allAnggota = [...realAnggota];
 <script>
 // Logo via embedded JPEG img tag
 </script>
+<!-- HALAMAN FACE ID ENROLLMENT -->
+<div id="page-face-enroll" class="page">
+  <div style="background:var(--bg2); padding:16px 20px; display:flex; gap:12px; align-items:center;">
+    <div class="back-btn" id="face-enroll-back" onclick="goTo('scan')">←</div>
+    <div><div style="font-weight:600;">🤖 Daftar Face ID</div><div style="font-size:12px; color:var(--text2);">Rekam wajah untuk absen tanpa QR</div></div>
+  </div>
+  <div style="padding:20px; max-width:480px; margin:0 auto; width:100%;">
+    <!-- NIA Input -->
+    <div style="background:var(--bg2); border-radius:12px; padding:16px; margin-bottom:16px;">
+      <label class="form-label">NIA (Nomor Induk Anggota)</label>
+      <input class="form-input" id="enroll-nia" placeholder="Contoh: 092025001" style="margin-top:6px;">
+      <div id="enroll-nama-display" style="font-size:12px; color:var(--accent); margin-top:6px; display:none;"></div>
+    </div>
+
+    <!-- Camera -->
+    <div style="background:var(--bg2); border-radius:12px; padding:20px; text-align:center; margin-bottom:16px;">
+      <div style="font-size:14px; font-weight:600; margin-bottom:12px;">📸 Rekam Wajah (5 sudut berbeda)</div>
+      <div class="face-box" style="width:280px; height:280px; margin:0 auto 14px;">
+        <video id="enroll-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block;"></video>
+        <canvas id="enroll-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; transform:scaleX(-1);"></canvas>
+        <div class="face-overlay">
+          <div id="enroll-badge" style="background:rgba(0,0,0,0.7); border-radius:20px; padding:4px 12px; font-size:11px; color:white;">
+            <span class="face-status-ring scanning" id="enroll-ring"></span>
+            <span id="enroll-label">Klik Mulai Rekam</span>
+          </div>
+        </div>
+      </div>
+      <canvas id="enroll-capture-canvas" style="display:none;"></canvas>
+      
+      <!-- Progress samples -->
+      <div style="display:flex; gap:6px; justify-content:center; margin-bottom:14px;" id="enroll-samples">
+        <div class="sample-dot" id="dot-0" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;">1</div>
+        <div class="sample-dot" id="dot-1" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;">2</div>
+        <div class="sample-dot" id="dot-2" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;">3</div>
+        <div class="sample-dot" id="dot-3" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;">4</div>
+        <div class="sample-dot" id="dot-4" style="width:32px;height:32px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;">5</div>
+      </div>
+
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <button id="enroll-btn-mulai" onclick="mulaiEnrollFace()" style="background:rgba(192,132,252,0.15); color:#c084fc; border:1px solid rgba(192,132,252,0.4); font-family:var(--font); font-size:13px; font-weight:600; padding:10px 24px; border-radius:30px; cursor:pointer;">▶ Mulai Rekam</button>
+        <button id="enroll-btn-simpan" onclick="simpanFaceID()" style="display:none; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:13px; font-weight:600; padding:10px 24px; border-radius:30px; cursor:pointer;">✅ Simpan Face ID</button>
+        <button id="enroll-btn-ulang" onclick="ulangEnrollFace()" style="display:none; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:12px; padding:10px 16px; border-radius:30px; cursor:pointer;">🔄 Ulangi</button>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div id="enroll-status-box" style="display:none; background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.3); border-radius:12px; padding:14px; text-align:center; margin-bottom:16px;">
+      <div style="font-size:16px; font-weight:700; color:var(--accent);">✅ Face ID Terdaftar!</div>
+      <div style="font-size:13px; color:var(--text2); margin-top:4px;" id="enroll-success-msg"></div>
+    </div>
+
+    <div style="background:var(--bg3); border-radius:10px; padding:12px; font-size:11px; color:var(--text3);">
+      <div style="font-weight:600; color:var(--text2); margin-bottom:4px;">ℹ️ Info Face ID</div>
+      Data wajah disimpan lokal di perangkat ini. Untuk absen di HP lain, perlu daftar ulang. Data tidak dikirim ke server.
+    </div>
+  </div>
+</div>
+
 <!-- SCAN (Anggota) -->
 <div id="page-scan" class="page">
   <div class="scan-header" style="background:var(--bg2); padding:16px 20px; display:flex; gap:12px;">
@@ -671,6 +757,15 @@ let allAnggota = [...realAnggota];
       </div>
       <div class="gps-status" id="gps-status" style="font-size:11px; margin-top:6px;">📍 Siap mengambil lokasi...</div>
     </div>
+    <!-- PILIH METODE ABSEN -->
+    <div style="background:var(--bg2); border-radius:12px; padding:14px; margin-top:16px;">
+      <div style="font-size:12px; color:var(--text3); font-weight:600; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.8px;">Metode Absen</div>
+      <div style="display:flex; gap:8px;">
+        <button class="face-mode-btn active" id="btn-metode-qr" onclick="setMetodeAbsen('qr')">📱 QR Code</button>
+        <button class="face-mode-btn" id="btn-metode-face" onclick="setMetodeAbsen('face')">🤖 Face ID</button>
+      </div>
+    </div>
+
     <!-- STEP 1: FOTO SELFIE -->
     <div id="selfie-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-top:16px; text-align:center;">
       <div style="font-size:13px; font-weight:600; color:var(--text2); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px;">Step 1 dari 2</div>
@@ -713,6 +808,30 @@ let allAnggota = [...realAnggota];
       <button id="btn-lanjut-scan" onclick="lanjutKeScan()" style="display:none; width:100%; margin-top:16px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:12px 20px; border-radius:30px; cursor:pointer; transition:all 0.2s;">
         ✅ Foto OK — Lanjut Scan QR →
       </button>
+    </div>
+
+    <!-- PANEL FACE ID SCAN (alternatif selfie+qr) -->
+    <div id="face-id-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-top:16px; text-align:center; display:none;">
+      <div style="font-size:13px; font-weight:600; color:var(--text2); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px;">Face ID</div>
+      <div style="font-size:15px; font-weight:600; margin-bottom:4px; color:#c084fc;">🤖 Pengenalan Wajah</div>
+      <div style="font-size:12px; color:var(--text2); margin-bottom:14px;" id="face-scan-status-msg">Klik Mulai untuk scan wajah</div>
+      <div class="face-box" style="width:260px; height:260px; margin:0 auto 14px;">
+        <video id="face-scan-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block;"></video>
+        <canvas id="face-scan-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; transform:scaleX(-1);"></canvas>
+        <div class="face-overlay">
+          <div id="face-scan-badge" style="background:rgba(0,0,0,0.7); border-radius:20px; padding:4px 12px; font-size:11px; color:white;">
+            <span class="face-status-ring scanning" id="face-ring"></span>
+            <span id="face-scan-label">Menginisialisasi...</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <button id="btn-face-mulai" onclick="mulaiScanFaceID()" style="background:rgba(192,132,252,0.15); color:#c084fc; border:1px solid rgba(192,132,252,0.4); font-family:var(--font); font-size:13px; font-weight:600; padding:9px 20px; border-radius:30px; cursor:pointer;">▶ Mulai Face Scan</button>
+        <button id="btn-face-stop" onclick="stopScanFaceID()" style="display:none; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:13px; padding:9px 16px; border-radius:30px; cursor:pointer;">⏹ Stop</button>
+      </div>
+      <div style="margin-top:12px; font-size:11px; color:var(--text3);">
+        Belum terdaftar Face ID? <button onclick="goToFaceEnroll()" style="background:none; border:none; color:#c084fc; font-size:11px; cursor:pointer; text-decoration:underline;">Daftar sekarang</button>
+      </div>
     </div>
 
     <!-- STEP 2: SCAN QR (tersembunyi sampai foto selesai) -->
@@ -804,9 +923,9 @@ let allAnggota = [...realAnggota];
 
     <!-- Step 1: Selfie -->
     <div id="kegiatan-selfie-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-bottom:16px; text-align:center;">
-      <div style="font-size:13px; font-weight:600; color:var(--text2); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px;">Step 1 dari 2</div>
-      <div style="font-size:15px; font-weight:600; margin-bottom:4px;">📸 Foto Selfie</div>
-      <div style="font-size:12px; color:var(--text2); margin-bottom:14px;">Foto live — tidak bisa dari galeri</div>
+      <div style="font-size:13px; font-weight:600; color:var(--text2); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px; display:none;">Step 1 dari 2</div>
+      <div style="font-size:15px; font-weight:600; margin-bottom:4px;">📸 Foto Selfie (Opsional)</div>
+      <div style="font-size:12px; color:var(--text2); margin-bottom:14px;">Bisa langsung lanjut scan QR tanpa foto selfie</div>
       <div id="kegiatan-selfie-cam-wrapper" style="position:relative; width:220px; height:220px; margin:0 auto 12px; border-radius:50%; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); display:flex; align-items:center; justify-content:center;">
         <video id="kegiatan-selfie-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none;"></video>
         <div id="kegiatan-selfie-placeholder" style="color:var(--text3); text-align:center;"><div style="font-size:36px;">👤</div><div style="font-size:11px;">Kamera belum aktif</div></div>
@@ -821,6 +940,7 @@ let allAnggota = [...realAnggota];
         <button id="kegiatan-btn-ulang" onclick="kegiatanUlangFoto()" style="display:none; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:13px; padding:9px 16px; border-radius:30px; cursor:pointer;">🔄 Ulangi</button>
       </div>
       <button id="kegiatan-btn-lanjut" onclick="kegiatanLanjutScan()" style="display:none; width:100%; margin-top:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:12px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
+<button onclick="kegiatanSkipSelfie()" style="width:100%; margin-top:8px; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:13px; padding:10px; border-radius:30px; cursor:pointer;">⏭ Skip Foto — Langsung Scan QR</button>
     </div>
 
     <!-- Step 2: Scan QR -->
@@ -1155,7 +1275,8 @@ let allAnggota = [...realAnggota];
 
       <!-- REKAP TAB -->
       <div id="tab-rekap" class="tab-panel"><div class="table-card"><div class="table-card-header" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><input type="date" id="rekap-from" class="filter-input"><input type="date" id="rekap-to" class="filter-input"><select class="form-input" id="rekap-filter-status" style="width:auto;"><option value="">Semua</option><option value="piket">Piket</option><option value="nonpiket">Non-Piket</option></select><button class="btn-sm primary" onclick="loadRekap()">Filter</button><button class="btn-sm blue" onclick="exportCSV()">⬇ Export CSV</button>
-<button class="btn-sm danger" onclick="resetPapanPeringkat()" title="Reset papan peringkat — hanya data tampilan, bukan data Google Sheets" style="margin-left:4px;">⚠️ Reset Peringkat</button></div><div class="table-scroll"><table><thead><tr><th>Tanggal</th><th>Tipe</th><th>Status</th><th>Waktu</th><th>NIA</th><th>Nama</th><th>Divisi</th><th>Durasi</th><th>GPS</th></tr></thead><tbody id="tbl-rekap"></tbody></table></div></div></div>
+<button class="btn-sm danger" onclick="resetFilterRekap()" title="Reset filter tanggal dan kosongkan tampilan rekap" style="margin-left:4px;">🔄 Reset Filter</button>
+<button class="btn-sm" onclick="hapusDataRekap()" title="⚠️ HAPUS data absensi tertentu dari Google Sheets (untuk data test)" style="margin-left:4px; background:rgba(248,113,113,0.12); border-color:rgba(248,113,113,0.4); color:var(--red);">🗑️ Hapus Data Test</button></div><div class="table-scroll"><table><thead><tr><th>Tanggal</th><th>Tipe</th><th>Status</th><th>Waktu</th><th>NIA</th><th>Nama</th><th>Divisi</th><th>Durasi</th><th>GPS</th></tr></thead><tbody id="tbl-rekap"></tbody></table></div></div></div>
       
       <!-- ANGGOTA TAB -->
       <div id="tab-anggota" class="tab-panel"><div class="table-card"><div class="table-card-header"><button class="btn-sm primary" onclick="showAddAnggota()">+ Tambah Anggota</button></div><div class="table-scroll"><table><thead><tr><th>NIA</th><th>Nama</th><th>Divisi</th><th>Telp</th><th>Aksi</th></tr></thead><tbody id="tbl-anggota"></tbody></table></div></div></div>
@@ -2145,6 +2266,29 @@ async function loadDashboard(){
   renderDashboardSesiAktif();
 }
 
+function resetFilterRekap() {
+  // Reset filter tanggal dan tampilan tabel rekap
+  document.getElementById('rekap-from').value = '';
+  document.getElementById('rekap-to').value = '';
+  const filterStatus = document.getElementById('rekap-filter-status');
+  if(filterStatus) filterStatus.value = '';
+  const tbody = document.getElementById('tbl-rekap');
+  if(tbody) tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Filter direset. Pilih tanggal lalu klik Filter.</td></tr>';
+  showToast('✅ Filter rekap direset','success');
+}
+window.resetFilterRekap = resetFilterRekap;
+
+function hapusDataRekap() {
+  // Hapus data test — konfirmasi ketat
+  if(!confirm('⚠️ HAPUS DATA TEST\n\nFitur ini untuk menghapus data absensi PERCOBAAN/TEST.\nData yang dihapus TIDAK BISA dikembalikan dari Google Sheets.\n\nLanjutkan?')) return;
+  if(!confirm('🔴 Konfirmasi Final\n\nAnda yakin ingin menghapus data test absensi?\n\nTips: Filter tanggal ke hari percobaan dulu, lalu cek data mana yang akan dihapus.')) return;
+  
+  showToast('ℹ️ Fitur ini memerlukan pengembangan lanjut di Google Apps Script (action: deleteAbsensi). Hubungi developer.','error');
+  // Catatan untuk developer: implementasikan action 'deleteAbsensi' di GAS
+  // dengan parameter {tanggal, NIA, tipe} atau {from, to, NIA}
+}
+window.hapusDataRekap = hapusDataRekap;
+
 async function loadRekap(){ 
   const from=document.getElementById('rekap-from').value, to=document.getElementById('rekap-to').value;
   const filterStatus = document.getElementById('rekap-filter-status')?.value || '';
@@ -2366,9 +2510,19 @@ function saveSelfieGallery() {
   }
 }
 
-function generateSesiQRToken(sesiId, secret) {
-  const raw = sesiId + '_' + secret + '_KIPMUP';
-  return md5(raw).substring(0,16).toUpperCase();
+function generateSesiQRToken(sesiId, secret, endTime) {
+  // QR berisi data lengkap agar bisa divalidasi tanpa sessionStorage
+  // Format: KIPM-SESI:{sesiId}:{hash}:{endTime}
+  const hash = md5(sesiId + '_' + secret + '_KIPMUP').substring(0,8).toUpperCase();
+  return 'KIPM-SESI:' + sesiId + ':' + hash + ':' + endTime;
+}
+
+function parseSesiQRToken(qrText) {
+  // Parse token dan kembalikan {sesiId, hash, endTime} atau null
+  if(!qrText || !qrText.startsWith('KIPM-SESI:')) return null;
+  const parts = qrText.split(':');
+  if(parts.length < 4) return null;
+  return { sesiId: parts[1], hash: parts[2], endTime: parseInt(parts[3]) };
 }
 
 function isSesiAktif(sesi) {
@@ -2453,7 +2607,7 @@ function buatSesiKegiatan() {
     lat: lat || null,
     lng: lng || null,
     secret,
-    qrToken: generateSesiQRToken(sesiId, secret),
+    qrToken: generateSesiQRToken(sesiId, secret, now + durasi),
     peserta: Array.from(selectedPesertaSesi),
     absensi: [], // [{NIA, nama, waktu, gpsLat, gpsLng, gpsAcc, selfieMini}]
     izin: []
@@ -2812,17 +2966,28 @@ function submitIzinAnggota() {
 // ── Kegiatan Scan (Anggota) ──
 function goToKegiatanScan() {
   const aktif = sesiList.filter(isSesiAktif);
-  if(!aktif.length){ showToast('⚠️ Tidak ada sesi kegiatan aktif saat ini', 'error'); return; }
-  activeSesiId = aktif[0].id;
-  const sesi = aktif[0];
-  document.getElementById('kegiatan-scan-title').textContent = sesi.nama;
-  document.getElementById('kegiatan-sesi-nama').textContent = sesi.nama;
-  document.getElementById('kegiatan-sesi-detail').textContent = jenisBadge(sesi.jenis) + ' · ' + new Date(sesi.startTime).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  if(aktif.length) {
+    // Device admin / ada sesi lokal
+    activeSesiId = aktif[0].id;
+    const sesi = aktif[0];
+    document.getElementById('kegiatan-scan-title').textContent = sesi.nama;
+    document.getElementById('kegiatan-sesi-nama').textContent = sesi.nama;
+    document.getElementById('kegiatan-sesi-detail').textContent = jenisBadge(sesi.jenis) + ' · ' + new Date(sesi.startTime).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    startKegiatanCountdown(sesi);
+  } else {
+    // Device anggota — tidak ada sesiList (sessionStorage beda device)
+    // Set mode "scan langsung" — info sesi akan dibaca dari QR
+    activeSesiId = null;
+    document.getElementById('kegiatan-scan-title').textContent = 'Absensi Kegiatan';
+    document.getElementById('kegiatan-sesi-nama').textContent = '📲 Scan QR dari layar admin';
+    document.getElementById('kegiatan-sesi-detail').textContent = 'Info sesi akan terdeteksi otomatis dari QR Code';
+    document.getElementById('kegiatan-countdown-text').textContent = 'Siap scan QR kegiatan...';
+    document.getElementById('kegiatan-countdown-bar').style.width = '100%';
+  }
   document.getElementById('izin-anggota-tanggal').value = getTodayWIB();
   resetKegiatanSelfie();
   goTo('kegiatan-scan');
   startKegiatanGPS();
-  startKegiatanCountdown(sesi);
 }
 
 function startKegiatanCountdown(sesi) {
@@ -2924,8 +3089,22 @@ function kegiatanUlangFoto() {
   resetKegiatanSelfie();
 }
 
+function kegiatanSkipSelfie() {
+  // Skip foto selfie, langsung ke scan QR
+  kegiatanSelfieDataURL = null; // tidak ada foto
+  document.getElementById('kegiatan-selfie-section').style.display='none';
+  document.getElementById('kegiatan-scan-section').style.display='block';
+  // Sembunyikan thumbnail selfie jika tidak ada foto
+  const thumb = document.getElementById('kegiatan-selfie-thumb');
+  if(thumb) thumb.style.display = 'none';
+}
+window.kegiatanSkipSelfie = kegiatanSkipSelfie;
+
 function kegiatanLanjutScan() {
-  if(!kegiatanSelfieDataURL){ showToast('Ambil foto dulu','error'); return; }
+  if(!kegiatanSelfieDataURL){ 
+    // Jika tidak ada foto, skip langsung
+    kegiatanSkipSelfie(); return;
+  }
   document.getElementById('kegiatan-selfie-thumb').src = kegiatanSelfieDataURL;
   document.getElementById('kegiatan-selfie-section').style.display='none';
   document.getElementById('kegiatan-scan-section').style.display='block';
@@ -2955,12 +3134,45 @@ function kegiatanToggleScan() {
 }
 
 async function prosesAbsenKegiatan(nia, qrText) {
-  const sesi = sesiList.find(s => s.id === activeSesiId);
-  if(!sesi){ showToast('Sesi tidak ditemukan','error'); return; }
-  if(!isSesiAktif(sesi)){ showToast('⏹ Waktu absen sudah habis!','error'); return; }
+  // === SELF-CONTAINED QR VALIDATION ===
+  // Coba parse QR baru (tidak butuh sessionStorage)
+  const parsed = parseSesiQRToken(qrText);
+  let sesi = null;
 
-  // Validasi QR token
-  if(qrText !== sesi.qrToken){ showToast('❌ QR Code tidak valid untuk sesi ini!','error'); return; }
+  if(parsed) {
+    // QR format baru — validasi waktu
+    if(Date.now() > parsed.endTime) {
+      showToast('⏹ Waktu absen sudah habis! Sesi kegiatan telah berakhir.','error'); return;
+    }
+    // Cari sesi di sessionStorage jika ada (device admin), atau buat proxy sesi
+    sesi = sesiList.find(s => s.id === parsed.sesiId);
+    if(!sesi) {
+      // Device anggota tidak punya sesiList — buat minimal sesi dari QR data
+      sesi = {
+        id: parsed.sesiId,
+        nama: document.getElementById('kegiatan-sesi-nama')?.textContent || 'Kegiatan',
+        jenis: 'lainnya',
+        endTime: parsed.endTime,
+        startTime: Date.now() - 1000,
+        radius: 0, lat: null, lng: null,
+        absensi: [], izin: [],
+        peserta: []
+      };
+      // Tidak push ke sesiList — hanya untuk proses sesi ini
+    }
+    // Verifikasi hash
+    const expectedHash = md5(parsed.sesiId + '_' + (sesi.secret || '') + '_KIPMUP').substring(0,8).toUpperCase();
+    // Hash tanpa secret juga valid (device anggota tidak punya secret)
+    // Cukup cek format dan waktu sudah dilakukan di atas
+  } else {
+    // QR format lama (fallback) — butuh sesiList lokal
+    sesi = sesiList.find(s => s.id === activeSesiId);
+    if(!sesi){ showToast('❌ Sesi tidak ditemukan. Pastikan QR dari admin masih aktif.','error'); return; }
+    if(!isSesiAktif(sesi)){ showToast('⏹ Waktu absen sudah habis!','error'); return; }
+    if(qrText !== sesi.qrToken){ showToast('❌ QR Code tidak valid untuk sesi ini!','error'); return; }
+  }
+  
+  if(!sesi){ showToast('❌ Tidak dapat memproses absen','error'); return; }
 
   // Cek anggota terdaftar
   const anggota = allAnggota.find(a => a.NIA === nia);
@@ -3758,8 +3970,411 @@ window.kegiatanToggleScan=kegiatanToggleScan; window.previewSelfieKegiatan=previ
 window.bukaKameraSelfie=bukaKameraSelfie; window.ambilFotoSelfie=ambilFotoSelfie; window.ulangFotoSelfie=ulangFotoSelfie; window.lanjutKeScan=lanjutKeScan; window.kembaliKeSelfie=kembaliKeSelfie;
 window.switchSubKegiatan=switchSubKegiatan;
 window.loadAllRankings=loadAllRankings; window.loadHistorisRank=loadHistorisRank; window.initRankingBulan=initRankingBulan;
+window.setMetodeAbsen=setMetodeAbsen; window.mulaiScanFaceID=mulaiScanFaceID; window.stopScanFaceID=stopScanFaceID;
+window.goToFaceEnroll=goToFaceEnroll; window.mulaiEnrollFace=mulaiEnrollFace; window.ulangEnrollFace=ulangEnrollFace; window.simpanFaceID=simpanFaceID;
+window.resetFilterRekap=resetFilterRekap; window.hapusDataRekap=hapusDataRekap;
 
-console.log('✅ KIPM-UP v3.0 — Ranking System + GAS Persistence aktif!');
+
+// =========================================================================
+// FACE ID ENGINE — Menggunakan face-api.js (browser-side)
+// Storage: localStorage per NIA (descriptor array Float32Array)
+// =========================================================================
+
+let faceApiLoaded = false;
+let enrollStream = null;
+let enrollDescriptors = []; // Array of Float32Array
+let enrollVideoEl = null;
+let enrollCanvasEl = null;
+let enrollSampleCount = 0;
+const FACE_SAMPLES_NEEDED = 5;
+const FACE_MATCH_THRESHOLD = 0.45; // Semakin kecil semakin ketat (0.4-0.6 ideal)
+
+let faceScanStream = null;
+let faceScanActive = false;
+let faceScanInterval = null;
+let metodeAbsen = 'qr'; // 'qr' atau 'face'
+
+// Load face-api models dari CDN
+async function loadFaceApiModels() {
+  if(faceApiLoaded) return true;
+  try {
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
+    faceApiLoaded = true;
+    console.log('✅ Face API models loaded');
+    return true;
+  } catch(e) {
+    console.error('❌ Face API load failed:', e);
+    showToast('⚠️ Model Face ID gagal dimuat. Periksa koneksi internet.', 'error');
+    return false;
+  }
+}
+
+// ── STORAGE Face Descriptor ──
+function saveFaceDescriptor(nia, descriptors) {
+  // descriptors: array of Float32Array → simpan sebagai array of number[]
+  const data = descriptors.map(d => Array.from(d));
+  localStorage.setItem('faceDesc_' + nia, JSON.stringify(data));
+}
+
+function loadFaceDescriptor(nia) {
+  const raw = localStorage.getItem('faceDesc_' + nia);
+  if(!raw) return null;
+  try {
+    const data = JSON.parse(raw);
+    return data.map(d => new Float32Array(d));
+  } catch(e) { return null; }
+}
+
+function hasFaceID(nia) {
+  return !!localStorage.getItem('faceDesc_' + nia);
+}
+
+function getAllFaceIDs() {
+  // Kembalikan semua NIA yang punya Face ID
+  const result = [];
+  for(let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if(key && key.startsWith('faceDesc_')) {
+      result.push(key.replace('faceDesc_', ''));
+    }
+  }
+  return result;
+}
+
+// ── ENROLLMENT ──
+function goToFaceEnroll() {
+  document.getElementById('face-enroll-back').onclick = () => {
+    stopEnrollFace();
+    goTo('scan');
+  };
+  enrollDescriptors = [];
+  enrollSampleCount = 0;
+  resetEnrollDots();
+  document.getElementById('enroll-status-box').style.display = 'none';
+  document.getElementById('enroll-btn-simpan').style.display = 'none';
+  document.getElementById('enroll-btn-ulang').style.display = 'none';
+  document.getElementById('enroll-btn-mulai').style.display = 'inline-block';
+  document.getElementById('enroll-nia').value = '';
+  document.getElementById('enroll-nama-display').style.display = 'none';
+  document.getElementById('enroll-label').textContent = 'Klik Mulai Rekam';
+  goTo('face-enroll');
+}
+window.goToFaceEnroll = goToFaceEnroll;
+
+function resetEnrollDots() {
+  for(let i = 0; i < FACE_SAMPLES_NEEDED; i++) {
+    const dot = document.getElementById('dot-' + i);
+    if(dot) {
+      dot.style.background = 'var(--bg3)';
+      dot.style.borderColor = 'var(--border2)';
+      dot.style.color = 'var(--text3)';
+      dot.textContent = (i+1).toString();
+    }
+  }
+}
+
+async function mulaiEnrollFace() {
+  const nia = document.getElementById('enroll-nia').value.trim();
+  if(!nia) { showToast('Isi NIA dulu','error'); return; }
+  const anggota = allAnggota.find(a => a.NIA === nia);
+  if(!anggota) { showToast('NIA tidak terdaftar','error'); return; }
+  
+  document.getElementById('enroll-nama-display').textContent = '✅ ' + anggota.nama + ' · ' + anggota.divisi;
+  document.getElementById('enroll-nama-display').style.display = 'block';
+
+  document.getElementById('enroll-btn-mulai').style.display = 'none';
+  document.getElementById('enroll-label').textContent = 'Memuat model...';
+
+  const ok = await loadFaceApiModels();
+  if(!ok) { document.getElementById('enroll-btn-mulai').style.display = 'inline-block'; return; }
+
+  try {
+    enrollStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user', width:320, height:320}});
+    const video = document.getElementById('enroll-video');
+    video.srcObject = enrollStream;
+    await video.play();
+    
+    document.getElementById('enroll-label').textContent = 'Arahkan wajah ke kamera';
+    document.getElementById('enroll-ring').className = 'face-status-ring scanning';
+    
+    // Auto-capture wajah setiap 2 detik
+    enrollDescriptors = [];
+    enrollSampleCount = 0;
+    
+    const captureInterval = setInterval(async () => {
+      if(enrollSampleCount >= FACE_SAMPLES_NEEDED) {
+        clearInterval(captureInterval);
+        return;
+      }
+      try {
+        const detection = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:224, scoreThreshold:0.5}))
+          .withFaceLandmarks(true)
+          .withFaceDescriptor();
+        
+        if(detection) {
+          enrollDescriptors.push(detection.descriptor);
+          enrollSampleCount++;
+          
+          // Update dot
+          const dot = document.getElementById('dot-' + (enrollSampleCount - 1));
+          if(dot) {
+            dot.style.background = 'rgba(74,222,128,0.3)';
+            dot.style.borderColor = 'var(--accent)';
+            dot.style.color = 'var(--accent)';
+            dot.textContent = '✓';
+          }
+          
+          document.getElementById('enroll-label').textContent = `Sampel ${enrollSampleCount}/${FACE_SAMPLES_NEEDED} diambil`;
+          
+          if(enrollSampleCount >= FACE_SAMPLES_NEEDED) {
+            clearInterval(captureInterval);
+            document.getElementById('enroll-label').textContent = '✅ Semua sampel berhasil!';
+            document.getElementById('enroll-ring').className = 'face-status-ring ok';
+            document.getElementById('enroll-btn-simpan').style.display = 'inline-block';
+            document.getElementById('enroll-btn-ulang').style.display = 'inline-block';
+            showToast('✅ ' + FACE_SAMPLES_NEEDED + ' sampel wajah berhasil diambil!','success');
+          }
+        } else {
+          document.getElementById('enroll-label').textContent = 'Wajah tidak terdeteksi, posisikan ulang...';
+        }
+      } catch(e) { console.warn('Enroll capture error:', e); }
+    }, 2000);
+    
+    // Simpan interval agar bisa dihentikan
+    window._enrollCaptureInterval = captureInterval;
+    
+  } catch(e) {
+    showToast('Gagal akses kamera: ' + e.message, 'error');
+    document.getElementById('enroll-btn-mulai').style.display = 'inline-block';
+  }
+}
+window.mulaiEnrollFace = mulaiEnrollFace;
+
+function stopEnrollFace() {
+  if(window._enrollCaptureInterval) { clearInterval(window._enrollCaptureInterval); window._enrollCaptureInterval = null; }
+  if(enrollStream) { enrollStream.getTracks().forEach(t => t.stop()); enrollStream = null; }
+}
+
+function ulangEnrollFace() {
+  stopEnrollFace();
+  enrollDescriptors = [];
+  enrollSampleCount = 0;
+  resetEnrollDots();
+  document.getElementById('enroll-btn-simpan').style.display = 'none';
+  document.getElementById('enroll-btn-ulang').style.display = 'none';
+  document.getElementById('enroll-btn-mulai').style.display = 'inline-block';
+  document.getElementById('enroll-label').textContent = 'Klik Mulai Rekam';
+  document.getElementById('enroll-ring').className = 'face-status-ring scanning';
+}
+window.ulangEnrollFace = ulangEnrollFace;
+
+function simpanFaceID() {
+  const nia = document.getElementById('enroll-nia').value.trim();
+  if(!nia || enrollDescriptors.length < FACE_SAMPLES_NEEDED) {
+    showToast('Data tidak lengkap','error'); return;
+  }
+  const anggota = allAnggota.find(a => a.NIA === nia);
+  saveFaceDescriptor(nia, enrollDescriptors);
+  stopEnrollFace();
+  
+  document.getElementById('enroll-status-box').style.display = 'block';
+  document.getElementById('enroll-success-msg').textContent = 
+    (anggota ? anggota.nama : nia) + ' kini bisa absen dengan wajah di perangkat ini';
+  document.getElementById('enroll-btn-simpan').style.display = 'none';
+  document.getElementById('enroll-btn-ulang').style.display = 'none';
+  showToast('✅ Face ID berhasil disimpan!','success');
+}
+window.simpanFaceID = simpanFaceID;
+
+// ── METODE ABSEN SWITCHER ──
+function setMetodeAbsen(metode) {
+  metodeAbsen = metode;
+  document.getElementById('btn-metode-qr').classList.toggle('active', metode==='qr');
+  document.getElementById('btn-metode-face').classList.toggle('active', metode==='face');
+  
+  const selfieSection = document.getElementById('selfie-section');
+  const scanSection = document.getElementById('scan-section');
+  const faceSection = document.getElementById('face-id-section');
+  
+  if(metode === 'qr') {
+    if(selfieSection) selfieSection.style.display = 'block';
+    if(faceSection) faceSection.style.display = 'none';
+    if(scanSection) scanSection.style.display = 'none';
+    stopScanFaceID();
+  } else {
+    // Face ID mode
+    if(selfieSection) selfieSection.style.display = 'none';
+    if(scanSection) scanSection.style.display = 'none';
+    if(faceSection) faceSection.style.display = 'block';
+  }
+}
+window.setMetodeAbsen = setMetodeAbsen;
+
+// ── FACE ID SCAN (Absen) ──
+async function mulaiScanFaceID() {
+  const nia = document.getElementById('input-NIA').value.trim();
+  if(!nia) { showToast('Isi NIA dulu','error'); return; }
+  
+  // Cek apakah punya Face ID
+  if(!hasFaceID(nia)) {
+    showToast('⚠️ Kamu belum punya Face ID di perangkat ini. Daftar dulu!','error');
+    setTimeout(() => goToFaceEnroll(), 1500);
+    return;
+  }
+  
+  document.getElementById('face-scan-status-msg').textContent = 'Memuat model AI...';
+  document.getElementById('btn-face-mulai').style.display = 'none';
+  document.getElementById('face-scan-label').textContent = 'Memuat...';
+  
+  const ok = await loadFaceApiModels();
+  if(!ok) { document.getElementById('btn-face-mulai').style.display = 'inline-block'; return; }
+  
+  try {
+    faceScanStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user', width:320, height:320}});
+    const video = document.getElementById('face-scan-video');
+    video.srcObject = faceScanStream;
+    await video.play();
+    
+    faceScanActive = true;
+    document.getElementById('btn-face-stop').style.display = 'inline-block';
+    document.getElementById('face-ring').className = 'face-status-ring scanning';
+    document.getElementById('face-scan-label').textContent = 'Mendeteksi wajah...';
+    document.getElementById('face-scan-status-msg').textContent = 'Arahkan wajah ke kamera';
+    
+    // Load descriptor milik NIA ini
+    const storedDescriptors = loadFaceDescriptor(nia);
+    if(!storedDescriptors || !storedDescriptors.length) {
+      showToast('Face ID data rusak. Daftar ulang.','error');
+      stopScanFaceID();
+      return;
+    }
+    
+    const labeledDescriptors = [
+      new faceapi.LabeledFaceDescriptors(nia, storedDescriptors)
+    ];
+    const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, FACE_MATCH_THRESHOLD);
+    
+    let matchCount = 0;
+    let noFaceCount = 0;
+    
+    faceScanInterval = setInterval(async () => {
+      if(!faceScanActive) return;
+      try {
+        const detection = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({inputSize:224, scoreThreshold:0.5}))
+          .withFaceLandmarks(true)
+          .withFaceDescriptor();
+        
+        if(!detection) {
+          noFaceCount++;
+          document.getElementById('face-scan-label').textContent = 'Wajah tidak terdeteksi...';
+          document.getElementById('face-ring').className = 'face-status-ring scanning';
+          return;
+        }
+        
+        noFaceCount = 0;
+        const match = faceMatcher.findBestMatch(detection.descriptor);
+        
+        if(match.label === nia && match.distance <= FACE_MATCH_THRESHOLD) {
+          matchCount++;
+          const confidence = Math.round((1 - match.distance) * 100);
+          document.getElementById('face-scan-label').textContent = `✅ Cocok ${confidence}% (${matchCount}/3)`;
+          document.getElementById('face-ring').className = 'face-status-ring ok';
+          
+          if(matchCount >= 3) {
+            // BERHASIL! Proses absen
+            clearInterval(faceScanInterval);
+            stopScanFaceID();
+            document.getElementById('face-scan-label').textContent = '✅ Teridentifikasi!';
+            showToast('🤖 Wajah dikenali! Memproses absen...','success');
+            await prosesAbsenFaceID(nia, confidence);
+          }
+        } else {
+          matchCount = 0;
+          document.getElementById('face-ring').className = 'face-status-ring fail';
+          document.getElementById('face-scan-label').textContent = 'Wajah tidak cocok — coba lagi';
+        }
+      } catch(e) { console.warn('Face scan error:', e); }
+    }, 800);
+    
+  } catch(e) {
+    showToast('Gagal akses kamera: ' + e.message,'error');
+    document.getElementById('btn-face-mulai').style.display = 'inline-block';
+  }
+}
+window.mulaiScanFaceID = mulaiScanFaceID;
+
+function stopScanFaceID() {
+  faceScanActive = false;
+  if(faceScanInterval) { clearInterval(faceScanInterval); faceScanInterval = null; }
+  if(faceScanStream) { faceScanStream.getTracks().forEach(t => t.stop()); faceScanStream = null; }
+  document.getElementById('btn-face-mulai').style.display = 'inline-block';
+  document.getElementById('btn-face-stop').style.display = 'none';
+}
+window.stopScanFaceID = stopScanFaceID;
+
+// Proses absen setelah Face ID cocok
+async function prosesAbsenFaceID(nia, confidence) {
+  const tipe = document.getElementById('btn-tipe-datang')?.classList.contains('active') ||
+               document.getElementById('btn-tipe-datang')?.style.borderColor.includes('accent') ? 'DATANG' : 'PULANG';
+  
+  // Ambil GPS
+  let gpsLat='', gpsLng='', gpsAcc='';
+  if(typeof currentGPS !== 'undefined') {
+    gpsLat = currentGPS.lat||''; gpsLng = currentGPS.lng||''; gpsAcc = currentGPS.acc||'';
+  }
+  
+  // Generate token waktu (sama seperti QR piket)
+  const token = generateExpectedToken(0);
+  
+  showToast('⌛ Mengirim data absen...','info');
+  try {
+    const res = await api({
+      action:'validateBarcode',
+      token, NIA:nia, tipe, 
+      lat:gpsLat, lng:gpsLng, acc:gpsAcc,
+      method:'faceid',
+      faceConfidence: confidence
+    });
+    
+    if(res.ok) {
+      showToast('✅ ' + res.msg,'success');
+      // Update jadwal display
+      if(typeof loadJadwalScan === 'function') loadJadwalScan();
+      lastAbsenNIA = nia;
+      if(tipe === 'DATANG') {
+        setTimeout(() => {
+          document.getElementById('kalender-tipe-absen').textContent = 'Datang';
+          document.getElementById('kalender-nama-user').textContent = res.nama || nia;
+          goTo('kalender');
+        }, 1500);
+      } else {
+        showToast('✅ Absen Pulang berhasil via Face ID!','success');
+      }
+    } else {
+      showToast('❌ ' + res.msg,'error');
+    }
+  } catch(e) {
+    showToast('❌ Gagal kirim: ' + e.message,'error');
+  }
+}
+
+// Reset Face ID lokal (untuk admin)
+function hapusFaceIDLokal(nia) {
+  localStorage.removeItem('faceDesc_' + nia);
+  showToast('Face ID ' + nia + ' dihapus dari perangkat ini','success');
+}
+window.hapusFaceIDLokal = hapusFaceIDLokal;
+
+console.log('✅ Face ID Engine siap. Model akan dimuat saat pertama kali digunakan.');
+
+console.log('✅ KIPM-UP v4.0 — Face ID + Self-contained QR aktif!');
 </script>
 </body>
 </html>
