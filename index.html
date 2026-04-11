@@ -889,6 +889,35 @@ let allAnggota = [...realAnggota];
       <div class="jadwal-card-title">📋 Piket Hari Ini</div>
       <div id="jadwal-today"><div class="loading" style="color:var(--accent);">Memuat jadwal & status...</div></div>
     </div>
+
+    <!-- INFO ATURAN PIKET — paling bawah -->
+    <div style="background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.22); border-radius:12px; padding:16px; margin-top:16px;">
+      <div style="font-size:12px; font-weight:700; color:var(--accent3); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+        <span>📌</span> Aturan Piket KIPM-UP
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:12px; color:var(--text2); line-height:1.6;">
+        <div style="display:flex; gap:8px;">
+          <span style="color:var(--accent3); flex-shrink:0;">⏰</span>
+          <span>Jam piket berlangsung <b style="color:var(--text);">07.00 – 19.00 WIB</b>, Senin s/d Jumat sesuai jadwal divisi.</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <span style="color:var(--accent); flex-shrink:0;">✅</span>
+          <span>Wajib <b style="color:var(--text);">absen Datang</b> saat tiba <b>dan</b> <b style="color:var(--text);">absen Pulang</b> saat meninggalkan sekre.</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <span style="color:var(--red); flex-shrink:0;">⚠️</span>
+          <span>Jika <b style="color:var(--text);">lupa absen Pulang</b>, durasi piket hanya dihitung <b style="color:var(--red);">2 jam</b> — meski sudah hadir lebih lama.</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <span style="color:var(--red); flex-shrink:0;">❌</span>
+          <span>Jika tidak absen sama sekali (tidak Datang & tidak Pulang), tercatat <b style="color:var(--red);">Alpha</b>.</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <span style="color:var(--accent2); flex-shrink:0;">📝</span>
+          <span>Tidak bisa hadir? Ajukan <b style="color:var(--text);">Izin</b> lewat tombol "📝 Ajukan Izin" di beranda sebelum hari piket.</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -943,6 +972,7 @@ let allAnggota = [...realAnggota];
       <div style="font-size:12px; color:var(--text3); margin-bottom:4px;">SESI AKTIF</div>
       <div id="kegiatan-sesi-nama" style="font-weight:600; font-size:16px; margin-bottom:4px;">Memuat...</div>
       <div id="kegiatan-sesi-detail" style="font-size:12px; color:var(--text2);"></div>
+      <div id="kegiatan-sesi-ruangan" style="font-size:12px; color:var(--text3); margin-top:3px; display:none;"></div>
       <div class="countdown-bar" style="margin-top:10px;"><div class="countdown-fill" id="kegiatan-countdown-bar" style="width:100%;"></div></div>
       <div style="font-size:11px; color:var(--text3); margin-top:4px;" id="kegiatan-countdown-text">Menghitung...</div>
     </div>
@@ -995,6 +1025,52 @@ let allAnggota = [...realAnggota];
       <div id="kegiatan-qr-reader-wrapper" style="width:250px; height:250px; margin:0 auto 12px; position:relative;"><div id="kegiatan-qr-reader"></div></div>
       <button id="kegiatan-btn-scan" onclick="kegiatanToggleScan()" style="background:#c084fc; color:#1a0a2e; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:10px 24px; border-radius:30px; cursor:pointer;">▶ Mulai Scan</button>
     </div>
+  </div>
+</div>
+
+<!-- HALAMAN SUKSES ABSEN KEGIATAN -->
+<div id="page-kegiatan-sukses" class="page">
+  <div style="background:var(--bg2); padding:16px 20px; display:flex; gap:12px; align-items:center;">
+    <div class="back-btn" onclick="goTo('landing')">←</div>
+    <div><div style="font-weight:600;">Absensi Berhasil</div><div style="font-size:12px; color:var(--text2);">Detail kehadiran kamu</div></div>
+  </div>
+  <div id="kegiatan-sukses-body" style="padding:20px; max-width:480px; margin:0 auto; width:100%;">
+    <div style="background:rgba(74,222,128,0.1); border:1px solid var(--accent); border-radius:16px; padding:22px; text-align:center; margin-bottom:16px;">
+      <div style="font-size:44px; margin-bottom:8px;">✅</div>
+      <div style="font-size:20px; font-weight:700; color:var(--accent); margin-bottom:4px;">Absensi Berhasil!</div>
+      <div style="font-size:14px; color:var(--text2);">Selamat datang, <b id="ks-nama" style="color:var(--text);"></b>!</div>
+    </div>
+    <div style="background:var(--bg2); border-radius:12px; padding:16px; margin-bottom:12px;">
+      <div style="font-size:11px; color:var(--text3); font-weight:600; letter-spacing:1px; margin-bottom:10px;">DETAIL KEGIATAN</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; color:var(--text2);">Nama Kegiatan</span>
+          <span style="font-size:13px; font-weight:600;" id="ks-sesi"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; color:var(--text2);">Jenis</span>
+          <span style="font-size:13px;" id="ks-jenis"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; color:var(--text2);">Waktu Absen</span>
+          <span style="font-size:13px; font-weight:600; color:var(--accent);" id="ks-waktu"></span>
+        </div>
+        <div id="ks-ruangan" style="font-size:12px; color:var(--text3); margin-top:2px; display:none;"></div>
+      </div>
+    </div>
+    <div id="ks-bintang" style="background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.35); border-radius:10px; padding:12px 14px; margin-bottom:12px; font-size:13px; color:#fbbf24; display:none;"></div>
+    <div id="ks-bahan" style="background:rgba(34,211,238,0.08); border:1px solid rgba(34,211,238,0.25); border-radius:12px; padding:14px 16px; margin-bottom:16px; display:none;">
+      <div style="font-size:11px; color:var(--text3); font-weight:600; letter-spacing:1px; margin-bottom:8px;">📎 BAHAN PRESENTASI</div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="font-size:28px;">📄</div>
+        <div style="flex:1;">
+          <div style="font-size:13px; font-weight:600; color:var(--accent2);" id="ks-bahan-nama"></div>
+          <div style="font-size:11px; color:var(--text3);" id="ks-bahan-size"></div>
+        </div>
+        <button onclick="downloadKsBahan()" style="background:var(--accent2); color:#0a1a2e; border:none; font-family:var(--font); font-size:13px; font-weight:600; padding:9px 16px; border-radius:20px; cursor:pointer;">⬇️ Download</button>
+      </div>
+    </div>
+    <button onclick="goTo('landing')" style="width:100%; padding:13px; background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:14px; border-radius:30px; cursor:pointer; margin-top:4px;">← Kembali ke Beranda</button>
   </div>
 </div>
 
@@ -1161,7 +1237,28 @@ let allAnggota = [...realAnggota];
               </div>
             </div>
             <div style="margin-top:12px;">
-              <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:4px;">Lokasi Kegiatan <span style="color:var(--text3);">(opsional, untuk GPS lock)</span></label>
+              <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:4px;">🏢 Ruangan / Tempat Kegiatan</label>
+              <input class="form-input" id="sesi-ruangan" placeholder="Contoh: Sekre KIPM, Ruang Rapat Lt.2, Online (Google Meet), dll">
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:4px;">📎 Bahan Presentasi <span style="color:var(--text3);">(opsional, PDF/PPT/DOCX maks 5MB)</span></label>
+              <div style="background:var(--bg3); border:1px dashed var(--border2); border-radius:8px; padding:14px; text-align:center;" id="bahan-upload-area">
+                <input type="file" id="sesi-bahan-file" accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg" style="display:none;" onchange="handleBahanFileSelect(this)">
+                <div id="bahan-placeholder">
+                  <div style="font-size:22px; margin-bottom:6px;">📄</div>
+                  <div style="font-size:12px; color:var(--text2); margin-bottom:8px;">Upload file bahan presentasi (opsional)</div>
+                  <button type="button" onclick="document.getElementById('sesi-bahan-file').click()" style="background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:12px; padding:7px 16px; border-radius:20px; cursor:pointer;">📁 Pilih File</button>
+                </div>
+                <div id="bahan-selected" style="display:none;">
+                  <div style="font-size:18px; margin-bottom:4px;">📎</div>
+                  <div id="bahan-filename" style="font-size:13px; font-weight:600; color:var(--accent); margin-bottom:4px;"></div>
+                  <div id="bahan-filesize" style="font-size:11px; color:var(--text3); margin-bottom:8px;"></div>
+                  <button type="button" onclick="hapusBahanFile()" style="background:none; border:none; color:var(--red); font-size:11px; cursor:pointer; text-decoration:underline;">✕ Hapus file</button>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:4px;">Lokasi GPS <span style="color:var(--text3);">(opsional, untuk GPS lock)</span></label>
               <div style="display:flex; gap:8px;">
                 <input class="form-input" id="sesi-lat" placeholder="Latitude" style="flex:1;">
                 <input class="form-input" id="sesi-lng" placeholder="Longitude" style="flex:1;">
@@ -2611,6 +2708,7 @@ let selfieGallery = (() => {
 })();
 let selectedPesertaSesi = new Set();
 let kegiatanSelfieDataURL = null;
+let bahanFileData = null; // {name, size, dataURL, type} — bahan presentasi sesi
 let kegiatanSelfieStream = null;
 let kegiatanScannerActive = false;
 let kegiatanHtml5Scanner = null;
@@ -2632,19 +2730,23 @@ function saveSelfieGallery() {
   }
 }
 
-function generateSesiQRToken(sesiId, secret, endTime) {
+function generateSesiQRToken(sesiId, secret, endTime, namaSesi, ruangan) {
   // QR berisi data lengkap agar bisa divalidasi tanpa sessionStorage
-  // Format: KIPM-SESI:{sesiId}:{hash}:{endTime}
+  // Format: KIPM-SESI:{sesiId}:{hash}:{endTime}:{b64nama}:{b64ruangan}
   const hash = md5(sesiId + '_' + secret + '_KIPMUP').substring(0,8).toUpperCase();
-  return 'KIPM-SESI:' + sesiId + ':' + hash + ':' + endTime;
+  const b64nama = btoa(encodeURIComponent(namaSesi||'')).replace(/=/g,'');
+  const b64ruangan = btoa(encodeURIComponent(ruangan||'')).replace(/=/g,'');
+  return 'KIPM-SESI:' + sesiId + ':' + hash + ':' + endTime + ':' + b64nama + ':' + b64ruangan;
 }
 
 function parseSesiQRToken(qrText) {
-  // Parse token dan kembalikan {sesiId, hash, endTime} atau null
   if(!qrText || !qrText.startsWith('KIPM-SESI:')) return null;
   const parts = qrText.split(':');
   if(parts.length < 4) return null;
-  return { sesiId: parts[1], hash: parts[2], endTime: parseInt(parts[3]) };
+  let namaSesi = '', ruangan = '';
+  try { if(parts[4]) namaSesi = decodeURIComponent(atob(parts[4]+'==')); } catch(e){}
+  try { if(parts[5]) ruangan = decodeURIComponent(atob(parts[5]+'==')); } catch(e){}
+  return { sesiId: parts[1], hash: parts[2], endTime: parseInt(parts[3]), namaSesi, ruangan };
 }
 
 function isSesiAktif(sesi) {
@@ -2704,6 +2806,56 @@ function ambilLokasiSesiAdmin() {
   }, () => showToast('GPS gagal','error'), {enableHighAccuracy:true});
 }
 
+// ── Bahan Presentasi File Handler ──
+function handleBahanFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('❌ File terlalu besar! Maks 5MB.', 'error');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    bahanFileData = {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      dataURL: e.target.result
+    };
+    document.getElementById('bahan-placeholder').style.display = 'none';
+    document.getElementById('bahan-selected').style.display = 'block';
+    document.getElementById('bahan-filename').textContent = file.name;
+    document.getElementById('bahan-filesize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    showToast('✅ File "' + file.name + '" siap diupload', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+window.handleBahanFileSelect = handleBahanFileSelect;
+
+function hapusBahanFile() {
+  bahanFileData = null;
+  const inp = document.getElementById('sesi-bahan-file');
+  if (inp) inp.value = '';
+  const ph = document.getElementById('bahan-placeholder');
+  const sel = document.getElementById('bahan-selected');
+  if (ph) ph.style.display = 'block';
+  if (sel) sel.style.display = 'none';
+}
+window.hapusBahanFile = hapusBahanFile;
+
+// Download bahan presentasi dari sesi
+function downloadBahanSesi(sesiId) {
+  const sesi = sesiList.find(s => s.id === sesiId);
+  if (!sesi || !sesi.bahanFile) { showToast('Tidak ada file bahan untuk sesi ini','error'); return; }
+  const a = document.createElement('a');
+  a.href = sesi.bahanFile.dataURL;
+  a.download = sesi.bahanFile.name;
+  a.click();
+  showToast('⬇️ Mengunduh: ' + sesi.bahanFile.name, 'success');
+}
+window.downloadBahanSesi = downloadBahanSesi;
+
 function buatSesiKegiatan() {
   const nama = document.getElementById('sesi-nama').value.trim();
   const jenis = document.getElementById('sesi-jenis').value;
@@ -2711,6 +2863,7 @@ function buatSesiKegiatan() {
   const radius = parseInt(document.getElementById('sesi-radius').value);
   const lat = document.getElementById('sesi-lat').value.trim();
   const lng = document.getElementById('sesi-lng').value.trim();
+  const ruangan = document.getElementById('sesi-ruangan')?.value.trim() || '';
 
   if(!nama){ showToast('Nama kegiatan wajib diisi','error'); return; }
   if(selectedPesertaSesi.size === 0){ showToast('Pilih minimal 1 peserta','error'); return; }
@@ -2721,7 +2874,7 @@ function buatSesiKegiatan() {
 
   const sesi = {
     id: sesiId,
-    nama, jenis,
+    nama, jenis, ruangan,
     startTime: now,
     endTime: now + durasi,
     durasi: durasi / 60000,
@@ -2729,16 +2882,16 @@ function buatSesiKegiatan() {
     lat: lat || null,
     lng: lng || null,
     secret,
-    qrToken: generateSesiQRToken(sesiId, secret, now + durasi),
+    qrToken: generateSesiQRToken(sesiId, secret, now + durasi, nama, ruangan),
     peserta: Array.from(selectedPesertaSesi),
-    absensi: [], // [{NIA, nama, waktu, gpsLat, gpsLng, gpsAcc, selfieMini}]
-    izin: []
+    absensi: [],
+    izin: [],
+    bahanFile: bahanFileData || null  // {name, size, dataURL, type}
   };
 
   sesiList.push(sesi);
   saveSesi();
 
-  // Generate QR display
   showToast('✅ Sesi "' + nama + '" berhasil dibuat!', 'success');
   switchSubKegiatan('aktif');
   renderSesiAktif();
@@ -2747,6 +2900,8 @@ function buatSesiKegiatan() {
   document.getElementById('sesi-nama').value = '';
   document.getElementById('sesi-lat').value = '';
   document.getElementById('sesi-lng').value = '';
+  if(document.getElementById('sesi-ruangan')) document.getElementById('sesi-ruangan').value = '';
+  hapusBahanFile();
   selectedPesertaSesi = new Set();
   renderPesertaSesiPicker();
 }
@@ -2793,6 +2948,7 @@ function renderSesiAktif() {
         <div>
           <div style="font-weight:600; font-size:14px;">${sesi.nama}</div>
           <div style="font-size:12px; color:var(--text2);">${jenisBadge(sesi.jenis)} · ${new Date(sesi.startTime).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</div>
+          ${sesi.ruangan ? `<div style="font-size:11px; color:var(--text3); margin-top:2px;">🏢 ${sesi.ruangan}</div>` : ''}
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
           ${isAktif ? `<span class="badge badge-hadir">🟢 AKTIF</span>` : `<span class="badge badge-belum">⏹ SELESAI</span>`}
@@ -2806,6 +2962,11 @@ function renderSesiAktif() {
         <div><span style="color:var(--red); font-weight:600;">${alpha}</span><span style="color:var(--text3);"> alpha</span></div>
         <div><span style="color:var(--accent2); font-weight:600;">${persen}%</span><span style="color:var(--text3);"> kehadiran</span></div>
       </div>
+      ${sesi.bahanFile ? `<div style="background:rgba(34,211,238,0.08); border:1px solid rgba(34,211,238,0.2); border-radius:8px; padding:8px 12px; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+        <span style="font-size:16px;">📎</span>
+        <div style="flex:1; font-size:12px;"><b style="color:var(--accent2);">${sesi.bahanFile.name}</b><br><span style="color:var(--text3);">${(sesi.bahanFile.size/1024).toFixed(1)} KB</span></div>
+        <button class="btn-sm" style="font-size:11px;" onclick="downloadBahanSesi('${sesi.id}')">⬇️ Download</button>
+      </div>` : ''}
       ${isAktif ? `<div style="font-size:11px; color:var(--accent3);">⏱ Sisa waktu absen: ${sisaMnt}m ${sisaDtk}s</div>
       <div class="countdown-bar"><div class="countdown-fill" style="width:${Math.round(sisaMs/(sesi.durasi*60000)*100)}%;"></div></div>` : ''}
       <div style="margin-top:10px;">
@@ -3198,6 +3359,11 @@ function goToKegiatanScan() {
     document.getElementById('kegiatan-scan-title').textContent = sesi.nama;
     document.getElementById('kegiatan-sesi-nama').textContent = sesi.nama;
     document.getElementById('kegiatan-sesi-detail').textContent = jenisBadge(sesi.jenis) + ' · ' + new Date(sesi.startTime).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    const ruanganEl = document.getElementById('kegiatan-sesi-ruangan');
+    if (ruanganEl) {
+      if (sesi.ruangan) { ruanganEl.textContent = '🏢 ' + sesi.ruangan; ruanganEl.style.display = 'block'; }
+      else { ruanganEl.style.display = 'none'; }
+    }
     startKegiatanCountdown(sesi);
   } else {
     // Device anggota — tidak ada sesiList (sessionStorage beda device)
@@ -3369,15 +3535,25 @@ async function prosesAbsenKegiatan(nia, qrText) {
       // Device anggota tidak punya sesiList — buat minimal sesi dari QR data
       sesi = {
         id: parsed.sesiId,
-        nama: document.getElementById('kegiatan-sesi-nama')?.textContent || 'Kegiatan',
+        nama: parsed.namaSesi || document.getElementById('kegiatan-sesi-nama')?.textContent || 'Kegiatan',
+        ruangan: parsed.ruangan || '',
         jenis: 'lainnya',
         endTime: parsed.endTime,
         startTime: Date.now() - 1000,
         radius: 0, lat: null, lng: null,
         absensi: [], izin: [],
-        peserta: []
+        peserta: [],
+        bahanFile: null
       };
-      // Tidak push ke sesiList — hanya untuk proses sesi ini
+    }
+    // Update info sesi di UI jika ruangan tersedia dari QR
+    if (parsed.namaSesi) {
+      const namaEl = document.getElementById('kegiatan-sesi-nama');
+      if (namaEl) namaEl.textContent = parsed.namaSesi;
+    }
+    if (parsed.ruangan) {
+      const ruEl = document.getElementById('kegiatan-sesi-ruangan');
+      if (ruEl) { ruEl.textContent = '🏢 ' + parsed.ruangan; ruEl.style.display = 'block'; }
     }
     // Verifikasi hash
     const expectedHash = md5(parsed.sesiId + '_' + (sesi.secret || '') + '_KIPMUP').substring(0,8).toUpperCase();
@@ -3474,7 +3650,56 @@ async function prosesAbsenKegiatan(nia, qrText) {
 
   showToast(`✅ Absen berhasil! ${bintangDidapat ? '⭐ Kamu dapat bintang!' : ''} Selamat ${sesi.jenis === 'rapat'?'rapat':'belajar'}, ${anggota.nama}!`,'success');
   if(kegiatanCountdownInterval) clearInterval(kegiatanCountdownInterval);
-  setTimeout(() => goTo('landing'), 1800);
+
+  // Tampilkan halaman sukses kegiatan (bukan langsung ke landing)
+  setTimeout(() => tampilKegiatanSukses(sesi, anggota.nama, bintangDidapat, waktu), 1200);
+}
+
+// ── Halaman Sukses Absen Kegiatan ──
+function tampilKegiatanSukses(sesi, namaPeserta, dapatBintang, waktuAbsen) {
+  const el = document.getElementById('kegiatan-sukses-body');
+  if (!el) { goTo('landing'); return; }
+
+  document.getElementById('ks-nama').textContent = namaPeserta;
+  document.getElementById('ks-sesi').textContent = sesi.nama;
+  document.getElementById('ks-jenis').textContent = jenisBadge(sesi.jenis);
+  document.getElementById('ks-waktu').textContent = waktuAbsen;
+  document.getElementById('ks-ruangan').textContent = sesi.ruangan ? '🏢 ' + sesi.ruangan : '';
+  document.getElementById('ks-ruangan').style.display = sesi.ruangan ? 'block' : 'none';
+
+  const bintangEl = document.getElementById('ks-bintang');
+  if (dapatBintang) {
+    bintangEl.style.display = 'block';
+    bintangEl.innerHTML = '⭐ <b>Kamu dapat bintang!</b> Absen tepat waktu (≤30 menit dari mulai)';
+  } else {
+    bintangEl.style.display = 'block';
+    bintangEl.style.background = 'rgba(139,139,139,0.1)';
+    bintangEl.style.borderColor = 'rgba(139,139,139,0.3)';
+    bintangEl.style.color = 'var(--text2)';
+    bintangEl.innerHTML = 'Absen tercatat ✅ (tidak dapat bintang — lebih dari 30 menit)';
+  }
+
+  const bahanEl = document.getElementById('ks-bahan');
+  if (sesi.bahanFile) {
+    bahanEl.style.display = 'block';
+    document.getElementById('ks-bahan-nama').textContent = sesi.bahanFile.name;
+    document.getElementById('ks-bahan-size').textContent = (sesi.bahanFile.size / 1024).toFixed(1) + ' KB';
+    window._ksBahanURL = sesi.bahanFile.dataURL;
+    window._ksBahanNama = sesi.bahanFile.name;
+  } else {
+    bahanEl.style.display = 'none';
+  }
+
+  goTo('kegiatan-sukses');
+}
+
+function downloadKsBahan() {
+  if (!window._ksBahanURL) return;
+  const a = document.createElement('a');
+  a.href = window._ksBahanURL;
+  a.download = window._ksBahanNama || 'bahan-presentasi';
+  a.click();
+  showToast('⬇️ Mengunduh bahan presentasi...', 'success');
 }
 
 function previewSelfieKegiatan(nia, src) {
