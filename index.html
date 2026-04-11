@@ -686,6 +686,11 @@ let allAnggota = [...realAnggota];
         <span class="btn-text"><span class="btn-label">Absen Kegiatan</span><span class="btn-sublabel">Rapat / Kelas</span></span>
         <span class="btn-arrow">›</span>
       </button>
+      <button class="btn-main" onclick="goToIzinAnggota()" style="background:linear-gradient(135deg,rgba(251,146,60,0.14),rgba(234,88,12,0.07)); color:#fb923c; border-color:rgba(251,146,60,0.33);">
+        <span class="btn-icon">📝</span>
+        <span class="btn-text"><span class="btn-label">Ajukan Izin</span><span class="btn-sublabel">Tidak bisa hadir piket / kegiatan</span></span>
+        <span class="btn-arrow">›</span>
+      </button>
       <button class="btn-main btn-qr-live" onclick="goTo('qr')">
         <span class="btn-icon">📲</span>
         <span class="btn-text"><span class="btn-label">QR Code Live</span><span class="btn-sublabel">Piket Hari Ini</span></span>
@@ -772,10 +777,6 @@ let allAnggota = [...realAnggota];
     <div><div class="scan-header-title">Absensi Piket</div><div id="scan-tanggal"></div></div>
   </div>
   <div class="scan-body" style="padding:20px; max-width:480px; margin:0 auto;">
-    <div class="jadwal-card" style="background:var(--bg2); border-radius:12px; padding:16px; margin-bottom:16px;">
-      <div class="jadwal-card-title">📋 Piket Hari Ini</div>
-      <div id="jadwal-today"><div class="loading" style="color:var(--accent);">Memuat jadwal & status...</div></div>
-    </div>
     <div class="identity-section" style="background:var(--bg2); border-radius:12px; padding:16px;">
       <label class="form-label">NIA (Nomor Induk Anggota)</label>
       <input class="form-input" id="input-NIA" placeholder="Contoh: 082024022">
@@ -882,6 +883,12 @@ let allAnggota = [...realAnggota];
       <div id="qr-reader-wrapper" style="width:260px; height:260px; margin:12px auto; position:relative;"><div id="qr-reader"></div></div>
       <button class="btn-scan" id="btn-start-scan" onclick="toggleScan()" style="background:var(--accent); color:#0a1a0f; padding:10px 20px; border-radius:30px; border:none; font-family:var(--font); font-size:14px; font-weight:600; cursor:pointer;">▶ Mulai Scan</button>
     </div>
+
+    <!-- PIKET HARI INI — dipindah ke bawah -->
+    <div class="jadwal-card" style="background:var(--bg2); border-radius:12px; padding:16px; margin-top:16px;">
+      <div class="jadwal-card-title">📋 Piket Hari Ini</div>
+      <div id="jadwal-today"><div class="loading" style="color:var(--accent);">Memuat jadwal & status...</div></div>
+    </div>
   </div>
 </div>
 
@@ -970,7 +977,7 @@ let allAnggota = [...realAnggota];
         <button id="kegiatan-btn-ulang" onclick="kegiatanUlangFoto()" style="display:none; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:13px; padding:9px 16px; border-radius:30px; cursor:pointer;">🔄 Ulangi</button>
       </div>
       <button id="kegiatan-btn-lanjut" onclick="kegiatanLanjutScan()" style="display:none; width:100%; margin-top:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:12px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
-<button onclick="kegiatanSkipSelfie()" style="width:100%; margin-top:8px; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:13px; padding:10px; border-radius:30px; cursor:pointer;">⏭ Skip Foto — Langsung Scan QR</button>
+      <div style="margin-top:8px; font-size:11px; color:var(--text3); text-align:center;">📸 Foto selfie <b style="color:var(--red);">wajib</b> sebelum scan QR</div>
     </div>
 
     <!-- Step 2: Scan QR -->
@@ -1366,6 +1373,17 @@ let allAnggota = [...realAnggota];
 
         </div>
 
+        <!-- RANKING BINTANG — full width -->
+        <div class="table-card" style="padding:0; overflow:hidden; margin-bottom:16px;">
+          <div style="background:linear-gradient(135deg,rgba(251,191,36,0.25),rgba(251,191,36,0.05)); padding:14px 16px; border-bottom:1px solid var(--border);">
+            <div style="font-size:13px; font-weight:700; color:#fbbf24;">⭐ Ranking Bintang Kehadiran</div>
+            <div style="font-size:11px; color:var(--text3); margin-top:2px;">Bintang didapat jika absen ≤ 30 menit dari jadwal mulai (Rapat / Kelas EnR / Kelas TnD) · Periode hingga Feb 2027</div>
+          </div>
+          <div id="rank-bintang" style="padding:12px;">
+            <div style="color:var(--text3); font-size:12px; text-align:center; padding:20px;">Memuat...</div>
+          </div>
+        </div>
+
         <!-- Rekap bulanan historis -->
         <div class="table-card" style="padding:16px;">
           <div style="font-weight:600; font-size:14px; margin-bottom:12px;">📊 Rekap Historis per Bulan</div>
@@ -1374,6 +1392,7 @@ let allAnggota = [...realAnggota];
               <option value="piket">Piket (In-Jadwal)</option>
               <option value="nonpiket">Non-Piket</option>
               <option value="kegiatan">Kegiatan (Rapat/Kelas)</option>
+              <option value="bintang">Bintang ⭐</option>
             </select>
             <select class="form-input" id="hist-bulan" style="width:auto;"></select>
             <button class="btn-sm primary" onclick="loadHistorisRank()">Tampilkan</button>
@@ -2736,9 +2755,27 @@ function renderSesiAktif() {
   const el = document.getElementById('list-sesi-aktif');
   if(!el) return;
   const now = Date.now();
-  const aktif = sesiList.filter(s => s.endTime > now - 3600000); // tampil sampai 1 jam setelah berakhir
+  const aktif = sesiList.filter(s => s.endTime > now - 3600000);
 
   if(!aktif.length){ el.innerHTML = '<div style="color:var(--text3); text-align:center; padding:32px;">Tidak ada sesi aktif</div>'; return; }
+
+  // Sync dari GAS untuk sesi aktif — ambil data absensi real-time
+  aktif.forEach(sesi => {
+    api({ action: 'getAbsensiKegiatanBySesi', sesiId: sesi.id })
+      .then(res => {
+        if (res && res.ok && Array.isArray(res.data) && res.data.length > sesi.absensi.length) {
+          // Ada data baru dari GAS yang belum ada di localStorage
+          res.data.forEach(ab => {
+            const nia = ab.NIA;
+            if (nia && !sesi.absensi.find(x => x.NIA === nia)) {
+              sesi.absensi.push({ NIA: nia, nama: ab.nama||'-', waktu: ab.waktu||'-', gpsLat:'', gpsLng:'', selfieMini: null });
+            }
+          });
+          saveSesi();
+          renderSesiAktif(); // re-render setelah dapat data baru
+        }
+      }).catch(() => {}); // silent fail jika GAS offline
+  });
 
   el.innerHTML = aktif.map(sesi => {
     const isAktif = isSesiAktif(sesi);
@@ -2773,6 +2810,7 @@ function renderSesiAktif() {
       <div class="countdown-bar"><div class="countdown-fill" style="width:${Math.round(sisaMs/(sesi.durasi*60000)*100)}%;"></div></div>` : ''}
       <div style="margin-top:10px;">
         <button class="btn-sm" style="font-size:11px;" onclick="toggleDetailSesi('${sesi.id}')">📋 Lihat Detail Absensi</button>
+        ${isAktif ? `<button class="btn-sm primary" style="font-size:11px; margin-left:6px;" onclick="syncAbsensiSesiDariGAS('${sesi.id}')">🔄 Sync GAS</button>` : ''}
       </div>
       <div id="detail-sesi-${sesi.id}" style="display:none; margin-top:10px;">
         ${renderDetailSesi(sesi)}
@@ -2780,6 +2818,31 @@ function renderSesiAktif() {
     </div>`;
   }).join('');
 }
+
+// Sync manual: tarik data absensi kegiatan dari GAS ke sesiList lokal
+async function syncAbsensiSesiDariGAS(sesiId) {
+  const sesi = sesiList.find(s => s.id === sesiId);
+  if (!sesi) return;
+  showToast('🔄 Sinkronisasi absensi dari GAS...','info');
+  try {
+    const res = await api({ action: 'getAbsensiKegiatanBySesi', sesiId });
+    if (res && res.ok && Array.isArray(res.data)) {
+      let tambah = 0;
+      res.data.forEach(ab => {
+        if (!sesi.absensi.find(x => x.NIA === ab.NIA)) {
+          sesi.absensi.push({ NIA: ab.NIA, nama: ab.nama||'-', waktu: ab.waktu||'-', gpsLat:'', gpsLng:'', selfieMini: null });
+          tambah++;
+        }
+      });
+      saveSesi();
+      renderSesiAktif();
+      showToast(tambah > 0 ? `✅ ${tambah} absensi baru disinkronkan!` : '✅ Sudah sinkron, tidak ada data baru.', 'success');
+    }
+  } catch(e) {
+    showToast('⚠️ Gagal sync GAS: ' + e.message, 'error');
+  }
+}
+window.syncAbsensiSesiDariGAS = syncAbsensiSesiDariGAS;
 
 function renderDetailSesi(sesi) {
   const absenNIA = new Set(sesi.absensi.map(a => a.NIA));
@@ -3252,20 +3315,14 @@ function kegiatanUlangFoto() {
 }
 
 function kegiatanSkipSelfie() {
-  // Skip foto selfie, langsung ke scan QR
-  kegiatanSelfieDataURL = null; // tidak ada foto
-  document.getElementById('kegiatan-selfie-section').style.display='none';
-  document.getElementById('kegiatan-scan-section').style.display='block';
-  // Sembunyikan thumbnail selfie jika tidak ada foto
-  const thumb = document.getElementById('kegiatan-selfie-thumb');
-  if(thumb) thumb.style.display = 'none';
+  // DINONAKTIFKAN: selfie wajib untuk absen kegiatan
+  showToast('❌ Foto selfie wajib! Ambil foto dulu sebelum scan QR.','error');
 }
 window.kegiatanSkipSelfie = kegiatanSkipSelfie;
 
 function kegiatanLanjutScan() {
   if(!kegiatanSelfieDataURL){ 
-    // Jika tidak ada foto, skip langsung
-    kegiatanSkipSelfie(); return;
+    showToast('❌ Foto selfie wajib! Ambil foto dulu.','error'); return;
   }
   document.getElementById('kegiatan-selfie-thumb').src = kegiatanSelfieDataURL;
   document.getElementById('kegiatan-selfie-section').style.display='none';
@@ -3393,7 +3450,29 @@ async function prosesAbsenKegiatan(nia, qrText) {
   if(selfieGallery.length > 50) selfieGallery.shift(); // limit
   saveSelfieGallery();
 
-  showToast(`✅ Absen berhasil! Selamat ${sesi.nama === 'rapat'?'rapat':'belajar'}, ${anggota.nama}!`,'success');
+  // === KIRIM LANGSUNG KE GAS agar admin bisa lihat real-time ===
+  // Hitung apakah bintang didapat (absen ≤30 menit dari startTime sesi)
+  const bintangDidapat = sesi.startTime ? (Date.now() - sesi.startTime) <= 30 * 60 * 1000 : false;
+  try {
+    await api({
+      action: 'absenKegiatanDirect',
+      sesiId: sesi.id,
+      NIA: nia,
+      nama: anggota.nama,
+      namaSesi: sesi.nama,
+      jenis: sesi.jenis || '-',
+      waktu,
+      gpsLat: kegiatanGPS.lat || '',
+      gpsLng: kegiatanGPS.lng || '',
+      bintang: bintangDidapat ? '1' : '0',
+      startTimeSesi: sesi.startTime ? String(sesi.startTime) : ''
+    });
+    console.log('✅ Absen dikirim ke GAS');
+  } catch(e) {
+    console.warn('⚠️ GAS absen kegiatan gagal (offline?):', e.message);
+  }
+
+  showToast(`✅ Absen berhasil! ${bintangDidapat ? '⭐ Kamu dapat bintang!' : ''} Selamat ${sesi.jenis === 'rapat'?'rapat':'belajar'}, ${anggota.nama}!`,'success');
   if(kegiatanCountdownInterval) clearInterval(kegiatanCountdownInterval);
   setTimeout(() => goTo('landing'), 1800);
 }
@@ -3597,26 +3676,25 @@ async function loadAllRankings() {
   const bulan = parseInt(document.getElementById('rank-periode')?.value || '1');
   const { from, to } = getRangeFromMonths(bulan);
 
-  ['rank-piket', 'rank-nonpiket', 'rank-kegiatan'].forEach(id => {
+  ['rank-piket', 'rank-nonpiket', 'rank-kegiatan', 'rank-bintang'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Memuat data dari server...</div>';
   });
 
   try {
-    // Ambil dari GAS — satu call untuk piket + sesi
     const res = await api({ action: 'getRankingData', from, to });
 
     if (!res || !res.ok) {
-      // Fallback ke getRekapAbsensi kalau getRankingData belum ada di GAS lama
       const fallback = await api({ action: 'getRekapAbsensi', from, to });
       await processRankingPiket((fallback.ok && fallback.data) ? fallback.data : []);
     } else {
       await processRankingPiket(res.piket || []);
-      // Data sesi dari GAS lebih lengkap — gabung dengan sessionStorage
       const gasSesiList = res.sesi || [];
       const localSesiList = sesiList || [];
       processRankingKegiatan(from, to, [...gasSesiList, ...localSesiList]);
     }
+    // Load bintang dari GAS
+    await loadRankingBintang(from, to);
   } catch (e) {
     console.warn('getRankingData gagal, fallback ke getRekapAbsensi:', e.message);
     try {
@@ -3925,6 +4003,11 @@ async function loadHistorisRank() {
   const bulanNama = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   const judulBulan = `${bulanNama[m]} ${y}`;
 
+  if (kategori === 'bintang') {
+    await loadHistorisBintang(from, to, judulBulan);
+    return;
+  }
+
   if(kategori === 'piket' || kategori === 'nonpiket') {
     try {
       const res = await api({action:'getRekapAbsensi', from, to});
@@ -3941,6 +4024,8 @@ async function loadHistorisRank() {
         if(r.status && r.status.trim()) pairs[key].status = r.status;
       });
       // Auto-checkout untuk yang tidak punya PULANG
+      // ATURAN: lupa absen pulang = durasi dihitung hanya 2 jam dari datang
+      const DURASI_LUPA_PULANG = 2 * 60; // 2 jam dalam menit
       Object.values(pairs).forEach(p => {
         if(!p.adaPulang && p.jamDatang && p.tanggal) {
           try {
@@ -3949,8 +4034,8 @@ async function loadHistorisRank() {
             const jamSekarangMenit = (() => { const now=new Date(); const wib=new Date(now.getTime()+7*3600*1000); return wib.getUTCHours()*60+wib.getUTCMinutes(); })();
             const sudahLewat = !isHariIni || jamSekarangMenit >= JAM_SELESAI_MENIT;
             if(sudahLewat) {
-              const wMatch = String(p.jamDatang).match(/(\d{1,2}):(\d{2})/);
-              if(wMatch) { const masuk = Math.max(parseInt(wMatch[1])*60+parseInt(wMatch[2]), JAM_MULAI_MENIT); const d = JAM_SELESAI_MENIT-masuk; if(d>0) p.durasi=d; }
+              // Lupa pulang = 2 jam saja (bukan sampai 19:00)
+              p.durasi = DURASI_LUPA_PULANG;
             }
           } catch(e) {}
         }
@@ -3977,14 +4062,11 @@ async function loadHistorisRank() {
       }
 
       // Auto-checkout historis: hanya hari lalu yang tidak punya PULANG
+      // ATURAN: lupa pulang = 2 jam (bukan sampai 19:00)
       const todayCheckH = getTodayWIB();
       Object.values(pairs).forEach(p => {
         if(!p.adaPulang && p.jamDatang && p.tanggal && p.tanggal < todayCheckH) {
-          try {
-            const JAM_M = 7*60, JAM_S = 19*60;
-            const wm = String(p.jamDatang).match(/(\d{1,2}):(\d{2})/);
-            if(wm) { const masuk=Math.max(parseInt(wm[1])*60+parseInt(wm[2]),JAM_M); const d=JAM_S-masuk; if(d>0) p.durasi=d; }
-          } catch(e) {}
+          p.durasi = DURASI_LUPA_PULANG; // 2 jam
         }
       });
 
@@ -4009,30 +4091,208 @@ async function loadHistorisRank() {
       el.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:16px;">Gagal memuat data dari server</div>';
     }
   } else {
-    // kegiatan — dari sesiList
-    const map = {};
-    sesiList.forEach(sesi => {
-      const tgl = new Date(sesi.startTime);
-      const tglStr = `${tgl.getFullYear()}-${String(tgl.getMonth()+1).padStart(2,'0')}-${String(tgl.getDate()).padStart(2,'0')}`;
-      if(tglStr < from || tglStr > to) return;
-      (sesi.peserta||[]).forEach(nia => { if(!map[nia]) map[nia]={hadir:0,total:0}; map[nia].total++; });
-      (sesi.absensi||[]).forEach(ab => { if(!map[ab.NIA]) map[ab.NIA]={hadir:0,total:0}; map[ab.NIA].hadir++; });
-    });
-    const list = Object.entries(map).map(([nia,v])=>{
-      const a=allAnggota.find(x=>x.NIA===nia);
-      return {nia,nama:a?a.nama:nia,divisi:a?a.divisi:'-',hadir:v.hadir,total:v.total,pct:v.total>0?Math.round(v.hadir/v.total*100):0};
-    }).filter(x=>x.total>0).sort((a,b)=>b.pct-a.pct||b.hadir-a.hadir);
+    // kegiatan — gabung GAS + sesiList lokal
+    // Coba ambil dari GAS dulu untuk data real-time
+    let gasSesiData = [];
+    try {
+      const gRes = await api({ action: 'getRekapSesiKegiatan', withDetail: 'true' });
+      if (gRes && gRes.ok && gRes.data) gasSesiData = gRes.data;
+    } catch(e) {}
 
-    if(!list.length){ el.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px;">Tidak ada data kegiatan bulan ini di sesi ini</div>'; return; }
+    const allSesi = [...gasSesiData, ...sesiList].filter((s, idx, arr) => {
+      // deduplicate by sesiId
+      const id = s.sesiId || s.id;
+      return arr.findIndex(x => (x.sesiId || x.id) === id) === idx;
+    });
+
+    const map = {};
+    allSesi.forEach(sesi => {
+      const tglRaw = sesi.tanggal || (sesi.startTime ? new Date(sesi.startTime).toISOString().substring(0,10) : '');
+      if(tglRaw < from || tglRaw > to) return;
+      const pesertaList = sesi.peserta || [];
+      const absensiList = sesi.absensi || [];
+      pesertaList.forEach(nia => { if(!map[nia]) map[nia]={hadir:0,total:0}; map[nia].total++; });
+      absensiList.forEach(ab => {
+        const nia = ab.NIA || ab;
+        if(!map[nia]) map[nia]={hadir:0,total:0};
+        map[nia].hadir++;
+      });
+    });
+
+    // Tampilkan SEMUA anggota yang terdaftar, bukan hanya yang punya data
+    allAnggota.forEach(a => {
+      if(!map[a.NIA]) map[a.NIA] = {hadir:0, total:0};
+    });
+
+    const list = Object.entries(map).map(([nia,v]) => {
+      const a = allAnggota.find(x => x.NIA === nia);
+      return {nia, nama:a?a.nama:nia, divisi:a?a.divisi:'-', hadir:v.hadir, total:v.total, pct:v.total>0?Math.round(v.hadir/v.total*100):0};
+    }).sort((a,b) => b.pct-a.pct || b.hadir-a.hadir || a.nama.localeCompare(b.nama));
+
     el.innerHTML = `<div style="font-size:12px; color:var(--text2); margin-bottom:10px; font-weight:600;">🎯 Kehadiran Kegiatan — ${judulBulan}</div>` +
-      `<table style="width:100%; font-size:12px;"><thead><tr><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">#</th><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Nama</th><th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Divisi</th><th style="text-align:right; padding:6px 10px; background:var(--bg3); color:#c084fc;">Hadir</th><th style="text-align:right; padding:6px 10px; background:var(--bg3); color:#c084fc;">%</th></tr></thead><tbody>` +
-      list.map((x,i)=>`<tr><td style="padding:7px 10px; border-top:1px solid var(--border);">${i+1}</td><td style="padding:7px 10px; border-top:1px solid var(--border);">${x.nama}</td><td style="padding:7px 10px; border-top:1px solid var(--border); color:var(--text2);">${x.divisi}</td><td style="padding:7px 10px; border-top:1px solid var(--border); text-align:right; color:#c084fc;">${x.hadir}/${x.total}</td><td style="padding:7px 10px; border-top:1px solid var(--border); text-align:right; font-weight:600; color:#c084fc;">${x.pct}%</td></tr>`).join('') +
+      `<table style="width:100%; font-size:12px;"><thead><tr>
+        <th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">#</th>
+        <th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Nama</th>
+        <th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Divisi</th>
+        <th style="text-align:right; padding:6px 10px; background:var(--bg3); color:#c084fc;">Hadir</th>
+        <th style="text-align:right; padding:6px 10px; background:var(--bg3); color:#c084fc;">%</th>
+      </tr></thead><tbody>` +
+      list.map((x,i) => `<tr style="${x.pct===0?'opacity:0.5':''}">
+        <td style="padding:7px 10px; border-top:1px solid var(--border);">${i+1}</td>
+        <td style="padding:7px 10px; border-top:1px solid var(--border);">${x.nama}</td>
+        <td style="padding:7px 10px; border-top:1px solid var(--border); color:var(--text2);">${x.divisi}</td>
+        <td style="padding:7px 10px; border-top:1px solid var(--border); text-align:right; color:#c084fc;">${x.hadir}/${x.total}</td>
+        <td style="padding:7px 10px; border-top:1px solid var(--border); text-align:right; font-weight:600; color:${x.pct>=80?'var(--accent)':x.pct>=50?'#f59e0b':'var(--red)'};">${x.pct}%</td>
+      </tr>`).join('') +
       '</tbody></table>';
+  }
+}
+
+// Handle bintang in historis rank
+async function loadHistorisBintang(from, to, judulBulan) {
+  const el = document.getElementById('rank-historis-table');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px;">Memuat bintang...</div>';
+  
+  try {
+    const res = await api({ action: 'getRekapBintang', from, to });
+    let bintangData = (res && res.ok && res.data) ? res.data : [];
+    
+    // Fallback dari sesiList lokal
+    if (!bintangData.length) {
+      const bMap = {};
+      sesiList.forEach(sesi => {
+        const tgl = sesi.startTime ? new Date(sesi.startTime).toISOString().substring(0,10) : '';
+        if (tgl < from || tgl > to) return;
+        (sesi.absensi||[]).forEach(ab => {
+          if (!ab.NIA) return;
+          if (!bMap[ab.NIA]) bMap[ab.NIA] = 0;
+          if (ab.bintang === true || ab.bintang === 1 || ab.bintang === '1') bMap[ab.NIA]++;
+          else if (sesi.startTime && ab.waktu) {
+            const parts = ab.waktu.match(/(\d+):(\d+)/);
+            if (parts) {
+              const waktuAbsenMs = new Date(sesi.startTime);
+              waktuAbsenMs.setHours(parseInt(parts[1]), parseInt(parts[2]), 0, 0);
+              if ((waktuAbsenMs.getTime() - sesi.startTime) <= 30 * 60 * 1000) bMap[ab.NIA]++;
+            }
+          }
+        });
+      });
+      bintangData = Object.entries(bMap).map(([NIA,bintang]) => ({NIA,bintang}));
+    }
+    
+    const map = {};
+    allAnggota.forEach(a => { map[a.NIA] = {nama:a.nama, divisi:a.divisi||'-', bintang:0}; });
+    bintangData.forEach(b => { const nia = b.NIA||b.nia; if(map[nia]) map[nia].bintang = parseInt(b.bintang)||0; });
+    
+    const list = Object.entries(map).map(([nia,v]) => ({nia,...v}))
+      .sort((a,b) => b.bintang - a.bintang || a.nama.localeCompare(b.nama));
+    
+    el.innerHTML = `<div style="font-size:12px; color:var(--text2); margin-bottom:10px; font-weight:600;">⭐ Bintang — ${judulBulan}</div>` +
+      `<table style="width:100%; font-size:12px;"><thead><tr>
+        <th style="text-align:left;padding:6px 10px;background:var(--bg3);color:var(--text3);">#</th>
+        <th style="text-align:left;padding:6px 10px;background:var(--bg3);color:var(--text3);">Nama</th>
+        <th style="text-align:left;padding:6px 10px;background:var(--bg3);color:var(--text3);">Divisi</th>
+        <th style="text-align:right;padding:6px 10px;background:var(--bg3);color:#fbbf24;">⭐</th>
+      </tr></thead><tbody>` +
+      list.map((x,i) => `<tr style="${x.bintang===0?'opacity:0.45':''}">
+        <td style="padding:6px 10px;border-top:1px solid var(--border);">${i+1}</td>
+        <td style="padding:6px 10px;border-top:1px solid var(--border);">${x.nama}</td>
+        <td style="padding:6px 10px;border-top:1px solid var(--border);color:var(--text2);">${x.divisi}</td>
+        <td style="padding:6px 10px;border-top:1px solid var(--border);text-align:right;color:#fbbf24;font-weight:700;">${x.bintang > 0 ? x.bintang + ' ⭐' : '-'}</td>
+      </tr>`).join('') + '</tbody></table>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);font-size:12px;padding:16px;">Gagal memuat data bintang</div>';
+  }
+}
+async function loadRankingBintang(from, to) {
+  const el = document.getElementById('rank-bintang');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Memuat bintang...</div>';
+
+  try {
+    const res = await api({ action: 'getRekapBintang', from: from || '', to: to || '' });
+    let bintangData = (res && res.ok && res.data) ? res.data : [];
+
+    // Fallback: hitung dari Absensi Kegiatan lokal jika GAS belum support
+    if (!bintangData.length) {
+      const bintangMap = {};
+      sesiList.forEach(sesi => {
+        const tgl = sesi.startTime ? new Date(sesi.startTime).toISOString().substring(0,10) : '';
+        if(tgl < (from||'') || tgl > (to||'9999')) return;
+        (sesi.absensi||[]).forEach(ab => {
+          // Cek bintang dari waktu absen vs startTime (≤30 menit)
+          if (!ab.NIA) return;
+          if (!bintangMap[ab.NIA]) bintangMap[ab.NIA] = 0;
+          // Jika punya flag bintang tersimpan, pakai itu
+          if (ab.bintang === true || ab.bintang === 1 || ab.bintang === '1') {
+            bintangMap[ab.NIA]++;
+          } else if (sesi.startTime && ab.waktu) {
+            // Rekonstuksi dari waktu absen
+            const waktuAbsen = new Date(sesi.startTime);
+            const parts = ab.waktu.match(/(\d+):(\d+)/);
+            if (parts) {
+              waktuAbsen.setHours(parseInt(parts[1]), parseInt(parts[2]), 0, 0);
+              const selisihMs = waktuAbsen.getTime() - sesi.startTime;
+              if (selisihMs <= 30 * 60 * 1000) bintangMap[ab.NIA]++;
+            }
+          }
+        });
+      });
+      bintangData = Object.entries(bintangMap).map(([NIA, bintang]) => ({NIA, bintang}));
+    }
+
+    // Gabungkan dengan semua anggota
+    const map = {};
+    allAnggota.forEach(a => { map[a.NIA] = {nama:a.nama, divisi:a.divisi||'-', bintang:0}; });
+    bintangData.forEach(b => {
+      const nia = b.NIA || b.nia;
+      if (map[nia]) map[nia].bintang = parseInt(b.bintang) || 0;
+      else { const a = allAnggota.find(x=>x.NIA===nia); if(a) map[nia]={nama:a.nama,divisi:a.divisi||'-',bintang:parseInt(b.bintang)||0}; }
+    });
+
+    const list = Object.entries(map)
+      .map(([nia,v]) => ({nia,...v}))
+      .sort((a,b) => b.bintang - a.bintang || a.nama.localeCompare(b.nama));
+
+    const maxBintang = list[0]?.bintang || 1;
+    const periodeLabel = from ? `${from} s/d ${to||'sekarang'}` : 'Semua Periode';
+
+    el.innerHTML = `
+      <div style="font-size:12px; color:var(--text2); margin-bottom:12px; font-weight:600;">⭐ Total Bintang — ${periodeLabel}</div>
+      <div style="font-size:11px; color:var(--text3); margin-bottom:12px;">Bintang = absen ≤ 30 menit dari jadwal mulai kegiatan. Periode kumpul: hingga Februari 2027.</div>
+      <table style="width:100%; font-size:12px;"><thead><tr>
+        <th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">#</th>
+        <th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Nama</th>
+        <th style="text-align:left; padding:6px 10px; background:var(--bg3); color:var(--text3);">Divisi</th>
+        <th style="text-align:right; padding:6px 10px; background:var(--bg3); color:#fbbf24;">⭐ Bintang</th>
+      </tr></thead><tbody>` +
+      list.map((x,i) => {
+        const medals = ['🥇','🥈','🥉'];
+        const medal = i < 3 ? medals[i] : (i+1);
+        const barPct = maxBintang > 0 ? Math.round((x.bintang/maxBintang)*100) : 0;
+        const bintangDisplay = x.bintang > 0
+          ? `<span style="color:#fbbf24; font-weight:700;">${'⭐'.repeat(Math.min(x.bintang,5))}${x.bintang>5?` +${x.bintang-5}`:''}</span> <span style="color:#fbbf24;">${x.bintang}</span>`
+          : `<span style="color:var(--text3);">0</span>`;
+        return `<tr>
+          <td style="padding:7px 10px; border-top:1px solid var(--border); text-align:center;">${medal}</td>
+          <td style="padding:7px 10px; border-top:1px solid var(--border);">
+            <div>${x.nama}</div>
+            <div style="height:3px; background:var(--bg3); border-radius:3px; margin-top:3px;"><div style="height:3px; border-radius:3px; background:#fbbf24; width:${barPct}%;"></div></div>
+          </td>
+          <td style="padding:7px 10px; border-top:1px solid var(--border); color:var(--text2);">${x.divisi}</td>
+          <td style="padding:7px 10px; border-top:1px solid var(--border); text-align:right;">${bintangDisplay}</td>
+        </tr>`;
+      }).join('') +
+      '</tbody></table>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:16px;">Gagal memuat data bintang</div>';
   }
 }
 
 window.loadAllRankings = loadAllRankings;
 window.loadHistorisRank = loadHistorisRank;
+window.loadRankingBintang = loadRankingBintang;
 
 // =========================================================================
 // GAS PERSISTENCE — Sesi Kegiatan & Izin ke Google Sheets
