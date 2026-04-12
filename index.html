@@ -892,7 +892,7 @@ let allAnggota = [...realAnggota];
       <div style="font-size:40px; margin-bottom:12px;">🖥️</div>
       <div style="font-size:20px; font-weight:700; margin-bottom:4px;">Absensi Anggota KIPM-UP</div>
       <div style="font-size:13px; color:var(--text2); margin-bottom:28px;">Masukkan PIN untuk membuka scanner</div>
-      <input class="form-input" id="kiosk-pin" type="password" placeholder="PIN Kiosk" style="text-align:center; font-size:20px; letter-spacing:4px; margin-bottom:16px;" onkeydown="if(event.key==='Enter') kioskLogin()">
+      <input class="form-input" id="kiosk-pin" type="password" placeholder="" style="text-align:center; font-size:20px; letter-spacing:4px; margin-bottom:16px;" onkeydown="if(event.key==='Enter') kioskLogin()">
       <button onclick="kioskLogin()" style="width:100%; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:15px; font-weight:700; padding:14px; border-radius:12px; cursor:pointer;">Buka Scanner →</button>
       <div id="kiosk-err" style="display:none; color:var(--red); font-size:13px; margin-top:12px;">PIN salah. Coba lagi.</div>
       <button onclick="goTo('landing')" style="background:none; border:none; color:var(--text3); font-size:12px; margin-top:16px; cursor:pointer;">← Kembali ke Beranda</button>
