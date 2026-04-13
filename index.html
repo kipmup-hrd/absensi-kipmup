@@ -714,7 +714,7 @@ let allAnggota = [...realAnggota];
 // Logo via embedded JPEG img tag
 </script>
 <!-- HALAMAN FACE ID ENROLLMENT -->
-<div id="page-face-enroll" class="page">
+<div id="page-face-enroll" class="page" style="overflow-y:auto;">
   <div style="background:var(--bg2); padding:16px 20px; display:flex; gap:12px; align-items:center;">
     <div class="back-btn" id="face-enroll-back" onclick="goTo('scan')">←</div>
     <div><div style="font-weight:600;">🤖 Daftar Face ID</div><div style="font-size:12px; color:var(--text2);">Rekam wajah untuk absen tanpa QR</div></div>
@@ -772,7 +772,7 @@ let allAnggota = [...realAnggota];
 </div>
 
 <!-- SCAN (Anggota HP) — tampilkan QR pribadi atau gunakan Face ID -->
-<div id="page-scan" class="page">
+<div id="page-scan" class="page" style="overflow-y:auto; min-height:100vh;">
   <div class="scan-header" style="background:var(--bg2); padding:16px 20px; display:flex; gap:12px; align-items:center;">
     <div class="back-btn" onclick="goTo('landing')">←</div>
     <div><div class="scan-header-title">📱 Absensi Piket</div><div id="scan-tanggal" style="font-size:12px; color:var(--text2);"></div></div>
@@ -1146,55 +1146,89 @@ let allAnggota = [...realAnggota];
 </div>
 
 <!-- HALAMAN BARU: INFORMASI & KALENDER KIPM -->
-<div id="page-kalender" class="page">
+<div id="page-kalender" class="page" style="overflow-y:auto;">
   <div style="padding:16px 20px; background:var(--bg2); display:flex; gap:12px; align-items:center;">
     <div class="back-btn" onclick="goTo('landing')">←</div>
-    <div><div style="font-weight:600;">Informasi & Jadwal KIPM-UP</div></div>
+    <div><div style="font-weight:600;" id="kalender-header-title">Informasi & Jadwal KIPM-UP</div></div>
   </div>
-  <div style="padding:20px; max-width:480px; margin:0 auto; width:100%;">
+  <div style="padding:20px; max-width:480px; margin:0 auto; width:100%; padding-bottom:36px;">
     
     <!-- Ucapan absen berhasil -->
     <div style="background:rgba(74,222,128,0.1); border:1px solid var(--accent); padding:18px; border-radius:14px; text-align:center; margin-bottom:20px;">
-      <div style="font-size:36px; margin-bottom:8px;">🎉</div>
-      <div style="font-size:20px; font-weight:800; color:var(--accent); margin-bottom:4px;">Absensi Berhasil!</div>
+      <div style="font-size:36px; margin-bottom:8px;" id="kalender-icon">🎉</div>
+      <div style="font-size:20px; font-weight:800; color:var(--accent); margin-bottom:4px;" id="kalender-judul">Absensi Berhasil!</div>
       <div style="font-size:14px; color:var(--text2);">Absen <b id="kalender-tipe-absen" style="color:var(--text);">Datang</b> tercatat untuk <b id="kalender-nama-user" style="color:var(--text);">Anggota KIPM</b></div>
       <div style="font-size:12px; color:var(--text2); margin-top:8px;" id="kalender-info-pulang"></div>
     </div>
 
-    <!-- Link Daftar Hadir BEI -->
-    <a href="https://rdis.idx.co.id/id/register-visit-onsite/401" target="_blank" style="display:block; background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(234,88,12,0.1)); border:2px solid rgba(245,158,11,0.55); border-radius:16px; padding:18px 20px; margin-bottom:16px; text-decoration:none;">
-      <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:0.8px; margin-bottom:8px; text-transform:uppercase;">Jangan Lupa! ⚠️</div>
-      <div style="display:flex; align-items:center; gap:14px;">
-        <span style="font-size:32px; flex-shrink:0;">📋</span>
-        <div style="flex:1;">
-          <div style="font-size:15px; font-weight:800; color:#f59e0b; margin-bottom:3px;">Absen juga di sini →</div>
-          <div style="font-size:12px; color:var(--text2); font-weight:500;">Daftar Hadir Galeri Bursa BEI — wajib diisi setiap hadir</div>
-          <div style="font-size:11px; color:var(--text3); margin-top:2px; font-family:var(--mono);">rdis.idx.co.id · Register Visit Onsite</div>
+    <!-- ========= SECTION DATANG ========= -->
+    <div id="kalender-section-datang">
+
+      <!-- Link Daftar Hadir BEI -->
+      <a href="https://rdis.idx.co.id/id/register-visit-onsite/401" target="_blank" style="display:block; background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(234,88,12,0.1)); border:2px solid rgba(245,158,11,0.55); border-radius:16px; padding:18px 20px; margin-bottom:16px; text-decoration:none;">
+        <div style="font-size:11px; font-weight:700; color:var(--text3); letter-spacing:0.8px; margin-bottom:8px; text-transform:uppercase;">Jangan Lupa! ⚠️</div>
+        <div style="display:flex; align-items:center; gap:14px;">
+          <span style="font-size:32px; flex-shrink:0;">📋</span>
+          <div style="flex:1;">
+            <div style="font-size:15px; font-weight:800; color:#f59e0b; margin-bottom:3px;">Absen juga di sini →</div>
+            <div style="font-size:12px; color:var(--text2); font-weight:500;">Daftar Hadir Galeri Bursa BEI — wajib diisi setiap hadir</div>
+            <div style="font-size:11px; color:var(--text3); margin-top:2px; font-family:var(--mono);">rdis.idx.co.id · Register Visit Onsite</div>
+          </div>
+          <span style="font-size:22px; color:#f59e0b;">›</span>
         </div>
-        <span style="font-size:22px; color:#f59e0b;">›</span>
+      </a>
+
+      <!-- Jadwal Kegiatan Hari Ini -->
+      <div class="table-card" style="padding:20px; background:var(--bg2); margin-bottom:16px;">
+        <h3 style="margin-bottom:14px; font-size:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">🗓️ Jadwal Kegiatan Hari Ini</h3>
+        <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:10px;" id="agenda-list"></ul>
       </div>
-    </a>
 
-    <!-- Jadwal Kegiatan Hari Ini -->
-    <div class="table-card" style="padding:20px; background:var(--bg2); margin-bottom:16px;">
-      <h3 style="margin-bottom:14px; font-size:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">🗓️ Jadwal Kegiatan Hari Ini</h3>
-      <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:10px;" id="agenda-list"></ul>
+      <!-- Jadwal Piket Minggu Ini -->
+      <div style="background:var(--bg2); border-radius:12px; padding:20px; margin-bottom:16px;">
+        <h3 style="margin-bottom:14px; font-size:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">📆 Jadwal Piket Minggu Ini</h3>
+        <div id="kalender-jadwal-minggu" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <!-- Pengumuman -->
+      <div id="pengumuman-box" style="display:none; background:rgba(245,158,11,0.1); border:1px solid var(--accent3); padding:14px; border-radius:12px; margin-bottom:16px; font-size:13px; color:var(--text);"></div>
+
+      <!-- Tombol aksi DATANG -->
+      <div style="display:flex; flex-direction:column; gap:10px; padding-bottom:8px;">
+        <button style="width:100%; padding:13px; background:rgba(192,132,252,0.15); border:1px solid rgba(192,132,252,0.4); color:#c084fc; font-family:var(--font); font-size:14px; font-weight:600; border-radius:12px; cursor:pointer;" onclick="goToAbsenPulang()">🟣 Absen Pulang Nanti</button>
+        <button style="width:100%; padding:13px; background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:14px; border-radius:12px; cursor:pointer;" onclick="goTo('landing')">← Kembali ke Beranda</button>
+      </div>
     </div>
 
-    <!-- Jadwal Piket Minggu Ini -->
-    <div style="background:var(--bg2); border-radius:12px; padding:20px; margin-bottom:16px;">
-      <h3 style="margin-bottom:14px; font-size:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">📆 Jadwal Piket Minggu Ini</h3>
-      <div id="kalender-jadwal-minggu" style="display:flex; flex-direction:column; gap:8px;"></div>
+    <!-- ========= SECTION PULANG ========= -->
+    <div id="kalender-section-pulang" style="display:none;">
+
+      <!-- Doa Pulang -->
+      <div style="background:linear-gradient(135deg,rgba(74,222,128,0.08),rgba(34,197,94,0.04)); border:1px solid rgba(74,222,128,0.3); border-radius:16px; padding:22px 20px; margin-bottom:16px;">
+        <div style="text-align:center; margin-bottom:16px;">
+          <div style="font-size:32px; margin-bottom:6px;">🙏</div>
+          <div style="font-size:15px; font-weight:700; color:var(--accent);">Doa Pulang</div>
+        </div>
+        <!-- Doa Arab -->
+        <div style="text-align:center; margin-bottom:14px;">
+          <div style="font-size:18px; font-weight:700; color:var(--accent2); line-height:1.8; font-family:serif; direction:ltr;">Bismillahi tawakkaltu 'alallah,</div>
+          <div style="font-size:18px; font-weight:700; color:var(--accent2); line-height:1.8; font-family:serif; direction:ltr;">la haula wala quwwata illa billah.</div>
+        </div>
+        <!-- Doa Kristen -->
+        <div style="background:rgba(0,0,0,0.2); border-radius:10px; padding:14px 16px; font-size:13px; color:var(--text2); line-height:1.8; font-style:italic;">
+          "Ya Tuhan Allah yang Maha Kasih, kami bersyukur atas penyertaan-Mu dari awal hingga akhir kegiatan hari ini. Berkatilah apa yang sudah kami lakukan dan diskusikan, agar membawa dampak positif dan memuliakan nama-Mu. Sekarang kami hendak pulang, lindungilah kami di perjalanan agar tiba di rumah dengan selamat. Dalam nama Tuhan Yesus, kami berdoa. Amin."
+        </div>
+        <div style="text-align:center; margin-top:14px; font-size:12px; color:var(--text3);">
+          ✅ Absensi hari ini sudah lengkap. Terima kasih telah hadir! 🌟
+        </div>
+      </div>
+
+      <!-- Tombol aksi PULANG -->
+      <div style="display:flex; flex-direction:column; gap:10px; padding-bottom:8px;">
+        <button style="width:100%; padding:13px; background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:14px; border-radius:12px; cursor:pointer;" onclick="goTo('landing')">← Kembali ke Beranda</button>
+      </div>
     </div>
 
-    <!-- Pengumuman -->
-    <div id="pengumuman-box" style="display:none; background:rgba(245,158,11,0.1); border:1px solid var(--accent3); padding:14px; border-radius:12px; margin-bottom:16px; font-size:13px; color:var(--text);"></div>
-
-    <!-- Tombol aksi -->
-    <div style="display:flex; flex-direction:column; gap:10px; padding-bottom:28px;">
-      <button style="width:100%; padding:13px; background:rgba(192,132,252,0.15); border:1px solid rgba(192,132,252,0.4); color:#c084fc; font-family:var(--font); font-size:14px; font-weight:600; border-radius:12px; cursor:pointer;" onclick="goToAbsenPulang()">🟣 Absen Pulang Nanti</button>
-      <button style="width:100%; padding:13px; background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:14px; border-radius:12px; cursor:pointer;" onclick="goTo('landing')">← Kembali ke Beranda</button>
-    </div>
   </div>
 </div>
 
@@ -2545,15 +2579,7 @@ function toggleScan(){
             loadJadwalScan();
 
             // REDIRECT KE ROOM KALENDER (Setelah 1.5 Detik)
-            document.getElementById('kalender-nama-user').innerText = res.nama || nia;
-            document.getElementById('kalender-tipe-absen').innerText = scanTipe === 'DATANG' ? 'Datang' : 'Pulang';
-            const infoPulang = document.getElementById('kalender-info-pulang');
-            const pesanPulang = scanTipe === 'DATANG'
-              ? (isJadwalPiket === '1'
-                  ? 'Jangan lupa absen Pulang saat selesai piket ya! 👇'
-                  : '⚠️ Kamu hadir di luar jadwal piket. Jangan lupa absen Pulang ya! 👇')
-              : '✅ Absensi hari ini sudah lengkap. Terima kasih!';
-            if(infoPulang) infoPulang.innerText = pesanPulang;
+            setupKalenderPage(scanTipe, res.nama || nia, isJadwalPiket);
             setTimeout(() => {
                 goTo('kalender');
             }, 1500);
@@ -5538,14 +5564,7 @@ async function anggotaProsesAbsenBursa(nia, tipe) {
       lastAbsenNIA = nia;
       lastAbsenTipe = tipe;
       setTimeout(() => {
-        const tipeEl = document.getElementById('kalender-tipe-absen');
-        const namaEl2 = document.getElementById('kalender-nama-user');
-        const infoPulang = document.getElementById('kalender-info-pulang');
-        if(tipeEl) tipeEl.textContent = tipe === 'DATANG' ? 'Datang' : 'Pulang';
-        if(namaEl2) namaEl2.textContent = res.nama || nia;
-        if(infoPulang) infoPulang.textContent = tipe === 'DATANG'
-          ? 'Jangan lupa absen Pulang saat selesai piket ya! 👇'
-          : '✅ Absensi hari ini sudah lengkap. Terima kasih!';
+        setupKalenderPage(tipe, res.nama || nia);
         goTo('kalender');
       }, 1200);
     } else {
@@ -6691,14 +6710,7 @@ async function prosesAbsenFaceID(nia, confidence) {
       lastAbsenNIA = nia;
       lastAbsenTipe = tipe;
       setTimeout(() => {
-        const tipeEl = document.getElementById('kalender-tipe-absen');
-        const namaEl = document.getElementById('kalender-nama-user');
-        const infoPulang = document.getElementById('kalender-info-pulang');
-        if(tipeEl) tipeEl.textContent = tipe === 'DATANG' ? 'Datang' : 'Pulang';
-        if(namaEl) namaEl.textContent = res.nama || nia;
-        if(infoPulang) infoPulang.textContent = tipe === 'DATANG'
-          ? 'Jangan lupa absen Pulang saat selesai piket ya! 👇'
-          : '✅ Absensi hari ini sudah lengkap. Terima kasih!';
+        setupKalenderPage(tipe, res.nama || nia);
         goTo('kalender');
       }, 1200);
     } else {
@@ -6708,6 +6720,42 @@ async function prosesAbsenFaceID(nia, confidence) {
     showToast('❌ Gagal kirim: ' + e.message,'error');
   }
 }
+
+// ── SETUP KALENDER PAGE (DATANG vs PULANG) ──
+function setupKalenderPage(tipe, nama, isJadwalPiket) {
+  const tipeEl = document.getElementById('kalender-tipe-absen');
+  const namaEl = document.getElementById('kalender-nama-user');
+  const infoPulang = document.getElementById('kalender-info-pulang');
+  const sectionDatang = document.getElementById('kalender-section-datang');
+  const sectionPulang = document.getElementById('kalender-section-pulang');
+  const headerTitle = document.getElementById('kalender-header-title');
+  const icon = document.getElementById('kalender-icon');
+  const judul = document.getElementById('kalender-judul');
+
+  if(tipeEl) tipeEl.textContent = tipe === 'DATANG' ? 'Datang' : 'Pulang';
+  if(namaEl) namaEl.textContent = nama || 'Anggota KIPM';
+
+  if(tipe === 'DATANG') {
+    if(sectionDatang) sectionDatang.style.display = 'block';
+    if(sectionPulang) sectionPulang.style.display = 'none';
+    if(headerTitle) headerTitle.textContent = 'Informasi & Jadwal KIPM-UP';
+    if(icon) icon.textContent = '🎉';
+    if(judul) judul.textContent = 'Absensi Berhasil!';
+    const pesan = isJadwalPiket === '0'
+      ? '⚠️ Kamu hadir di luar jadwal piket. Jangan lupa absen Pulang ya! 👇'
+      : 'Jangan lupa absen Pulang saat selesai piket ya! 👇';
+    if(infoPulang) infoPulang.textContent = pesan;
+  } else {
+    // PULANG
+    if(sectionDatang) sectionDatang.style.display = 'none';
+    if(sectionPulang) sectionPulang.style.display = 'block';
+    if(headerTitle) headerTitle.textContent = 'Absensi Pulang';
+    if(icon) icon.textContent = '✅';
+    if(judul) judul.textContent = 'Pulang Tercatat!';
+    if(infoPulang) infoPulang.textContent = 'Perjalanan pulang yang aman ya! 🙏';
+  }
+}
+window.setupKalenderPage = setupKalenderPage;
 
 // Reset Face ID lokal (untuk admin)
 function hapusFaceIDLokal(nia) {
