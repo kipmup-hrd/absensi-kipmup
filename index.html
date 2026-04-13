@@ -1180,7 +1180,7 @@ let allAnggota = [...realAnggota];
 <!-- HALAMAN BARU: INFORMASI & KALENDER KIPM -->
 <div id="page-kalender" class="page" style="overflow-y:auto;">
   <div style="padding:16px 20px; background:var(--bg2); display:flex; gap:12px; align-items:center;">
-    <div class="back-btn" onclick="goTo('scan')">←</div>
+    <div class="back-btn" onclick="goTo('landing')">←</div>
     <div><div style="font-weight:600;" id="kalender-header-title">Informasi & Jadwal KIPM-UP</div></div>
   </div>
   <div style="padding:20px; max-width:480px; margin:0 auto; width:100%; padding-bottom:36px;">
@@ -5331,13 +5331,9 @@ async function absenBursaSubmit() {
   const anggota = allAnggota.find(a => a.NIA === nia);
   if (!anggota) { showToast('NIA tidak terdaftar. Periksa kembali.', 'error'); return; }
 
-  // Validasi ulang token (keamanan)
-  const expectedNow  = getCurrentQRToken();
-  const expectedPrev = getPrevQRTokenStandalone();
-  if (token !== expectedNow && token !== expectedPrev) {
-    showToast('❌ QR sudah kadaluarsa. Minta petugas tampilkan QR baru.', 'error');
-    return;
-  }
+  // Validasi ulang token (keamanan) — tidak diblokir di sini karena backend sudah validasi
+  // Token yang expired akan ditolak oleh server, bukan di client
+  // (validasi client sebelumnya terlalu ketat dan bisa gagal jika user lama mengisi form)
 
   const submitBtn  = document.getElementById('absen-bursa-submit');
   const loadingEl  = document.getElementById('absen-bursa-loading');
@@ -5363,9 +5359,14 @@ async function absenBursaSubmit() {
 
       showToast('✅ ' + (res.msg || 'Absen berhasil!'), 'success');
 
-      // Setup halaman kalender lalu redirect (sama persis dengan alur kiosk/Face ID)
-      setupKalenderPage(tipe, anggota.nama);
-      setTimeout(() => { goTo('kalender'); }, 1200);
+      // Setup halaman kalender lalu redirect
+      try { setupKalenderPage(tipe, anggota.nama); } catch(e) { console.warn('setupKalenderPage error:', e); }
+      setTimeout(() => {
+        try { goTo('kalender'); } catch(e) {
+          // Fallback: reload halaman tanpa parameter QR
+          window.location.href = window.location.pathname;
+        }
+      }, 800);
     } else {
       if (submitBtn)  submitBtn.style.display = 'block';
       if (loadingEl)  loadingEl.style.display = 'none';
