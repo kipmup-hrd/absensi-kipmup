@@ -1173,7 +1173,7 @@ let allAnggota = [...realAnggota];
 <!-- HALAMAN BARU: INFORMASI & KALENDER KIPM -->
 <div id="page-kalender" class="page" style="overflow-y:auto;">
   <div style="padding:16px 20px; background:var(--bg2); display:flex; gap:12px; align-items:center;">
-    <div class="back-btn" onclick="goTo('landing')">←</div>
+    <div class="back-btn" onclick="goTo('scan')">←</div>
     <div><div style="font-weight:600;" id="kalender-header-title">Informasi & Jadwal KIPM-UP</div></div>
   </div>
   <div style="padding:20px; max-width:480px; margin:0 auto; width:100%; padding-bottom:36px;">
@@ -1221,7 +1221,7 @@ let allAnggota = [...realAnggota];
       <!-- Tombol aksi DATANG -->
       <div style="display:flex; flex-direction:column; gap:10px; padding-bottom:8px;">
         <button style="width:100%; padding:13px; background:rgba(192,132,252,0.15); border:1px solid rgba(192,132,252,0.4); color:#c084fc; font-family:var(--font); font-size:14px; font-weight:600; border-radius:12px; cursor:pointer;" onclick="goToAbsenPulang()">🟣 Absen Pulang Nanti</button>
-        <button style="width:100%; padding:13px; background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:14px; border-radius:12px; cursor:pointer;" onclick="goTo('landing')">← Kembali ke Beranda</button>
+        <button style="width:100%; padding:13px; background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:14px; border-radius:12px; cursor:pointer;" onclick="goTo('scan')">📷 Absen Anggota Lain</button>
       </div>
     </div>
 
@@ -1243,14 +1243,14 @@ let allAnggota = [...realAnggota];
         <div style="background:rgba(0,0,0,0.2); border-radius:10px; padding:14px 16px; font-size:13px; color:var(--text2); line-height:1.8; font-style:italic;">
           "Ya Tuhan Allah yang Maha Kasih, kami bersyukur atas penyertaan-Mu dari awal hingga akhir kegiatan hari ini. Berkatilah apa yang sudah kami lakukan dan diskusikan, agar membawa dampak positif dan memuliakan nama-Mu. Sekarang kami hendak pulang, lindungilah kami di perjalanan agar tiba di rumah dengan selamat. Dalam nama Tuhan Yesus, kami berdoa. Amin."
         </div>
-        <div style="text-align:center; margin-top:14px; font-size:12px; color:var(--text3);">
+        <div style="text-align:center; margin-top:14px; font-size:12px; color:var(--text3);" id="kalender-pulang-countdown">
           ✅ Absensi hari ini sudah lengkap. Terima kasih telah hadir! 🌟
         </div>
       </div>
 
-      <!-- Tombol aksi PULANG -->
+      <!-- Tombol aksi PULANG — auto-redirect ke scan dalam 8 detik -->
       <div style="display:flex; flex-direction:column; gap:10px; padding-bottom:8px;">
-        <button style="width:100%; padding:13px; background:var(--bg2); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:14px; border-radius:12px; cursor:pointer;" onclick="goTo('landing')">← Kembali ke Beranda</button>
+        <button id="kalender-btn-scan-lagi" style="width:100%; padding:13px; background:rgba(74,222,128,0.15); border:1px solid rgba(74,222,128,0.4); color:var(--accent); font-family:var(--font); font-size:14px; font-weight:600; border-radius:12px; cursor:pointer;" onclick="clearKalenderRedirect(); goTo('scan');">📷 Absen Anggota Lain</button>
       </div>
     </div>
 
@@ -2385,6 +2385,7 @@ function goTo(page){
     const niaEl = document.getElementById('input-NIA');
     if(niaEl && niaEl.value.trim()) setTimeout(() => generateQRAnggota(), 100);
   }
+  if(page !== 'kalender') { clearKalenderRedirect(); } // bersihkan countdown kalender saat pindah halaman
   if(page==='qr'){ startQRLiveDisplay(); }
   if(page==='kalender'){ 
     // Render jadwal dan agenda, lalu pastikan section yang benar tetap terlihat
@@ -6746,7 +6747,18 @@ async function prosesAbsenFaceID(nia, confidence) {
 }
 
 // ── SETUP KALENDER PAGE (DATANG vs PULANG) ──
+let _kalenderRedirectTimer = null;
+let _kalenderCountdownTimer = null;
+
+function clearKalenderRedirect() {
+  if(_kalenderRedirectTimer) { clearTimeout(_kalenderRedirectTimer); _kalenderRedirectTimer = null; }
+  if(_kalenderCountdownTimer) { clearInterval(_kalenderCountdownTimer); _kalenderCountdownTimer = null; }
+}
+window.clearKalenderRedirect = clearKalenderRedirect;
+
 function setupKalenderPage(tipe, nama, isJadwalPiket) {
+  clearKalenderRedirect(); // bersihkan timer sebelumnya
+
   const tipeEl = document.getElementById('kalender-tipe-absen');
   const namaEl = document.getElementById('kalender-nama-user');
   const infoPulang = document.getElementById('kalender-info-pulang');
@@ -6770,13 +6782,31 @@ function setupKalenderPage(tipe, nama, isJadwalPiket) {
       : 'Jangan lupa absen Pulang saat selesai piket ya! 👇';
     if(infoPulang) infoPulang.textContent = pesan;
   } else {
-    // PULANG
+    // PULANG — tampilkan doa, lalu auto-redirect ke scan dalam 10 detik
     if(sectionDatang) sectionDatang.style.display = 'none';
     if(sectionPulang) sectionPulang.style.display = 'block';
     if(headerTitle) headerTitle.textContent = 'Absensi Pulang';
     if(icon) icon.textContent = '✅';
     if(judul) judul.textContent = 'Pulang Tercatat!';
     if(infoPulang) infoPulang.textContent = 'Perjalanan pulang yang aman ya! 🙏';
+
+    // Countdown & auto-redirect ke scan
+    let sisa = 10;
+    const cdEl = document.getElementById('kalender-pulang-countdown');
+    const btnEl = document.getElementById('kalender-btn-scan-lagi');
+    function updateCD() {
+      if(cdEl) cdEl.textContent = `✅ Terima kasih! Halaman otomatis kembali dalam ${sisa} detik...`;
+      if(btnEl) btnEl.textContent = `📷 Absen Anggota Lain (${sisa}s)`;
+    }
+    updateCD();
+    _kalenderCountdownTimer = setInterval(() => {
+      sisa--;
+      updateCD();
+      if(sisa <= 0) {
+        clearKalenderRedirect();
+        goTo('scan');
+      }
+    }, 1000);
   }
 }
 window.setupKalenderPage = setupKalenderPage;
