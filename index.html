@@ -1034,6 +1034,12 @@ let allAnggota = [...realAnggota];
             4. Isi NIA → pilih Datang/Pulang → <b style="color:var(--accent);">Absen!</b>
           </div>
         </div>
+        <!-- Tombol manual reset oleh petugas -->
+        <div style="margin-top:16px; text-align:center;">
+          <button onclick="kioskManualReset()" style="background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.3); color:var(--red); font-family:var(--font); font-size:12px; font-weight:500; padding:8px 20px; border-radius:20px; cursor:pointer;">
+            🔄 Reset — Anggota Berikutnya
+          </button>
+        </div>
         <div style="font-family:var(--mono); font-size:9px; color:var(--text3); margin-top:8px; word-break:break-all; max-width:320px; margin-left:auto; margin-right:auto; opacity:0.5;" id="kiosk-qr-token-display"></div>
       </div>
 
@@ -1057,7 +1063,8 @@ let allAnggota = [...realAnggota];
     <div style="font-size:14px; color:var(--text2); margin-bottom:6px;" id="kiosk-success-nia"></div>
     <div style="font-size:16px; color:var(--accent3); font-weight:600;" id="kiosk-success-waktu"></div>
     <div style="font-size:13px; color:var(--text2); margin-top:8px;" id="kiosk-success-status"></div>
-    <div style="margin-top:20px; font-size:12px; color:var(--text3);">Layar akan otomatis reset dalam <span id="kiosk-reset-countdown" style="color:var(--accent3); font-weight:700;">5</span> detik...</div>
+    <div style="margin-top:20px; font-size:12px; color:var(--text3);">Layar otomatis kembali ke <b style="color:var(--accent);">Foto Selfie</b> dalam <span id="kiosk-reset-countdown" style="color:var(--accent3); font-weight:700;">5</span> detik...</div>
+    <button onclick="kioskDismissSuccess()" style="margin-top:10px; background:rgba(74,222,128,0.15); border:1px solid rgba(74,222,128,0.35); color:var(--accent); font-family:var(--font); font-size:13px; font-weight:600; padding:10px 28px; border-radius:30px; cursor:pointer;">📸 Anggota Berikutnya →</button>
   </div>
 
   <!-- Error overlay -->
@@ -5331,10 +5338,6 @@ async function absenBursaSubmit() {
   const anggota = allAnggota.find(a => a.NIA === nia);
   if (!anggota) { showToast('NIA tidak terdaftar. Periksa kembali.', 'error'); return; }
 
-  // Validasi ulang token (keamanan) — tidak diblokir di sini karena backend sudah validasi
-  // Token yang expired akan ditolak oleh server, bukan di client
-  // (validasi client sebelumnya terlalu ketat dan bisa gagal jika user lama mengisi form)
-
   const submitBtn  = document.getElementById('absen-bursa-submit');
   const loadingEl  = document.getElementById('absen-bursa-loading');
   if (submitBtn)  submitBtn.style.display = 'none';
@@ -5354,16 +5357,48 @@ async function absenBursaSubmit() {
 
     if (res.ok) {
       if (loadingEl) loadingEl.style.display = 'none';
-      // Stop GPS watch
       if (_absenBursaGPSWatch) { navigator.geolocation.clearWatch(_absenBursaGPSWatch); }
 
       showToast('✅ ' + (res.msg || 'Absen berhasil!'), 'success');
+
+      // ── SINYAL KE KIOSK: token sudah dipakai ──
+      // 1. BroadcastChannel (antar tab di browser yang sama — device yang sama)
+      try {
+        const bc = new BroadcastChannel('kipmup_kiosk_absen');
+        bc.postMessage({
+          type   : 'ABSEN_BERHASIL',
+          token  : token,
+          NIA    : nia,
+          nama   : anggota.nama,
+          divisi : anggota.divisi || '-',
+          tipe   : tipe,
+          waktu  : new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        });
+        setTimeout(() => bc.close(), 500);
+      } catch(e) {}
+
+      // 2. localStorage (fallback antar tab / same device)
+      try {
+        const waktuStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        localStorage.setItem('kipmup_qr_used_token', token);
+        localStorage.setItem('kipmup_qr_used_data', JSON.stringify({
+          NIA: nia, nama: anggota.nama, divisi: anggota.divisi || '-', tipe, waktu: waktuStr
+        }));
+        // Auto-expire setelah 2 menit
+        setTimeout(() => {
+          try {
+            if(localStorage.getItem('kipmup_qr_used_token') === token) {
+              localStorage.removeItem('kipmup_qr_used_token');
+              localStorage.removeItem('kipmup_qr_used_data');
+            }
+          } catch(e) {}
+        }, 120000);
+      } catch(e) {}
 
       // Setup halaman kalender lalu redirect
       try { setupKalenderPage(tipe, anggota.nama); } catch(e) { console.warn('setupKalenderPage error:', e); }
       setTimeout(() => {
         try { goTo('kalender'); } catch(e) {
-          // Fallback: reload halaman tanpa parameter QR
           window.location.href = window.location.pathname;
         }
       }, 800);
@@ -5895,6 +5930,29 @@ let kioskQRInterval = null;
 let kioskQRCountdownInterval = null;
 let kioskQRLastToken = null;
 let kioskQRUsed = false; // flag: QR sudah dipakai, jangan generate baru
+let kioskAutoResetTimer = null; // auto-reset timer setelah QR ditampilkan
+
+// BroadcastChannel untuk komunikasi antar tab browser yang sama
+let kioskBroadcastChannel = null;
+try {
+  kioskBroadcastChannel = new BroadcastChannel('kipmup_kiosk_absen');
+  kioskBroadcastChannel.onmessage = function(event) {
+    if (event.data && event.data.type === 'ABSEN_BERHASIL') {
+      // Terima sinyal dari tab HP anggota (device yang sama, browser yang sama)
+      if (!kioskQRUsed) {
+        const nama = event.data.nama || 'Anggota';
+        const tipe = event.data.tipe || 'DATANG';
+        // Tampilkan overlay sukses di kiosk jika sedang di step 2
+        const scanSection = document.getElementById('kiosk-scan-section');
+        if (scanSection && scanSection.style.display !== 'none') {
+          const anggotaMock = { nama, NIA: event.data.NIA || '-', divisi: event.data.divisi || '-' };
+          const waktu = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          kioskShowSuccess(anggotaMock, tipe, waktu, 'HADIR');
+        }
+      }
+    }
+  };
+} catch(e) { console.warn('BroadcastChannel tidak tersedia:', e); }
 
 function kioskRenderQRBursa() {
   if(kioskQRUsed) return; // QR sudah dipakai, jangan regenerasi
@@ -5920,21 +5978,67 @@ function kioskRenderQRBursa() {
 function kioskStartQRDisplay() {
   if(kioskQRInterval) clearInterval(kioskQRInterval);
   if(kioskQRCountdownInterval) clearInterval(kioskQRCountdownInterval);
+  if(kioskAutoResetTimer) clearTimeout(kioskAutoResetTimer);
   kioskQRLastToken = null;
   kioskQRUsed = false; // reset flag saat mulai sesi baru
+  // Hapus key localStorage used-token lama
+  try { localStorage.removeItem('kipmup_qr_used_token'); } catch(e) {}
   kioskRenderQRBursa();
   kioskQRInterval = setInterval(() => kioskRenderQRBursa(), 1000);
   kioskQRCountdownInterval = setInterval(() => {
     const el = document.getElementById('kiosk-qr-countdown');
     if(el) el.textContent = getSecondsLeft();
   }, 1000);
+
+  // Auto-reset 45 detik (QR berumur 30 detik + buffer 15 detik)
+  // Jika dalam 45 detik tidak ada absen masuk, kembali ke step 1 otomatis
+  kioskAutoResetTimer = setTimeout(() => {
+    if(!kioskQRUsed) {
+      // Belum ada absen — reset ke step 1 agar anggota berikutnya bisa selfie
+      kioskResetState();
+      showToast('⏱ Timeout — kembali ke step 1 (tidak ada absen masuk)', 'info');
+    }
+  }, 45000);
+  
+  // Polling localStorage untuk deteksi absen dari HP (fallback BroadcastChannel)
+  kioskStartPollingUsed();
 }
 
 function kioskStopQRDisplay() {
   if(kioskQRInterval) { clearInterval(kioskQRInterval); kioskQRInterval = null; }
   if(kioskQRCountdownInterval) { clearInterval(kioskQRCountdownInterval); kioskQRCountdownInterval = null; }
+  if(kioskAutoResetTimer) { clearTimeout(kioskAutoResetTimer); kioskAutoResetTimer = null; }
   kioskQRLastToken = null;
+  kioskStopPollingUsed(); // Stop localStorage polling
   // Note: kioskQRUsed TIDAK di-reset di sini — hanya di-reset saat kioskStartQRDisplay (sesi baru)
+}
+
+// ── Polling localStorage untuk deteksi absen dari HP (same-device tab, atau future cross-device) ──
+let kioskPollingUsedInterval = null;
+
+function kioskStartPollingUsed() {
+  kioskStopPollingUsed();
+  kioskPollingUsedInterval = setInterval(() => {
+    if(kioskQRUsed) { kioskStopPollingUsed(); return; }
+    try {
+      const usedToken = localStorage.getItem('kipmup_qr_used_token');
+      if(usedToken && usedToken === kioskQRLastToken) {
+        // Token ini sudah dipakai dari tab lain di device yang sama
+        kioskStopPollingUsed();
+        const raw = localStorage.getItem('kipmup_qr_used_data');
+        const data = raw ? JSON.parse(raw) : null;
+        if(data && !kioskQRUsed) {
+          const anggotaMock = { nama: data.nama || 'Anggota', NIA: data.NIA || '-', divisi: data.divisi || '-' };
+          const waktu = data.waktu || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          kioskShowSuccess(anggotaMock, data.tipe || 'DATANG', waktu, 'HADIR');
+        }
+      }
+    } catch(e) {}
+  }, 1000);
+}
+
+function kioskStopPollingUsed() {
+  if(kioskPollingUsedInterval) { clearInterval(kioskPollingUsedInterval); kioskPollingUsedInterval = null; }
 }
 
 // Override kioskToggleScan — sekarang tidak dipakai, tapi simpan untuk compatibility
@@ -5976,7 +6080,9 @@ function updateKioskLastAbsen(anggota, tipe, waktu, status) {
 
 function kioskShowSuccess(anggota, tipe, waktu, status) {
   kioskQRUsed = true; // QR sudah dipakai — tidak bisa digunakan lagi
-  kioskStopQRDisplay(); // Hentikan timer QR
+  // Cancel auto-reset timer karena sudah ada absen masuk
+  if(kioskAutoResetTimer) { clearTimeout(kioskAutoResetTimer); kioskAutoResetTimer = null; }
+  kioskStopQRDisplay(); // Hentikan timer QR + polling
   // Tampilkan overlay QR sudah dipakai
   const usedOverlay = document.getElementById('kiosk-qr-used-overlay');
   if(usedOverlay) usedOverlay.style.display = 'flex';
@@ -5989,12 +6095,12 @@ function kioskShowSuccess(anggota, tipe, waktu, status) {
   document.getElementById('kiosk-success-tipe').style.color = tipe==='DATANG' ? 'var(--accent)' : '#c084fc';
   document.getElementById('kiosk-success-icon').textContent = tipe==='DATANG' ? '✅' : '👋';
   document.getElementById('kiosk-success-nama').textContent = anggota.nama;
-  document.getElementById('kiosk-success-nia').textContent = anggota.NIA + ' · ' + anggota.divisi;
+  document.getElementById('kiosk-success-nia').textContent = anggota.NIA + ' · ' + (anggota.divisi || '-');
   document.getElementById('kiosk-success-waktu').textContent = '🕐 ' + waktu;
-  document.getElementById('kiosk-success-status').textContent = status.includes('luar') ? '⚡ Hadir di luar jadwal' : '✅ Sesuai jadwal';
+  document.getElementById('kiosk-success-status').textContent = status && status.includes('luar') ? '⚡ Hadir di luar jadwal' : '✅ Absen tercatat';
   overlay.style.display = 'flex';
 
-  // Countdown reset 5 detik
+  // Countdown reset 5 detik → kembali ke step 1 (Foto Selfie)
   let cd = 5;
   document.getElementById('kiosk-reset-countdown').textContent = cd;
   const iv = setInterval(() => {
@@ -6027,11 +6133,17 @@ function kioskDismissError() {
   // QR bursa tetap ditampilkan selama di step 2
 }
 
+// Reset manual oleh petugas — kembali ke step 1 tanpa menunggu
+function kioskManualReset() {
+  if(!confirm('Reset ke Foto Selfie?\n\nQR saat ini akan dibatalkan dan kembali ke step 1.')) return;
+  kioskResetState();
+}
+
 function kioskResetState() {
   kioskSelfieDataURL = null;
   kioskIsProcessing = false;
   stopKioskCam();
-  kioskStopQRDisplay(); // Stop QR bursa display
+  kioskStopQRDisplay(); // Stop QR bursa display + polling + auto-reset timer
   if(kioskScannerActive && kioskHtml5Scanner) {
     kioskHtml5Scanner.stop().catch(()=>{});
     kioskScannerActive = false;
@@ -6256,6 +6368,7 @@ window.kioskLanjutScan = kioskLanjutScan;
 window.kioskToggleScan = kioskToggleScan;
 window.kioskDismissSuccess = kioskDismissSuccess;
 window.kioskDismissError = kioskDismissError;
+window.kioskManualReset = kioskManualReset;
 window.setKioskPin = setKioskPin;
 function setKioskPinAdmin() {
   const pin = (document.getElementById('kiosk-pin-input')?.value || '').trim();
