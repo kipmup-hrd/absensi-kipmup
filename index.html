@@ -1852,7 +1852,7 @@ let allAnggota = [...realAnggota];
       <!-- REKAP TAB -->
       <div id="tab-rekap" class="tab-panel"><div class="table-card"><div class="table-card-header" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><input type="date" id="rekap-from" class="filter-input"><input type="date" id="rekap-to" class="filter-input"><select class="form-input" id="rekap-filter-status" style="width:auto;"><option value="">Semua</option><option value="piket">Piket</option><option value="nonpiket">Non-Piket</option></select><button class="btn-sm primary" onclick="loadRekap()">Filter</button><button class="btn-sm blue" onclick="exportCSV()">⬇ Export CSV</button>
 <button class="btn-sm danger" onclick="resetFilterRekap()" title="Reset filter tanggal dan kosongkan tampilan rekap" style="margin-left:4px;">🔄 Reset Filter</button>
-<button class="btn-sm" onclick="hapusDataRekap()" title="⚠️ HAPUS data absensi tertentu dari Google Sheets (untuk data test)" style="margin-left:4px; background:rgba(248,113,113,0.12); border-color:rgba(248,113,113,0.4); color:var(--red);">🗑️ Hapus Data Test</button></div><div class="table-scroll"><table><thead><tr><th>Tanggal</th><th>Tipe</th><th>Status</th><th>Waktu</th><th>NIA</th><th>Nama</th><th>Divisi</th><th>Durasi</th><th>GPS</th></tr></thead><tbody id="tbl-rekap"></tbody></table></div></div></div>
+<button class="btn-sm" onclick="showHapusRekapModal()" title="⚠️ Hapus data absensi dari Google Sheets" style="margin-left:4px; background:rgba(248,113,113,0.12); border-color:rgba(248,113,113,0.4); color:var(--red);">🗑️ Hapus Rekap</button></div><div class="table-scroll"><table><thead><tr><th>Tanggal</th><th>Tipe</th><th>Status</th><th>Waktu</th><th>NIA</th><th>Nama</th><th>Divisi</th><th>Durasi</th><th>GPS</th></tr></thead><tbody id="tbl-rekap"></tbody></table></div></div></div>
       
       <!-- ANGGOTA TAB -->
       <div id="tab-anggota" class="tab-panel"><div class="table-card"><div class="table-card-header"><button class="btn-sm primary" onclick="showAddAnggota()">+ Tambah Anggota</button></div><div class="table-scroll"><table><thead><tr><th>NIA</th><th>Nama</th><th>Divisi</th><th>Telp</th><th>Aksi</th></tr></thead><tbody id="tbl-anggota"></tbody></table></div></div></div>
@@ -3010,15 +3010,104 @@ function resetFilterRekap() {
 }
 window.resetFilterRekap = resetFilterRekap;
 
-function hapusDataRekap() {
-  // Hapus data test — konfirmasi ketat
-  if(!confirm('⚠️ HAPUS DATA TEST\n\nFitur ini untuk menghapus data absensi PERCOBAAN/TEST.\nData yang dihapus TIDAK BISA dikembalikan dari Google Sheets.\n\nLanjutkan?')) return;
-  if(!confirm('🔴 Konfirmasi Final\n\nAnda yakin ingin menghapus data test absensi?\n\nTips: Filter tanggal ke hari percobaan dulu, lalu cek data mana yang akan dihapus.')) return;
-  
-  showToast('ℹ️ Fitur ini memerlukan pengembangan lanjut di Google Apps Script (action: deleteAbsensi). Hubungi developer.','error');
-  // Catatan untuk developer: implementasikan action 'deleteAbsensi' di GAS
-  // dengan parameter {tanggal, NIA, tipe} atau {from, to, NIA}
+// ── HAPUS REKAP ABSENSI ──────────────────────────────────────────────────────
+// Simpan data rekap yang sedang ditampilkan agar bisa dihapus
+let _rekapDataCache = [];
+
+// Simpan cache saat rekap di-load
+const _origLoadRekap = loadRekap;
+
+function showHapusRekapModal() {
+  const from = document.getElementById('rekap-from').value;
+  const to   = document.getElementById('rekap-to').value;
+  const hasFilter = from || to;
+  const jumlah = _rekapDataCache.length;
+
+  const modal = document.getElementById('modal-hapus-rekap');
+  if (!modal) return;
+
+  // Update info di modal
+  const infoEl = document.getElementById('hapus-rekap-info');
+  if (infoEl) {
+    if (hasFilter && jumlah > 0) {
+      infoEl.innerHTML = `<span style="color:var(--accent3);">📅 Filter aktif: <b>${from||'awal'}</b> s/d <b>${to||'akhir'}</b></span><br>
+        <span style="color:var(--text2);">Rekap yang ditampilkan: <b style="color:var(--red);">${jumlah} baris</b></span>`;
+    } else if (hasFilter && jumlah === 0) {
+      infoEl.innerHTML = `<span style="color:var(--text3);">Filter aktif tapi tidak ada data ditampilkan.<br>Klik Filter dulu untuk memuat data, lalu hapus.</span>`;
+    } else {
+      infoEl.innerHTML = `<span style="color:var(--text3);">Tidak ada filter tanggal aktif.</span>`;
+    }
+  }
+
+  const btnFilter = document.getElementById('btn-hapus-filter');
+  const btnSemua  = document.getElementById('btn-hapus-semua');
+  if (btnFilter) btnFilter.disabled = !(hasFilter && jumlah > 0);
+  if (btnFilter) btnFilter.textContent = `🗑️ Hapus ${jumlah > 0 ? jumlah + ' baris' : ''} (Filter Aktif)`;
+
+  modal.classList.add('show');
 }
+window.showHapusRekapModal = showHapusRekapModal;
+
+function closeHapusRekapModal() {
+  const modal = document.getElementById('modal-hapus-rekap');
+  if (modal) modal.classList.remove('show');
+}
+window.closeHapusRekapModal = closeHapusRekapModal;
+
+async function hapusRekapByFilter() {
+  const from = document.getElementById('rekap-from').value;
+  const to   = document.getElementById('rekap-to').value;
+  if (!from && !to) { showToast('Set filter tanggal dulu!','error'); return; }
+  if (_rekapDataCache.length === 0) { showToast('Tidak ada data untuk dihapus','error'); return; }
+
+  closeHapusRekapModal();
+  if (!confirm(`🔴 KONFIRMASI HAPUS\n\nAkan menghapus ${_rekapDataCache.length} baris rekap absensi\nperiode ${from||'awal'} – ${to||'akhir'} dari Google Sheets.\n\nData TIDAK BISA dikembalikan!\n\nLanjutkan?`)) return;
+
+  showToast('⏳ Menghapus data rekap...','info');
+  try {
+    const res = await api({ action:'deleteAbsensi', from, to, deleteAll:'false' });
+    if (res && res.ok) {
+      showToast('✅ ' + (res.msg || 'Data rekap berhasil dihapus!'), 'success');
+      _rekapDataCache = [];
+      document.getElementById('tbl-rekap').innerHTML = '<tr><td colspan="9" class="empty-state">Data berhasil dihapus.</td></tr>';
+      // Reset papan peringkat otomatis
+      setTimeout(() => { try { loadAllRankings(); } catch(e){} }, 800);
+    } else {
+      showToast('❌ ' + (res?.msg || 'Gagal menghapus. Cek GAS.'), 'error');
+    }
+  } catch(e) {
+    showToast('❌ Gagal koneksi ke server: ' + e.message,'error');
+  }
+}
+window.hapusRekapByFilter = hapusRekapByFilter;
+
+async function hapusSemuaRekap() {
+  closeHapusRekapModal();
+  if (!confirm('⚠️ HAPUS SEMUA REKAP ABSENSI PIKET\n\nSEMUA data absensi piket di Google Sheets akan dihapus permanen.\nPapan peringkat akan otomatis direset.\n\nData TIDAK BISA dikembalikan!\n\nKetik OK untuk konfirmasi.')) return;
+  if (!confirm('🔴 KONFIRMASI FINAL\n\nBenar-benar hapus SEMUA data rekap absensi piket?')) return;
+
+  showToast('⏳ Menghapus semua data rekap...','info');
+  try {
+    const res = await api({ action:'deleteAbsensi', deleteAll:'true' });
+    if (res && res.ok) {
+      showToast('✅ ' + (res.msg || 'Semua rekap berhasil dihapus! Papan peringkat direset.'), 'success');
+      _rekapDataCache = [];
+      document.getElementById('tbl-rekap').innerHTML = '<tr><td colspan="9" class="empty-state">Semua data berhasil dihapus.</td></tr>';
+      document.getElementById('rekap-from').value = '';
+      document.getElementById('rekap-to').value = '';
+      // Reset papan peringkat otomatis
+      setTimeout(() => { try { loadAllRankings(); } catch(e){} }, 800);
+    } else {
+      showToast('❌ ' + (res?.msg || 'Gagal menghapus. Cek GAS.'), 'error');
+    }
+  } catch(e) {
+    showToast('❌ Gagal koneksi ke server: ' + e.message,'error');
+  }
+}
+window.hapusSemuaRekap = hapusSemuaRekap;
+
+// Legacy alias
+function hapusDataRekap() { showHapusRekapModal(); }
 window.hapusDataRekap = hapusDataRekap;
 
 async function loadRekap(){ 
@@ -3045,6 +3134,7 @@ async function loadRekap(){
     let rows = res.data;
     if(filterStatus === 'piket') rows = rows.filter(r => getStatusPiket(r.NIA, r.tanggal) === 'PIKET');
     if(filterStatus === 'nonpiket') rows = rows.filter(r => getStatusPiket(r.NIA, r.tanggal) === 'NON-PIKET');
+    _rekapDataCache = rows; // Simpan untuk fitur hapus
     if(!rows.length){ tbody.innerHTML='<tr><td colspan="9" class="empty-state">Tidak ada data untuk filter tersebut</td></tr>'; return; }
     tbody.innerHTML = rows.map(r=>{
       const waktuFmt = formatWaktu(r.waktu);
@@ -5561,7 +5651,7 @@ window.switchSubKegiatan=switchSubKegiatan;
 window.loadAllRankings=loadAllRankings; window.loadHistorisRank=loadHistorisRank; window.initRankingBulan=initRankingBulan;
 window.setMetodeAbsen=setMetodeAbsen; window.mulaiScanFaceID=mulaiScanFaceID; window.stopScanFaceID=stopScanFaceID;
 window.goToFaceEnroll=goToFaceEnroll; window.mulaiEnrollFace=mulaiEnrollFace; window.ulangEnrollFace=ulangEnrollFace; window.simpanFaceID=simpanFaceID;
-window.resetFilterRekap=resetFilterRekap; window.hapusDataRekap=hapusDataRekap;
+window.resetFilterRekap=resetFilterRekap; window.hapusDataRekap=hapusDataRekap; window.showHapusRekapModal=showHapusRekapModal; window.closeHapusRekapModal=closeHapusRekapModal; window.hapusRekapByFilter=hapusRekapByFilter; window.hapusSemuaRekap=hapusSemuaRekap;
 
 // =========================================================================
 // QR ANGGOTA — Mode Baru: HP Anggota SCAN QR dari Komputer Bursa
@@ -7156,5 +7246,36 @@ console.log('✅ Face ID Engine siap. Model akan dimuat saat pertama kali diguna
 
 console.log('✅ KIPM-UP v4.0 — Face ID + Self-contained QR aktif!');
 </script>
+
+<!-- MODAL HAPUS REKAP ABSENSI -->
+<div id="modal-hapus-rekap" class="modal-overlay" onclick="if(event.target===this)closeHapusRekapModal()">
+  <div class="modal-box" style="max-width:460px;">
+    <button class="modal-close" onclick="closeHapusRekapModal()">✕</button>
+    <div style="font-size:18px; font-weight:700; margin-bottom:6px; color:var(--red);">🗑️ Hapus Rekap Absensi</div>
+    <div style="font-size:12px; color:var(--text3); margin-bottom:16px;">Data yang dihapus <b style="color:var(--red);">TIDAK BISA dikembalikan</b> dari Google Sheets.</div>
+
+    <!-- Info filter aktif -->
+    <div id="hapus-rekap-info" style="background:var(--bg3); border-radius:10px; padding:12px 14px; font-size:13px; margin-bottom:20px; line-height:1.7;"></div>
+
+    <!-- Opsi 1: Hapus berdasarkan filter -->
+    <div style="background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.25); border-radius:12px; padding:16px; margin-bottom:12px;">
+      <div style="font-size:13px; font-weight:600; color:var(--accent3); margin-bottom:6px;">📅 Hapus Berdasarkan Filter Tanggal</div>
+      <div style="font-size:12px; color:var(--text2); margin-bottom:12px; line-height:1.6;">Hapus hanya data yang sesuai dengan filter tanggal yang sedang aktif di tabel rekap.</div>
+      <button id="btn-hapus-filter" onclick="hapusRekapByFilter()" style="width:100%; padding:10px; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.45); color:var(--accent3); font-family:var(--font); font-size:13px; font-weight:600; border-radius:10px; cursor:pointer;">🗑️ Hapus (Filter Aktif)</button>
+    </div>
+
+    <!-- Opsi 2: Hapus semua -->
+    <div style="background:rgba(248,113,113,0.07); border:1px solid rgba(248,113,113,0.25); border-radius:12px; padding:16px;">
+      <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:6px;">⚠️ Hapus SEMUA Rekap Absensi Piket</div>
+      <div style="font-size:12px; color:var(--text2); margin-bottom:12px; line-height:1.6;">Menghapus <b>seluruh</b> data rekap absensi piket dari Google Sheets. Papan peringkat akan direset otomatis.</div>
+      <button id="btn-hapus-semua" onclick="hapusSemuaRekap()" style="width:100%; padding:10px; background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.45); color:var(--red); font-family:var(--font); font-size:13px; font-weight:600; border-radius:10px; cursor:pointer;">🔴 Hapus Semua Rekap</button>
+    </div>
+
+    <div style="margin-top:16px; text-align:center;">
+      <button onclick="closeHapusRekapModal()" style="background:var(--bg3); border:1px solid var(--border2); color:var(--text2); font-family:var(--font); font-size:13px; padding:9px 28px; border-radius:10px; cursor:pointer;">Batal</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
