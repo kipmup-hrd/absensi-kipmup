@@ -2441,7 +2441,7 @@ function goTo(page){
   
   if(page==='admin') initAdmin();
   if(page==='scan'){ 
-    loadJadwalScan(); 
+    loadJadwalScan(); // sudah include syncJadwalMingguanDariGAS di dalamnya
     startGPSWatch();
     syncAnggotaDariGAS(); // Sync data anggota terbaru dari GAS
     const tgl = document.getElementById('scan-tanggal');
@@ -2497,23 +2497,27 @@ async function loadJadwalScan(){
   const elFace = document.getElementById('jadwal-today-faceid');
   el.innerHTML = '<div class="loading" style="color:var(--accent);">Memuat jadwal & sinkronisasi status...</div>';
   if(elFace) elFace.innerHTML = '<div class="loading" style="color:var(--accent);">Memuat jadwal...</div>';
+
+  // ── BARU: Coba sync jadwal mingguan dari GAS dulu supaya semua device sinkron ──
+  await syncJadwalMingguanDariGAS();
   
   const dow = new Date().getDay(); 
   const list = jadwalMingguan[dow] || [];
 
   if(!list.length) {
     el.innerHTML = '<div class="empty-state" style="padding:10px;">Hari ini tidak ada jadwal piket. (Libur / Weekend)</div>';
+    if(elFace) elFace.innerHTML = '<div class="empty-state" style="padding:10px;">Hari ini tidak ada jadwal piket.</div>';
     return;
   }
 
-  // Render jadwal lokal dulu (cepat), lalu update status dari server
+  // Helper render jadwal dari list NIA lokal + status absensi
   const renderJadwal = (datangNIA = new Set(), pulangNIA = new Set()) => {
     // Ambil izin piket hari ini dari izinList lokal
     const todayStr = getTodayWIB();
     const izinHariIni = {};
     izinList.forEach(i => {
       if(i.tanggal === todayStr && (i.jenisKegiatan === 'piket' || i.jenisKegiatan === 'semua')) {
-        izinHariIni[i.NIA] = i.jenisIzin; // 'sakit' | 'izin' | 'tukar-jadwal'
+        izinHariIni[i.NIA] = i.jenisIzin;
       }
     });
 
@@ -2523,7 +2527,7 @@ async function loadJadwalScan(){
       let status = 'BELUM';
       if(pulangNIA.has(nia)) status = 'PULANG';
       else if(datangNIA.has(nia)) status = 'DATANG';
-      else if(izinHariIni[nia]) status = izinHariIni[nia].toUpperCase(); // SAKIT | IZIN | TUKAR-JADWAL
+      else if(izinHariIni[nia]) status = izinHariIni[nia].toUpperCase();
       return {NIA: a.NIA, nama: a.nama, divisi: a.divisi, status};
     }).filter(Boolean);
 
@@ -2549,7 +2553,6 @@ async function loadJadwalScan(){
       return 'BELUM';
     };
 
-    // Cek apakah admin sedang login
     const isAdmin = !!localStorage.getItem('adminSession');
     const adminAttr = (nia, status) => isAdmin && (status==='BELUM'||status==='SAKIT'||status==='IZIN'||status==='TUKAR-JADWAL')
       ? `class="badge ${badgeClass(status)} badge-clickable" onclick="bukaModalIzinPiket('${nia}')" title="Klik untuk set status ketidakhadiran"`
@@ -2560,15 +2563,65 @@ async function loadJadwalScan(){
     if(elFace) elFace.innerHTML = jadwalHTML;
   };
 
-  // Render dulu tanpa status
+  // ── BARU: Utamakan data dari GAS (getJadwalHariIni sudah include status DATANG/PULANG) ──
+  try {
+    const gasRes = await api({ action: 'getJadwalHariIni' });
+    if(gasRes && gasRes.ok && Array.isArray(gasRes.data) && gasRes.data.length) {
+      // GAS kasih data lengkap dengan status — langsung render dari sana
+      const todayStr = getTodayWIB();
+      const izinHariIni = {};
+      izinList.forEach(i => {
+        if(i.tanggal === todayStr && (i.jenisKegiatan === 'piket' || i.jenisKegiatan === 'semua')) {
+          izinHariIni[i.NIA] = i.jenisIzin;
+        }
+      });
+
+      const badgeClass = s => {
+        if(s==='DATANG') return 'badge-hadir';
+        if(s==='PULANG') return 'badge-pulang';
+        if(s==='SAKIT') return 'badge-sakit';
+        if(s==='IZIN') return 'badge-izin-piket';
+        if(s==='TUKAR-JADWAL') return 'badge-tukar-jadwal';
+        return 'badge-belum';
+      };
+      const badgeLabel = s => {
+        if(s==='DATANG') return '✅ DATANG';
+        if(s==='PULANG') return '🟣 PULANG';
+        if(s==='SAKIT') return '🤒 SAKIT';
+        if(s==='IZIN') return '📋 IZIN';
+        if(s==='TUKAR-JADWAL') return '🔄 TUKAR JADWAL';
+        return 'BELUM';
+      };
+      const isAdmin = !!localStorage.getItem('adminSession');
+
+      const gasHTML = gasRes.data.map(j => {
+        // Override status dengan izin lokal jika status masih BELUM
+        let status = j.status || 'BELUM';
+        if(status === 'BELUM' && izinHariIni[j.NIA]) status = izinHariIni[j.NIA].toUpperCase();
+        const adminAttr = isAdmin && (status==='BELUM'||status==='SAKIT'||status==='IZIN'||status==='TUKAR-JADWAL')
+          ? `class="badge ${badgeClass(status)} badge-clickable" onclick="bukaModalIzinPiket('${j.NIA}')" title="Klik untuk set status ketidakhadiran"`
+          : `class="badge ${badgeClass(status)}"`;
+        return `<div class="jadwal-item" style="display:flex;justify-content:space-between;padding:8px 0; border-bottom: 1px solid var(--border);">
+          <div><b>${j.nama}</b><div style="font-size:11px; color:var(--text2);">${j.NIA} · ${j.divisi}</div></div>
+          <span ${adminAttr} style="align-self:center;">${badgeLabel(status)}</span>
+        </div>`;
+      }).join('');
+      el.innerHTML = gasHTML;
+      if(elFace) elFace.innerHTML = gasHTML;
+      return; // selesai, pakai data GAS
+    }
+  } catch(e) {
+    console.warn('getJadwalHariIni gagal, fallback ke lokal:', e.message);
+  }
+
+  // ── FALLBACK: render dari jadwalMingguan lokal (offline / GAS kosong) ──
   renderJadwal();
 
-  // Coba ambil status dari server (pakai WIB bukan UTC!)
+  // Coba ambil status absensi dari server untuk update badge
   try {
     const today = getTodayWIB();
     const res = await api({action:'getRekapAbsensi', from:today, to:today});
     if(res && res.ok && Array.isArray(res.data)) {
-      // Track DATANG dan PULANG per NIA
       const datangNIA = new Set(res.data.filter(r=>r.tipe==='DATANG').map(r=>r.NIA));
       const pulangNIA = new Set(res.data.filter(r=>r.tipe==='PULANG').map(r=>r.NIA));
       renderJadwal(datangNIA, pulangNIA);
@@ -2822,6 +2875,59 @@ async function syncAnggotaDariGAS(onDone) {
   }
 }
 window.syncAnggotaDariGAS = syncAnggotaDariGAS;
+
+// ── Sync jadwalMingguan dari Google Sheets ──
+// Dipanggil saat halaman scan/kiosk/landing dibuka.
+// Mengambil data Sheet "Jadwal Piket" lalu rebuild jadwalMingguan
+// per hari-of-week supaya semua device selalu sinkron.
+async function syncJadwalMingguanDariGAS(onDone) {
+  try {
+    const res = await api({ action: 'getJadwalPiket' });
+    if (!res || !res.ok || !Array.isArray(res.data) || !res.data.length) return;
+
+    // Kelompokkan berdasarkan tanggal → hari-of-week
+    // Ambil tanggal yang masuk dalam rentang minggu ini s.d. 4 minggu ke depan
+    // agar tidak tertimpa data lama. Cukup ambil 7 hari ke depan sebagai "pola mingguan".
+    const today = new Date();
+    const todayDow = today.getDay() === 0 ? 7 : today.getDay(); // 1=Sen..7=Min
+    const senin = new Date(today);
+    senin.setDate(today.getDate() - (todayDow - 1)); // Senin minggu ini
+
+    // Buat map: dow (1-5) → Set NIA
+    const dowMap = { 1: new Set(), 2: new Set(), 3: new Set(), 4: new Set(), 5: new Set() };
+
+    res.data.forEach(entry => {
+      if (!entry.tanggal || !entry.NIA) return;
+      const tglDate = new Date(entry.tanggal + 'T00:00:00');
+      const dow = tglDate.getDay(); // 0=Min, 1=Sen, dst
+      if (dow >= 1 && dow <= 5) {
+        // Ambil hanya tanggal yang >= Senin minggu ini (supaya pakai pola terbaru)
+        if (tglDate >= senin) {
+          dowMap[dow].add(entry.NIA);
+        }
+      }
+    });
+
+    // Hanya update hari yang punya data dari GAS
+    let ada = false;
+    for (let d = 1; d <= 5; d++) {
+      if (dowMap[d].size > 0) {
+        jadwalMingguan[d] = Array.from(dowMap[d]);
+        ada = true;
+      }
+    }
+
+    if (ada) {
+      localStorage.setItem('jadwalMingguan', JSON.stringify(jadwalMingguan));
+      console.log('✅ jadwalMingguan berhasil disync dari GAS');
+    }
+  } catch(e) {
+    console.warn('syncJadwalMingguanDariGAS gagal (offline?):', e.message);
+  }
+  if (onDone) onDone();
+}
+window.syncJadwalMingguanDariGAS = syncJadwalMingguanDariGAS;
+
 function startClock(){ setInterval(()=>{ document.getElementById('topbar-clock').innerText = new Date().toLocaleTimeString('id-ID'); },1000); }
 function switchTab(tab){ 
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); 
@@ -5597,6 +5703,8 @@ async function absenBursaLoadJadwal() {
   const el = document.getElementById('absen-bursa-jadwal-list');
   if (!el) return;
   try {
+    // Sync jadwal dari GAS supaya data terbaru
+    await syncJadwalMingguanDariGAS();
     const dow = new Date().getDay();
     const list = (typeof jadwalMingguan !== 'undefined' && jadwalMingguan[dow]) || [];
     if (!list.length) { el.textContent = 'Tidak ada jadwal piket hari ini.'; return; }
