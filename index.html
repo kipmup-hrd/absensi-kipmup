@@ -1604,8 +1604,8 @@ let allAnggota = [...realAnggota];
     <nav class="sidebar-nav">
       <button class="nav-item active" onclick="switchTab('dashboard')" data-tab="dashboard">📊 Dashboard</button>
       <button class="nav-item" onclick="switchTab('jadwal')" data-tab="jadwal">📅 Jadwal Piket (Edit)</button>
-      <button class="nav-item" onclick="switchTab('rekap')" data-tab="rekap">📋 Rekap Absensi Piket</button>
-      <button class="nav-item" onclick="switchTab('riwayat-piket')" data-tab="riwayat-piket">📅 Riwayat Piket (Alpha/Hadir/Izin)</button>
+      <button class="nav-item" onclick="switchTab('rekap')" data-tab="rekap">📋 Rekap Absensi Hadir</button>
+      <button class="nav-item" onclick="switchTab('riwayat-piket')" data-tab="riwayat-piket">📅 Riwayat Absensi Piket</button>
       <button class="nav-item" onclick="switchTab('kegiatan')" data-tab="kegiatan">🎯 Absensi Kegiatan</button>
       <button class="nav-item" onclick="switchTab('izin')" data-tab="izin">📝 Izin & Ketidakhadiran</button>
       <button class="nav-item" onclick="switchTab('anggota')" data-tab="anggota">👥 Data Anggota (Edit)</button>
@@ -1869,7 +1869,7 @@ let allAnggota = [...realAnggota];
       <div id="tab-riwayat-piket" class="tab-panel">
         <!-- FILTER BAR -->
         <div class="table-card" style="padding:16px; margin-bottom:16px;">
-          <div style="font-weight:700; font-size:15px; margin-bottom:12px;">📅 Riwayat Kehadiran Piket — Per Hari</div>
+          <div style="font-weight:700; font-size:15px; margin-bottom:12px;">📅 Riwayat Absensi Piket — Per Hari</div>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);">Dari</div>
             <input type="date" class="form-input filter-input" id="riwayat-piket-from" style="width:auto;">
@@ -2901,7 +2901,7 @@ function switchTab(tab){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); 
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active'); 
   
-  const titles = {'dashboard':'Dashboard', 'jadwal':'Jadwal Piket', 'rekap':'Rekap Absensi Piket', 'riwayat-piket':'📅 Riwayat Piket', 'kegiatan':'Absensi Kegiatan', 'izin':'Izin & Ketidakhadiran', 'anggota':'Data Anggota', 'konten':'Edit Konten Halaman', 'ranking':'🏆 Papan Peringkat'};
+  const titles = {'dashboard':'Dashboard', 'jadwal':'Jadwal Piket', 'rekap':'Rekap Absensi Hadir', 'riwayat-piket':'📅 Riwayat Absensi Piket', 'kegiatan':'Absensi Kegiatan', 'izin':'Izin & Ketidakhadiran', 'anggota':'Data Anggota', 'konten':'Edit Konten Halaman', 'ranking':'🏆 Papan Peringkat'};
   document.getElementById('tab-title').innerText = titles[tab] || ''; 
   
   if(tab==='dashboard') loadDashboard(); 
@@ -4734,158 +4734,168 @@ async function loadAllRankings() {
 
 async function processRankingPiket(data) {
   // ================================================================
-  // SISTEM BINTANG PIKET — baca durasi aktual dari rekap absensi
-  // 0 ⭐ = tidak absen sama sekali (hanya dijadwalkan, tidak hadir)
-  // 1 ⭐ = hadir (datang) tapi tidak absen pulang (lupa)
-  // 2 ⭐ = hadir + pulang, durasi < 4 jam
-  // 3 ⭐ = hadir + pulang, durasi ≥ 4 jam
-  // Bintang dikumpulkan per periode — semakin banyak semakin baik
+  // SISTEM BINTANG PIKET — mengacu pada Riwayat Absensi Piket
+  // Dasar perhitungan: setiap hari kerja dalam periode, per NIA terjadwal
+  //   0 ⭐ = dijadwalkan piket tapi TIDAK hadir sama sekali (Alpha)
+  //   1 ⭐ = hadir (datang) tapi TIDAK absen pulang (lupa pulang)
+  //   2 ⭐ = hadir + pulang, durasi < 4 jam
+  //   3 ⭐ = hadir + pulang, durasi ≥ 4 jam
+  // Sumber jadwal: jadwalMingguan (lokal) — sama dengan Riwayat Absensi Piket
+  // Semua anggota terjadwal ditampilkan, termasuk yang 0 bintang
   // ================================================================
 
-  const piketMap   = {};  // NIA → {nama, divisi, totalMenit, bintang, hariHadir, hariPiket}
-  const nonPiketMap = {}; // NIA → {nama, divisi, total}
+  const DURASI_LUPA_PULANG = 120; // menit (2 jam)
+  const BATAS_4_JAM = 240;        // menit
+  const today = getTodayWIB();
+
+  // 1. Ambil periode yang sedang dipilih dari filter ranking
+  const bulan = parseInt(document.getElementById('rank-periode')?.value || '1');
+  const { from, to } = getRangeFromMonths(bulan);
+
+  // 2. Bangun pasangan DATANG/PULANG per NIA+tanggal dari raw data GAS
   const pairs = {};
-
-  // Ambil jadwal dari GAS
-  const niaToTanggalPiket = {};
-  const niaToHariPiket = {};
-  try {
-    const jadwalRes = await api({ action: 'getJadwalPiket' });
-    if (jadwalRes && jadwalRes.ok && Array.isArray(jadwalRes.data)) {
-      jadwalRes.data.forEach(j => {
-        if (!j.NIA || !j.tanggal) return;
-        if (!niaToTanggalPiket[j.NIA]) niaToTanggalPiket[j.NIA] = new Set();
-        niaToTanggalPiket[j.NIA].add(j.tanggal);
-      });
+  data.forEach(r => {
+    const key = r.NIA + '_' + r.tanggal;
+    if (!pairs[key]) pairs[key] = { NIA: r.NIA, nama: r.nama, tanggal: r.tanggal, adaDatang: false, adaPulang: false, durasi: 0, waktuDatang: null };
+    if (r.tipe === 'DATANG') { pairs[key].adaDatang = true; if (r.waktu) pairs[key].waktuDatang = r.waktu; }
+    if (r.tipe === 'PULANG' && r.durasi && r.durasi !== '-') {
+      const mnt = parseDurasiToMenit(r.durasi);
+      if (mnt > 0) { pairs[key].adaPulang = true; pairs[key].durasi = Math.min(mnt, 720); }
     }
-  } catch(e) {}
+  });
 
-  for(let h = 1; h <= 5; h++) {
+  // Estimasi durasi lupa pulang
+  Object.values(pairs).forEach(p => {
+    if (p.adaDatang && !p.adaPulang && p.tanggal < today && p.waktuDatang) {
+      try {
+        const m = String(p.waktuDatang).match(/(\d{1,2}):(\d{2})/);
+        if (m) p.durasi = DURASI_LUPA_PULANG;
+      } catch(e) {}
+    }
+  });
+
+  // 3. Iterasi semua hari kerja dalam range (sama persis dengan renderRiwayatTemplate)
+  //    untuk setiap NIA terjadwal → hitung bintang hari itu
+  const allDaysInRange = [];
+  const cur = new Date(from + 'T00:00:00');
+  const end = new Date(to + 'T00:00:00');
+  while (cur <= end) {
+    const dow = cur.getUTCDay();
+    if (dow >= 1 && dow <= 5) {
+      const y = cur.getUTCFullYear();
+      const mo = String(cur.getUTCMonth()+1).padStart(2,'0');
+      const d  = String(cur.getUTCDate()).padStart(2,'0');
+      allDaysInRange.push({ tgl: `${y}-${mo}-${d}`, dow });
+    }
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+
+  // 4. Bangun piketMap — semua anggota terjadwal, termasuk yang belum pernah hadir
+  const piketMap = {}; // NIA → {nama, divisi, bintang, total(menit), hariPiket, hariHadir, hariAlpha}
+
+  // Inisialisasi semua anggota terjadwal agar semua muncul di leaderboard
+  for (let h = 1; h <= 5; h++) {
     (jadwalMingguan[h] || []).forEach(nia => {
-      if(!niaToHariPiket[nia]) niaToHariPiket[nia] = new Set();
-      niaToHariPiket[nia].add(h);
+      if (!piketMap[nia]) {
+        const a = allAnggota.find(x => x.NIA === nia);
+        piketMap[nia] = { nama: a ? a.nama : nia, divisi: a ? a.divisi : '-', bintang: 0, total: 0, hariPiket: 0, hariHadir: 0, hariAlpha: 0 };
+      }
     });
   }
 
-  function isTanggalPiket(nia, tanggal) {
-    if (niaToTanggalPiket[nia]?.size > 0) return niaToTanggalPiket[nia].has(tanggal);
-    if (niaToHariPiket[nia]?.size > 0 && tanggal) {
-      try {
-        const pts = tanggal.split('-');
-        if (pts.length === 3) {
-          const h = new Date(Date.UTC(+pts[0], +pts[1]-1, +pts[2])).getUTCDay();
-          return niaToHariPiket[nia].has(h);
-        }
-      } catch(e) {}
-    }
-    return true;
-  }
+  // 5. Loop hari × anggota terjadwal → akumulasi bintang
+  allDaysInRange.forEach(({ tgl, dow }) => {
+    if (tgl >= today) return; // hari ini/akan datang belum dihitung
+    const jadwalNIA = jadwalMingguan[dow] || [];
+    jadwalNIA.forEach(nia => {
+      if (!piketMap[nia]) return;
+      piketMap[nia].hariPiket++;
 
-  const JAM_MULAI_MENIT = 7 * 60;
-  const DURASI_LUPA_PULANG = 2 * 60; // menit — lupa pulang = 2 jam
-  const BATAS_BINTANG_4 = 4 * 60;   // 4 jam = 240 menit
+      const pair = pairs[nia + '_' + tgl];
+      let bintangHari = 0;
+      let menit = 0;
 
-  // Bangun pairs: satu entry per NIA+tanggal
-  data.forEach(r => {
-    const key = r.NIA + '_' + r.tanggal;
-    if (!pairs[key]) pairs[key] = {
-      NIA: r.NIA, nama: r.nama, tanggal: r.tanggal,
-      durasi: 0, jamDatang: null, adaDatang: false, adaPulang: false
-    };
-    if (r.tipe === 'DATANG') {
-      pairs[key].adaDatang = true;
-      if (r.waktu) pairs[key].jamDatang = r.waktu;
-    }
-    if (r.tipe === 'PULANG' && r.durasi && r.durasi !== '-') {
-      const rawMenit = parseDurasiToMenit(r.durasi);
-      pairs[key].durasi = Math.min(rawMenit, 720);
-      pairs[key].adaPulang = true;
-    }
+      if (!pair || !pair.adaDatang) {
+        // Tidak hadir = 0 bintang (Alpha)
+        bintangHari = 0;
+        piketMap[nia].hariAlpha++;
+      } else if (pair.adaDatang && !pair.adaPulang) {
+        bintangHari = 1; // Hadir tapi lupa pulang
+        menit = pair.durasi || DURASI_LUPA_PULANG;
+        piketMap[nia].hariHadir++;
+      } else if (pair.adaPulang && pair.durasi < BATAS_4_JAM) {
+        bintangHari = 2; // Hadir + pulang < 4 jam
+        menit = pair.durasi;
+        piketMap[nia].hariHadir++;
+      } else if (pair.adaPulang && pair.durasi >= BATAS_4_JAM) {
+        bintangHari = 3; // Hadir + pulang ≥ 4 jam (full)
+        menit = pair.durasi;
+        piketMap[nia].hariHadir++;
+      }
+
+      piketMap[nia].bintang += bintangHari;
+      piketMap[nia].total += menit;
+    });
   });
 
-  // Hitung durasi untuk yang lupa pulang (hari lalu)
-  const todayCheck = getTodayWIB();
-  Object.values(pairs).forEach(p => {
-    if (p.adaDatang && !p.adaPulang && p.tanggal < todayCheck && p.jamDatang) {
-      try {
-        const wMatch = String(p.jamDatang).match(/(\d{1,2}):(\d{2})/);
-        if (wMatch) {
-          const jamMenit = parseInt(wMatch[1]) * 60 + parseInt(wMatch[2]);
-          if (jamMenit >= JAM_MULAI_MENIT) p.durasi = DURASI_LUPA_PULANG;
-        }
-      } catch(e) {}
-    }
-  });
-
-  // Hitung bintang per hari dan akumulasi per anggota
-  Object.values(pairs).forEach(p => {
-    const a = allAnggota.find(x => x.NIA === p.NIA);
-    const divisi = a ? a.divisi : '-';
-    const isLuar = !isTanggalPiket(p.NIA, p.tanggal);
-
-    // Hitung bintang hari ini
-    let bintangHari = 0;
-    if (!p.adaDatang) {
-      bintangHari = 0; // tidak hadir sama sekali
-    } else if (p.adaDatang && !p.adaPulang) {
-      bintangHari = 1; // hadir tapi lupa pulang
-    } else if (p.adaPulang && p.durasi < BATAS_BINTANG_4) {
-      bintangHari = 2; // hadir + pulang tapi < 4 jam
-    } else if (p.adaPulang && p.durasi >= BATAS_BINTANG_4) {
-      bintangHari = 3; // hadir + pulang ≥ 4 jam
-    }
-
-    if (isLuar) {
-      // Non-piket: akumulasi durasi saja
-      if (!nonPiketMap[p.NIA]) nonPiketMap[p.NIA] = { nama: p.nama, divisi, total: 0 };
-      nonPiketMap[p.NIA].total += p.durasi;
-    } else {
-      // Piket: akumulasi bintang + durasi
-      if (!piketMap[p.NIA]) piketMap[p.NIA] = { nama: p.nama, divisi, total: 0, bintang: 0, hari: 0 };
-      piketMap[p.NIA].total += p.durasi;
-      piketMap[p.NIA].bintang += bintangHari;
-      piketMap[p.NIA].hari += p.adaDatang ? 1 : 0;
-    }
-  });
-
-  // Render rank piket — urutkan berdasarkan bintang, tie-break by durasi
+  // 6. Render leaderboard — urutkan: bintang DESC, durasi DESC
+  //    Tampilkan SEMUA anggota terjadwal (bukan hanya top 10 yang pernah hadir)
   const piketList = Object.entries(piketMap)
     .map(([nia, v]) => ({ nia, ...v }))
-    .filter(x => x.total > 0 || x.bintang > 0)
-    .sort((a, b) => b.bintang - a.bintang || b.total - a.total)
-    .slice(0, 10);
+    .filter(x => x.hariPiket > 0) // hanya yang memiliki hari piket di periode ini
+    .sort((a, b) => b.bintang - a.bintang || b.total - a.total || a.nama.localeCompare(b.nama));
 
   const elPiket = document.getElementById('rank-piket');
   if (elPiket) {
     if (!piketList.length) {
-      elPiket.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Belum ada data piket.<br><span style="font-size:10px;">Data muncul setelah ada absensi piket yang tercatat.</span></div>';
+      elPiket.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px;">Belum ada data piket di periode ini.</div>';
     } else {
       const maxB = Math.max(1, piketList[0].bintang);
       const medals = ['🥇','🥈','🥉'];
       elPiket.innerHTML = piketList.map((x, i) => {
         const bintangStr = x.bintang > 0
-          ? `${'⭐'.repeat(Math.min(x.bintang, 5))}${x.bintang > 5 ? ` +${x.bintang-5}` : ''} <span style="color:#fbbf24; font-weight:700;">${x.bintang}</span>`
-          : '<span style="color:var(--text3);">0 bintang</span>';
+          ? `${'⭐'.repeat(Math.min(x.bintang, 5))}${x.bintang > 5 ? `<span style="font-size:10px; color:#fbbf24;"> +${x.bintang-5}</span>` : ''} <span style="color:#fbbf24; font-weight:700;">${x.bintang}</span>`
+          : '<span style="color:var(--red); font-size:11px;">0 ⭐</span>';
         const barPct = Math.round((x.bintang / maxB) * 100);
-        const medal = i < 3 ? medals[i] : `<span style="color:var(--text3);font-weight:700;">${i+1}</span>`;
-        return `<div style="padding:8px 0; border-bottom:1px solid var(--border);">
+        const medal = i < 3 ? medals[i] : `<span style="color:var(--text3);font-weight:600;font-size:13px;">${i+1}</span>`;
+        // Warna baris: hijau kalau rajin, merah kalau banyak alpha
+        const alphaRatio = x.hariPiket > 0 ? x.hariAlpha / x.hariPiket : 0;
+        const rowAccent = alphaRatio > 0.5 ? 'rgba(248,113,113,0.06)' : x.hariAlpha === 0 ? 'rgba(74,222,128,0.04)' : '';
+        const subInfo = `${x.hariHadir}/${x.hariPiket} hari hadir${x.hariAlpha > 0 ? ' · <span style=\'color:var(--red);\'>' + x.hariAlpha + ' alpha</span>' : ''} · ${formatMenitToStr(x.total)}`;
+        return `<div style="padding:8px 10px; border-bottom:1px solid var(--border); background:${rowAccent}; border-radius:6px; margin-bottom:2px;">
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-            <span style="width:22px; text-align:center; font-size:14px;">${medal}</span>
+            <span style="width:22px; text-align:center; font-size:14px; flex-shrink:0;">${medal}</span>
             <div style="flex:1; min-width:0;">
-              <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${x.nama}</div>
-              <div style="font-size:10px; color:var(--text3);">${x.nia} · ${x.divisi} · ${formatMenitToStr(x.total)}</div>
+              <div style="font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${x.nama}</div>
+              <div style="font-size:10px; color:var(--text3);">${x.divisi} · ${subInfo}</div>
             </div>
-            <div style="font-size:12px; text-align:right;">${bintangStr}</div>
+            <div style="font-size:12px; text-align:right; flex-shrink:0;">${bintangStr}</div>
           </div>
-          <div style="height:4px; background:var(--bg3); border-radius:4px; margin-left:30px;">
-            <div style="height:4px; border-radius:4px; background:#f0c040; width:${barPct}%; transition:width 0.6s;"></div>
+          <div style="height:3px; background:var(--bg3); border-radius:3px; margin-left:30px;">
+            <div style="height:3px; border-radius:3px; background:linear-gradient(90deg,#f0c040,#fbbf24); width:${barPct}%; transition:width 0.6s;"></div>
           </div>
         </div>`;
       }).join('');
     }
   }
 
-  // Render rank non-piket (tetap pakai durasi)
+  // 7. Render rank non-piket (anggota yang absen bukan di hari jadwalnya)
+  const nonPiketMap = {};
+  data.forEach(r => {
+    const pts = (r.tanggal||'').split('-');
+    if (pts.length !== 3) return;
+    const dow = new Date(Date.UTC(+pts[0], +pts[1]-1, +pts[2])).getUTCDay();
+    const jadwalHariIni = jadwalMingguan[dow] || [];
+    if (!jadwalHariIni.includes(r.NIA)) {
+      // Bukan hari jadwal piket NIA ini
+      const key = r.NIA + '_' + r.tanggal;
+      const pair = pairs[key];
+      if (!pair) return;
+      const a = allAnggota.find(x => x.NIA === r.NIA);
+      if (!nonPiketMap[r.NIA]) nonPiketMap[r.NIA] = { nama: r.nama, divisi: a ? a.divisi : '-', total: 0 };
+      if (pair.durasi > 0) nonPiketMap[r.NIA].total += pair.durasi;
+    }
+  });
   const nonPiketList = Object.entries(nonPiketMap)
     .map(([nia, v]) => ({ nia, ...v }))
     .filter(x => x.total > 0)
@@ -7740,7 +7750,7 @@ console.log('✅ KIPM-UP v4.0 — Face ID + Self-contained QR aktif!');
 
     <!-- Opsi 2: Hapus semua -->
     <div style="background:rgba(248,113,113,0.07); border:1px solid rgba(248,113,113,0.25); border-radius:12px; padding:16px;">
-      <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:6px;">⚠️ Hapus SEMUA Rekap Absensi Piket</div>
+      <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:6px;">⚠️ Hapus SEMUA Rekap Absensi Hadir</div>
       <div style="font-size:12px; color:var(--text2); margin-bottom:12px; line-height:1.6;">Menghapus <b>seluruh</b> data rekap absensi piket dari Google Sheets. Papan peringkat akan direset otomatis.</div>
       <button id="btn-hapus-semua" onclick="hapusSemuaRekap()" style="width:100%; padding:10px; background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.45); color:var(--red); font-family:var(--font); font-size:13px; font-weight:600; border-radius:10px; cursor:pointer;">🔴 Hapus Semua Rekap</button>
     </div>
