@@ -8087,20 +8087,20 @@ function kipmGenKeys() {
 // ── Init: load lokal dulu (cepat), lalu sync dari GAS di background ──
 function kipmInit() {
   kipmLoad(); // load cache lokal dulu → render cepat
-  requestAnimationFrame(function() {
-    kipmUpdateGenFilter();
-    kipmRender();
-  });
+  // Reset filter ke "Semua Generasi" setiap kali tab dibuka
+  const selGen = document.getElementById('kipm-filter-gen');
+  if (selGen) selGen.value = '';
+  const selStat = document.getElementById('kipm-filter-status');
+  if (selStat) selStat.value = '';
+  kipmUpdateGenFilter();
+  kipmRender(); // langsung render — tab sudah active saat ini dipanggil
   // Background: ambil data terbaru dari GAS, update jika ada
   kipmLoadFromGAS().then(updated => {
     if (updated) {
-      requestAnimationFrame(function() {
-        kipmUpdateGenFilter();
-        kipmRender();
-        // tampilkan indikator sync berhasil (subtle)
-        const badge = document.getElementById('kipm-sync-badge');
-        if (badge) { badge.textContent = '☁️ Synced'; badge.style.color = 'var(--accent)'; }
-      });
+      kipmUpdateGenFilter();
+      kipmRender();
+      const badge = document.getElementById('kipm-sync-badge');
+      if (badge) { badge.textContent = '☁️ Synced'; badge.style.color = 'var(--accent)'; }
     } else {
       const badge = document.getElementById('kipm-sync-badge');
       if (badge) { badge.textContent = '📦 Lokal'; badge.style.color = 'var(--text3)'; }
@@ -8136,17 +8136,17 @@ async function kipmSyncManual() {
 }
 window.kipmSyncManual = kipmSyncManual;
 
-function kipmUpdateGenFilter() {
+function kipmUpdateGenFilter(preserveValue) {
   const sel = document.getElementById('kipm-filter-gen');
   if (!sel) return;
-  const cur = sel.value;
+  const cur = preserveValue ? sel.value : '';
   sel.innerHTML = '<option value="">Semua Generasi</option>';
   kipmGenKeys().forEach(gk => {
     const opt = document.createElement('option');
     opt.value = gk; opt.textContent = gk;
     sel.appendChild(opt);
   });
-  sel.value = cur;
+  if (cur && preserveValue) sel.value = cur;
 }
 
 function jabatanColor(j) {
@@ -8173,9 +8173,7 @@ function kipmRender() {
 
   const container = document.getElementById('kipm-table-container');
   if (!container) {
-    // Tab mungkin belum aktif, coba lagi setelah 1 frame
-    console.warn('kipmRender: kipm-table-container tidak ditemukan, retry...');
-    requestAnimationFrame(kipmRender);
+    console.warn('kipmRender: kipm-table-container tidak ditemukan');
     return;
   }
 
@@ -8300,7 +8298,7 @@ function kipmSaveEdit() {
     telp: document.getElementById('edit-kipm-telp').value.trim(),
     isFounder: jabatan.toLowerCase().startsWith('founder')
   };
-  kipmSave(); kipmCloseEdit(); kipmRender();
+  kipmSave(); kipmCloseEdit(); kipmUpdateGenFilter(true); kipmRender();
   showToast('✅ Data anggota diperbarui','success');
 }
 window.kipmSaveEdit = kipmSaveEdit;
@@ -8309,7 +8307,7 @@ window.kipmSaveEdit = kipmSaveEdit;
 function kipmDeleteMember(genKey, memberId) {
   if(!confirm('Hapus anggota ini dari daftar?')) return;
   kipmData[genKey].members = (kipmData[genKey].members||[]).filter(x=>x.id!==memberId);
-  kipmSave(); kipmRender();
+  kipmSave(); kipmUpdateGenFilter(true); kipmRender();
   showToast('🗑️ Anggota dihapus','success');
 }
 window.kipmDeleteMember = kipmDeleteMember;
@@ -8356,7 +8354,7 @@ function kipmSaveAdd() {
   };
   if(!kipmData[genKey]) kipmData[genKey] = {color:'#4ade80', members:[]};
   kipmData[genKey].members.push(newMember);
-  kipmSave(); kipmCloseAdd(); kipmUpdateGenFilter(); kipmRender();
+  kipmSave(); kipmCloseAdd(); kipmUpdateGenFilter(true); kipmRender();
   showToast('✅ Anggota ditambahkan ke '+genKey,'success');
 }
 window.kipmSaveAdd = kipmSaveAdd;
@@ -8391,7 +8389,7 @@ function kipmSaveAddGen() {
   if(kipmData[nama]) { showToast('Generasi sudah ada!','error'); return; }
   const color = document.getElementById('addgen-color').value || '#4ade80';
   kipmData[nama] = { color, members: [] };
-  kipmSave(); kipmCloseAddGen(); kipmUpdateGenFilter(); kipmRender();
+  kipmSave(); kipmCloseAddGen(); kipmUpdateGenFilter(true); kipmRender();
   showToast('✅ Generasi '+nama+' berhasil dibuat!','success');
 }
 window.kipmSaveAddGen = kipmSaveAddGen;
