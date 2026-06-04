@@ -11221,7 +11221,8 @@ function showUjicobaNotif(tipe, nama) {
       '✨ Jangan lupa cek <strong style="color:#fbbf24;">Event Mendatang</strong> ya!<br><br>' +
       '📋 Isi absensi untuk <strong style="color:#e2c97e;">Galeri Bursa BEI</strong> juga.<br><br>' +
       '🤲 Berdoa dulu sebelum mulai aktivitas.<br><br>' +
-      '<em style="color:#94a3b8;">Semoga yang kamu kerjakan hari ini bermanfaat banyak buat kamu dan sekitar. Selamat bertugas! 😊</em>';
+      '<em style="color:#94a3b8;">Semoga yang kamu kerjakan hari ini bermanfaat banyak buat kamu dan sekitar. Selamat bertugas! 😊</em>' +
+      '<div style="margin-top:12px; padding:10px 14px; background:rgba(245,158,11,0.12); border:1.5px solid rgba(245,158,11,0.4); border-radius:10px; font-size:12px; color:#f59e0b;">🔗 Link <strong>Galeri Bursa BEI (RDIS)</strong> akan otomatis terbuka saat kamu klik <strong>Oke, Tutup!</strong></div>';
   } else {
     msgEl.innerHTML =
       '🙏 Terima kasih atas effort kamu untuk <strong style="color:#4ade80;">KIPM</strong> hari ini!<br><br>' +
@@ -11237,12 +11238,20 @@ function showUjicobaNotif(tipe, nama) {
 }
 
 function closeUjicobaNotif(doRefresh) {
+  // Jika absen DATANG, otomatis buka link RDIS setelah tutup modal
+  const isDatang = ujicobaCurrentTipe === 'DATANG';
   document.getElementById('modal-ujicoba-notif').classList.remove('show');
   clearTimeout(window._ujicoba_notif_timer);
   clearInterval(window._ujicoba_notif_interval);
   // Reset form untuk absen berikutnya (tidak auto-reload, biar user tenang baca notif)
   if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
   ujicobaReset();
+  // Otomatis buka RDIS hanya untuk absen DATANG
+  if (isDatang) {
+    setTimeout(function() {
+      window.open('https://rdis.idx.co.id/id/register-visit-onsite/401', '_blank');
+    }, 300);
+  }
 }
 
 // ── Render rekap history di kolom kiri ──
