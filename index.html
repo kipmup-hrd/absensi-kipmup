@@ -1001,8 +1001,12 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setFunFilter('ujicoba','bunny')" id="ujicoba-fun-bunny" class="filter-pill">🐰 Bunny</button>
           <button onclick="setFunFilter('ujicoba','bear')" id="ujicoba-fun-bear" class="filter-pill">🐻 Bear</button>
           <button onclick="setFunFilter('ujicoba','dog')" id="ujicoba-fun-dog" class="filter-pill">🐶 Anjing</button>
+          <button onclick="setFunFilter('ujicoba','fox')" id="ujicoba-fun-fox" class="filter-pill">🦊 Fox</button>
           <button onclick="setFunFilter('ujicoba','crown')" id="ujicoba-fun-crown" class="filter-pill">👑 Crown</button>
           <button onclick="setFunFilter('ujicoba','heart')" id="ujicoba-fun-heart" class="filter-pill">💕 Heart</button>
+          <button onclick="setFunFilter('ujicoba','devil')" id="ujicoba-fun-devil" class="filter-pill">😈 Devil</button>
+          <button onclick="setFunFilter('ujicoba','skull')" id="ujicoba-fun-skull" class="filter-pill">💀 Skull</button>
+          <button onclick="setFunFilter('ujicoba','ghost')" id="ujicoba-fun-ghost" class="filter-pill">👻 Ghost</button>
         </div>
         <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;" id="ujicoba-frame-pills">
@@ -1388,8 +1392,12 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
               <button onclick="setFunFilter('kiosk','bunny')" id="kiosk-fun-bunny" class="filter-pill">🐰 Bunny</button>
               <button onclick="setFunFilter('kiosk','bear')" id="kiosk-fun-bear" class="filter-pill">🐻 Bear</button>
               <button onclick="setFunFilter('kiosk','dog')" id="kiosk-fun-dog" class="filter-pill">🐶 Anjing</button>
+              <button onclick="setFunFilter('kiosk','fox')" id="kiosk-fun-fox" class="filter-pill">🦊 Fox</button>
               <button onclick="setFunFilter('kiosk','crown')" id="kiosk-fun-crown" class="filter-pill">👑 Crown</button>
               <button onclick="setFunFilter('kiosk','heart')" id="kiosk-fun-heart" class="filter-pill">💕 Heart</button>
+              <button onclick="setFunFilter('kiosk','devil')" id="kiosk-fun-devil" class="filter-pill">😈 Devil</button>
+              <button onclick="setFunFilter('kiosk','skull')" id="kiosk-fun-skull" class="filter-pill">💀 Skull</button>
+              <button onclick="setFunFilter('kiosk','ghost')" id="kiosk-fun-ghost" class="filter-pill">👻 Ghost</button>
             </div>
             <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
@@ -1824,8 +1832,12 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setFunFilter('kegiatan','bunny')" id="kegiatan-fun-bunny" class="filter-pill">🐰 Bunny</button>
           <button onclick="setFunFilter('kegiatan','bear')" id="kegiatan-fun-bear" class="filter-pill">🐻 Bear</button>
           <button onclick="setFunFilter('kegiatan','dog')" id="kegiatan-fun-dog" class="filter-pill">🐶 Anjing</button>
+          <button onclick="setFunFilter('kegiatan','fox')" id="kegiatan-fun-fox" class="filter-pill">🦊 Fox</button>
           <button onclick="setFunFilter('kegiatan','crown')" id="kegiatan-fun-crown" class="filter-pill">👑 Crown</button>
           <button onclick="setFunFilter('kegiatan','heart')" id="kegiatan-fun-heart" class="filter-pill">💕 Heart</button>
+          <button onclick="setFunFilter('kegiatan','devil')" id="kegiatan-fun-devil" class="filter-pill">😈 Devil</button>
+          <button onclick="setFunFilter('kegiatan','skull')" id="kegiatan-fun-skull" class="filter-pill">💀 Skull</button>
+          <button onclick="setFunFilter('kegiatan','ghost')" id="kegiatan-fun-ghost" class="filter-pill">👻 Ghost</button>
         </div>
         <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
@@ -11895,30 +11907,81 @@ const _selfieFilters = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
 // Map filter → CSS preview string
 const FILTER_CSS = {
   none:      '',
-  grayscale: 'grayscale(100%) contrast(108%) brightness(103%)',
-  warm:      'sepia(28%) saturate(145%) brightness(107%) contrast(103%)',
-  cool:      'saturate(80%) brightness(105%) contrast(104%) hue-rotate(188deg) saturate(115%) hue-rotate(-188deg)',
-  vivid:     'saturate(185%) contrast(115%) brightness(104%)',
-  vintage:   'sepia(50%) contrast(88%) brightness(96%) saturate(80%) blur(0px)',
-  sunset:    'sepia(20%) saturate(175%) hue-rotate(-20deg) brightness(112%) contrast(106%)',
-  neon:      'saturate(220%) contrast(118%) brightness(109%) hue-rotate(6deg)',
-  frosty:    'saturate(60%) brightness(110%) contrast(96%) hue-rotate(192deg) saturate(105%) hue-rotate(-192deg)',
-  dramatic:  'contrast(155%) saturate(70%) brightness(86%) sepia(8%)',
-  golden:    'sepia(40%) saturate(165%) brightness(114%) hue-rotate(-14deg) contrast(106%)',
+  grayscale: 'grayscale(100%)',
+  warm:      'sepia(40%) saturate(130%) brightness(105%)',
+  cool:      'hue-rotate(20deg) saturate(90%) brightness(100%)',
+  vivid:     'saturate(180%) contrast(110%)',
+  vintage:   'sepia(60%) contrast(90%) brightness(95%)',
+  sunset:    'sepia(30%) saturate(160%) hue-rotate(-15deg) brightness(108%)',
+  neon:      'saturate(200%) contrast(125%) brightness(110%) hue-rotate(10deg)',
+  frosty:    'hue-rotate(200deg) saturate(70%) brightness(105%) contrast(95%)',
+  dramatic:  'contrast(145%) saturate(80%) brightness(90%)',
+  golden:    'sepia(50%) saturate(150%) brightness(110%) hue-rotate(-10deg)',
 };
 
-// Canvas filter — GPU CSS compositing (hasil foto = persis sama dengan live preview)
+// Canvas pixel filter
 function _applyFilterToCanvas(ctx2d, canvas, filterName) {
   if (!filterName || filterName === 'none') return;
-  const cssFilter = FILTER_CSS[filterName];
-  if (!cssFilter) return;
-  const snap = document.createElement('canvas');
-  snap.width = canvas.width; snap.height = canvas.height;
-  snap.getContext('2d').drawImage(canvas, 0, 0);
-  ctx2d.clearRect(0, 0, canvas.width, canvas.height);
-  ctx2d.filter = cssFilter;
-  ctx2d.drawImage(snap, 0, 0);
-  ctx2d.filter = 'none';
+  const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i], g = d[i+1], b = d[i+2];
+    if (filterName === 'grayscale') {
+      const gray = Math.round(0.299*r + 0.587*g + 0.114*b);
+      d[i] = d[i+1] = d[i+2] = gray;
+    } else if (filterName === 'warm') {
+      d[i]   = Math.min(255, r + 20);
+      d[i+1] = Math.min(255, g + 5);
+      d[i+2] = Math.max(0,   b - 20);
+    } else if (filterName === 'cool') {
+      d[i]   = Math.max(0,   r - 15);
+      d[i+1] = Math.min(255, g + 5);
+      d[i+2] = Math.min(255, b + 25);
+    } else if (filterName === 'vivid') {
+      const avg = (r + g + b) / 3;
+      d[i]   = Math.min(255, Math.round(avg + (r - avg) * 1.6));
+      d[i+1] = Math.min(255, Math.round(avg + (g - avg) * 1.6));
+      d[i+2] = Math.min(255, Math.round(avg + (b - avg) * 1.6));
+    } else if (filterName === 'vintage') {
+      d[i]   = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
+      d[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
+      d[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+    } else if (filterName === 'sunset') {
+      d[i]   = Math.min(255, r + 30);
+      d[i+1] = Math.min(255, g - 5);
+      d[i+2] = Math.max(0,   b - 40);
+    } else if (filterName === 'neon') {
+      const avg3 = (r + g + b) / 3;
+      d[i]   = Math.min(255, Math.round(avg3 + (r - avg3) * 2.0));
+      d[i+1] = Math.min(255, Math.round(avg3 + (g - avg3) * 2.0));
+      d[i+2] = Math.min(255, Math.round(avg3 + (b - avg3) * 2.0));
+      // boost brightness
+      d[i]   = Math.min(255, d[i]   + 15);
+      d[i+1] = Math.min(255, d[i+1] + 15);
+      d[i+2] = Math.min(255, d[i+2] + 15);
+    } else if (filterName === 'frosty') {
+      d[i]   = Math.max(0,   r - 20);
+      d[i+1] = Math.min(255, g + 10);
+      d[i+2] = Math.min(255, b + 50);
+      // desaturate slightly
+      const fr = 0.6*d[i] + 0.2*d[i+1] + 0.2*d[i+2];
+      d[i]   = Math.round(d[i]   * 0.75 + fr * 0.25);
+      d[i+1] = Math.round(d[i+1] * 0.75 + fr * 0.25);
+      d[i+2] = Math.round(d[i+2] * 0.75 + fr * 0.25);
+    } else if (filterName === 'dramatic') {
+      // high contrast B&W tinted
+      const lum = 0.299*r + 0.587*g + 0.114*b;
+      const contr = Math.round(Math.min(255, Math.max(0, (lum - 128) * 1.45 + 128)));
+      d[i]   = contr;
+      d[i+1] = Math.round(contr * 0.88);
+      d[i+2] = Math.round(contr * 0.82);
+    } else if (filterName === 'golden') {
+      d[i]   = Math.min(255, r + 25);
+      d[i+1] = Math.min(255, g + 8);
+      d[i+2] = Math.max(0,   b - 30);
+    }
+  }
+  ctx2d.putImageData(imageData, 0, 0);
 }
 
 function setSelfieFilter(ctx, filterName) {
@@ -12095,7 +12158,7 @@ window.showFilterBar   = showFilterBar;
 window.hideFilterBar   = hideFilterBar;
 </script>
 
-<!-- ══ FUN FILTER ENGINE v2 — Canvas-drawn accessories ══ -->
+<!-- ══ FUN FILTER ENGINE v3 — Rebuilt draw functions + Fox/Devil/Skull/Ghost ══ -->
 <script>
 const _funFilters = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
 const _overlayCanvases = {};
@@ -12103,6 +12166,9 @@ const _overlayAnimFrames = {};
 const _faceDataCache = {};
 const _heartParticles = {};
 const _sparkleParticles = {};
+const _ghostParticles = {};
+// Smooth lerp target for face box
+const _faceSmooth = {};
 
 // ── Video ID map ──
 const _VID = { ujicoba:'ujicoba-video', kegiatan:'kegiatan-selfie-video', kiosk:'kiosk-selfie-video' };
@@ -12128,191 +12194,470 @@ function _stopOverlay(ctx) {
   if (oc) { oc.getContext('2d').clearRect(0,0,oc.width,oc.height); }
 }
 
-// ── Get face box (display-space, mirrored) ──
-function _getFaceBox(ctx, W, H) {
+// ── Smooth lerp face box ──
+function _getLerpedFaceBox(ctx, W, H) {
   const vid = document.getElementById(_VID[ctx]);
   const fd = _faceDataCache[ctx];
+  let target;
   if (fd && fd.box && vid && vid.videoWidth) {
     const vw = vid.videoWidth, vh = vid.videoHeight;
-    // The video is displayed as object-fit:cover in a square container.
-    // We need to account for the crop to match the display correctly.
-    const displayAspect = W / H;
-    const videoAspect = vw / vh;
+    const displayAspect = W / H, videoAspect = vw / vh;
     let scaleX, scaleY, cropX = 0, cropY = 0;
     if (videoAspect > displayAspect) {
-      // video is wider than display → sides are cropped
-      scaleY = H / vh;
-      scaleX = scaleY;
-      cropX = (vw * scaleX - W) / 2;
+      scaleY = H / vh; scaleX = scaleY; cropX = (vw * scaleX - W) / 2;
     } else {
-      // video is taller than display → top/bottom cropped
-      scaleX = W / vw;
-      scaleY = scaleX;
-      cropY = (vh * scaleY - H) / 2;
+      scaleX = W / vw; scaleY = scaleX; cropY = (vh * scaleY - H) / 2;
     }
-    // Mirror X (video is scaleX(-1))
     const bx = W - (fd.box.x * scaleX - cropX) - fd.box.width * scaleX;
     const by = fd.box.y * scaleY - cropY;
-    const bw = fd.box.width * scaleX;
-    const bh = fd.box.height * scaleY;
-    return { fx: bx, fy: Math.max(0, by), fw: bw, fh: bh };
+    target = { fx: bx, fy: Math.max(0, by), fw: fd.box.width * scaleX, fh: fd.box.height * scaleY };
+  } else {
+    const fw = W * 0.44, fh = H * 0.50;
+    target = { fx: (W - fw) / 2, fy: H * 0.13, fw, fh };
   }
-  // Fallback: estimate face in center
-  const fw = W * 0.44, fh = H * 0.50;
-  return { fx: (W - fw) / 2, fy: H * 0.13, fw, fh };
+  // Init smooth if needed
+  if (!_faceSmooth[ctx]) { _faceSmooth[ctx] = { ...target }; return target; }
+  const s = _faceSmooth[ctx], a = 0.18; // lerp factor — smooth but responsive
+  s.fx += (target.fx - s.fx) * a;
+  s.fy += (target.fy - s.fy) * a;
+  s.fw += (target.fw - s.fw) * a;
+  s.fh += (target.fh - s.fh) * a;
+  return { ...s };
 }
 
-// ══ DRAWING FUNCTIONS ══
+// ══ DRAWING FUNCTIONS v3 ══
 
-// Blush on cheeks
+// Blush — soft radial gradient circles
 function _drawBlush(c, fx, fy, fw, fh, color) {
-  const br = fw * 0.11, by = fy + fh * 0.60;
-  const lx = fx + fw * 0.18, rx = fx + fw * 0.82;
-  c.save();
-  c.fillStyle = color;
+  const br = fw * 0.12, by = fy + fh * 0.62;
+  const lx = fx + fw * 0.17, rx = fx + fw * 0.83;
   [lx, rx].forEach(x => {
-    c.beginPath(); c.ellipse(x, by, br * 1.3, br * 0.75, 0, 0, Math.PI*2); c.fill();
+    const g = c.createRadialGradient(x, by, 0, x, by, br * 1.4);
+    g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.save(); c.fillStyle = g;
+    c.beginPath(); c.ellipse(x, by, br * 1.4, br * 0.85, 0, 0, Math.PI*2); c.fill(); c.restore();
   });
-  c.restore();
 }
 
-// Small nose dot
-function _drawNoseDot(c, fx, fy, fw, fh, color) {
+// Nose — oval with highlight
+function _drawNose(c, fx, fy, fw, fh, color) {
   const nx = fx + fw * 0.5, ny = fy + fh * 0.60;
-  const nr = fw * 0.055;
+  const nw = fw * 0.075, nh = fw * 0.048;
   c.save(); c.fillStyle = color;
-  c.beginPath(); c.arc(nx, ny, nr, 0, Math.PI*2); c.fill(); c.restore();
+  c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill();
+  // highlight
+  c.fillStyle = 'rgba(255,255,255,0.4)';
+  c.beginPath(); c.ellipse(nx - nw*0.3, ny - nh*0.3, nw*0.35, nh*0.3, -0.4, 0, Math.PI*2); c.fill();
+  c.restore();
 }
 
-// Whiskers
+// Whiskers — 3 per side, fanned out naturally
 function _drawWhiskers(c, fx, fy, fw, fh, color) {
-  const ny = fy + fh * 0.60;
-  const wLen = fw * 0.28, gap = fw * 0.08;
-  c.save(); c.strokeStyle = color; c.lineWidth = Math.max(1, fw * 0.012); c.globalAlpha = 0.7;
-  // left whiskers
-  [[-0.04, -0.025], [0, 0], [0.04, 0.025]].forEach(([dy1]) => {
-    c.beginPath();
-    c.moveTo(fx + fw*0.5 - gap, ny + dy1*fw);
-    c.lineTo(fx + fw*0.5 - gap - wLen, ny + dy1*fw - fw*0.02);
-    c.stroke();
-  });
-  // right whiskers
-  [[-0.04, -0.025], [0, 0], [0.04, 0.025]].forEach(([dy1]) => {
-    c.beginPath();
-    c.moveTo(fx + fw*0.5 + gap, ny + dy1*fw);
-    c.lineTo(fx + fw*0.5 + gap + wLen, ny + dy1*fw - fw*0.02);
-    c.stroke();
+  const cx = fx + fw * 0.5, cy = fy + fh * 0.60;
+  const wLen = fw * 0.30;
+  c.save(); c.strokeStyle = color; c.lineWidth = Math.max(1, fw * 0.013); c.globalAlpha = 0.72;
+  c.lineCap = 'round';
+  const angles = [[-0.15, 0, 0.15], [Math.PI + 0.15, Math.PI, Math.PI - 0.15]];
+  angles.forEach((side, si) => {
+    side.forEach(a => {
+      const gapX = si === 0 ? -fw*0.07 : fw*0.07;
+      c.beginPath();
+      c.moveTo(cx + gapX, cy);
+      c.lineTo(cx + gapX + Math.cos(a) * wLen, cy + Math.sin(a) * wLen * 0.35);
+      c.stroke();
+    });
   });
   c.restore();
 }
 
-// Cat ears — pointy triangle ears above head
-function _drawCatEars(c, fx, fy, fw) {
-  const earW = fw * 0.22, earH = fw * 0.26;
-  const lx = fx + fw * 0.20, rx = fx + fw * 0.80;
-  const topY = fy - earH * 0.7;
+// ── CAT — pointy ears with fur detail, big round eyes hint, detailed nose+mouth ──
+function _drawCatEars(c, fx, fy, fw, fh) {
+  const earW = fw * 0.24, earH = fw * 0.30;
+  const lx = fx + fw * 0.21, rx = fx + fw * 0.79;
+  const baseY = fy + fw * 0.02;
+  const tipY = fy - earH * 0.82;
   [[lx],[rx]].forEach(([ex]) => {
-    // outer ear
-    c.save(); c.fillStyle = '#f4a4c0';
+    // shadow/depth
+    c.save(); c.shadowColor = 'rgba(0,0,0,0.25)'; c.shadowBlur = 6;
+    c.fillStyle = '#e8829c';
     c.beginPath();
-    c.moveTo(ex - earW/2, fy + fw*0.04);
-    c.lineTo(ex, topY);
-    c.lineTo(ex + earW/2, fy + fw*0.04);
+    c.moveTo(ex - earW/2, baseY);
+    c.quadraticCurveTo(ex - earW*0.55, tipY + earH*0.2, ex, tipY);
+    c.quadraticCurveTo(ex + earW*0.55, tipY + earH*0.2, ex + earW/2, baseY);
     c.closePath(); c.fill(); c.restore();
     // inner ear
     c.save(); c.fillStyle = '#ff6fa0';
-    const iW = earW * 0.52, iH = earH * 0.55;
+    const iW = earW * 0.48, iH = earH * 0.60;
     c.beginPath();
-    c.moveTo(ex - iW/2, fy + fw*0.02);
-    c.lineTo(ex, topY + earH*0.22);
-    c.lineTo(ex + iW/2, fy + fw*0.02);
+    c.moveTo(ex - iW/2, baseY - fw*0.01);
+    c.quadraticCurveTo(ex - iW*0.45, tipY + earH*0.32, ex, tipY + earH*0.14);
+    c.quadraticCurveTo(ex + iW*0.45, tipY + earH*0.32, ex + iW/2, baseY - fw*0.01);
     c.closePath(); c.fill(); c.restore();
+    // fur tufts at tip
+    c.save(); c.strokeStyle = '#c05070'; c.lineWidth = Math.max(1, fw*0.018); c.lineCap = 'round'; c.globalAlpha = 0.7;
+    c.beginPath(); c.moveTo(ex, tipY); c.lineTo(ex, tipY - fw*0.06); c.stroke();
+    c.beginPath(); c.moveTo(ex, tipY); c.lineTo(ex - fw*0.04, tipY - fw*0.05); c.stroke();
+    c.beginPath(); c.moveTo(ex, tipY); c.lineTo(ex + fw*0.04, tipY - fw*0.05); c.stroke();
+    c.restore();
   });
+  // Cat nose (heart-shaped)
+  const nx = fx + fw*0.5, ny = fy + fh*0.595;
+  const ns = fw * 0.045;
+  c.save(); c.fillStyle = '#d0305a';
+  c.beginPath();
+  c.moveTo(nx, ny + ns*0.5);
+  c.bezierCurveTo(nx - ns*1.1, ny - ns*0.6, nx - ns*2, ny + ns*0.4, nx, ny + ns*1.4);
+  c.bezierCurveTo(nx + ns*2, ny + ns*0.4, nx + ns*1.1, ny - ns*0.6, nx, ny + ns*0.5);
+  c.fill(); c.restore();
+  // Cat mouth
+  c.save(); c.strokeStyle = '#b02050'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round'; c.globalAlpha = 0.85;
+  c.beginPath(); c.moveTo(nx, ny + ns*1.4);
+  c.quadraticCurveTo(nx - fw*0.07, ny + fh*0.09, nx - fw*0.13, ny + fh*0.07); c.stroke();
+  c.beginPath(); c.moveTo(nx, ny + ns*1.4);
+  c.quadraticCurveTo(nx + fw*0.07, ny + fh*0.09, nx + fw*0.13, ny + fh*0.07); c.stroke();
+  c.restore();
 }
 
-// Bunny ears — tall rounded ears
-function _drawBunnyEars(c, fx, fy, fw) {
-  const earW = fw * 0.16, earH = fw * 0.55;
-  const lx = fx + fw * 0.25, rx = fx + fw * 0.75;
-  [[lx],[rx]].forEach(([ex]) => {
-    // outer ear
-    c.save(); c.fillStyle = '#f8c6e0';
+// ── BUNNY — tall ears with vein detail, soft pink nose, cute blush ──
+function _drawBunnyEars(c, fx, fy, fw, fh) {
+  const earW = fw * 0.18, earH = fw * 0.60;
+  const lx = fx + fw * 0.27, rx = fx + fw * 0.73;
+  const tilt = 0.07;
+  [[lx, -tilt],[rx, tilt]].forEach(([ex, t]) => {
+    c.save(); c.shadowColor = 'rgba(0,0,0,0.2)'; c.shadowBlur = 8;
+    // outer ear — slightly tilted
+    c.fillStyle = '#f0cce0';
     c.beginPath();
-    c.ellipse(ex, fy - earH*0.42, earW/2, earH/2, 0, 0, Math.PI*2);
+    c.ellipse(ex + t*fw, fy - earH*0.44, earW/2, earH/2, t*0.5, 0, Math.PI*2);
     c.fill(); c.restore();
-    // inner ear
-    c.save(); c.fillStyle = '#ff8abf';
+    // inner ear gradient
+    const ig = c.createLinearGradient(ex, fy - earH, ex, fy);
+    ig.addColorStop(0, '#ff8abf'); ig.addColorStop(1, '#ffb8d8');
+    c.save(); c.fillStyle = ig;
     c.beginPath();
-    c.ellipse(ex, fy - earH*0.42, earW*0.28, earH*0.38, 0, 0, Math.PI*2);
+    c.ellipse(ex + t*fw, fy - earH*0.44, earW*0.30, earH*0.40, t*0.5, 0, Math.PI*2);
     c.fill(); c.restore();
+    // vein line
+    c.save(); c.strokeStyle = 'rgba(200,80,130,0.3)'; c.lineWidth = Math.max(1, fw*0.01); c.lineCap = 'round';
+    c.beginPath(); c.moveTo(ex + t*fw, fy - earH*0.08); c.lineTo(ex + t*fw, fy - earH*0.80); c.stroke();
+    c.restore();
   });
+  // Bunny nose
+  _drawNose(c, fx, fy, fw, fh, '#e03880');
+  // Bunny mouth
+  const nx = fx + fw*0.5, ny = fy + fh*0.605;
+  c.save(); c.strokeStyle = '#b02060'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round'; c.globalAlpha = 0.8;
+  c.beginPath(); c.moveTo(nx, ny + fw*0.028);
+  c.quadraticCurveTo(nx - fw*0.06, ny + fh*0.075, nx - fw*0.11, ny + fh*0.06); c.stroke();
+  c.beginPath(); c.moveTo(nx, ny + fw*0.028);
+  c.quadraticCurveTo(nx + fw*0.06, ny + fh*0.075, nx + fw*0.11, ny + fh*0.06); c.stroke();
+  c.restore();
 }
 
-// Bear ears — round ears
-function _drawBearEars(c, fx, fy, fw) {
-  const er = fw * 0.13;
-  const lx = fx + fw * 0.16, rx = fx + fw * 0.84;
-  const ey = fy - er * 0.3;
+// ── BEAR — round ears with texture, snout muzzle, brown nose ──
+function _drawBearEars(c, fx, fy, fw, fh) {
+  const er = fw * 0.145;
+  const lx = fx + fw * 0.14, rx = fx + fw * 0.86;
+  const ey = fy - er * 0.25;
   [[lx],[rx]].forEach(([ex]) => {
-    c.save(); c.fillStyle = '#c4824a';
-    c.beginPath(); c.arc(ex, ey, er, 0, Math.PI*2); c.fill(); c.restore();
-    c.save(); c.fillStyle = '#f5b87a';
-    c.beginPath(); c.arc(ex, ey, er * 0.58, 0, Math.PI*2); c.fill(); c.restore();
+    c.save(); c.shadowColor = 'rgba(0,0,0,0.3)'; c.shadowBlur = 7;
+    c.fillStyle = '#a06030'; c.beginPath(); c.arc(ex, ey, er, 0, Math.PI*2); c.fill(); c.restore();
+    // inner circle gradient
+    const ig = c.createRadialGradient(ex - er*0.2, ey - er*0.2, 0, ex, ey, er*0.65);
+    ig.addColorStop(0, '#f0a060'); ig.addColorStop(1, '#d07840');
+    c.save(); c.fillStyle = ig; c.beginPath(); c.arc(ex, ey, er * 0.60, 0, Math.PI*2); c.fill(); c.restore();
   });
+  // Bear muzzle — oval snout
+  const mx = fx + fw*0.5, my = fy + fh*0.585, mw = fw*0.28, mh = fw*0.17;
+  c.save(); c.shadowColor = 'rgba(0,0,0,0.15)'; c.shadowBlur = 5;
+  const mg = c.createRadialGradient(mx, my - mh*0.1, 0, mx, my, mw);
+  mg.addColorStop(0, '#f5c890'); mg.addColorStop(1, '#e0a060');
+  c.fillStyle = mg;
+  c.beginPath(); c.ellipse(mx, my, mw, mh, 0, 0, Math.PI*2); c.fill(); c.restore();
+  // Muzzle divider line
+  c.save(); c.strokeStyle = 'rgba(140,80,20,0.35)'; c.lineWidth = Math.max(1, fw*0.012); c.lineCap = 'round';
+  c.beginPath(); c.moveTo(mx, my - mh*0.3); c.lineTo(mx, my + mh*0.2); c.stroke(); c.restore();
+  // Bear nose
+  const nx = fx + fw*0.5, ny = fy + fh*0.568;
+  const nw = fw*0.085, nh = fw*0.052;
+  const ng = c.createRadialGradient(nx - nw*0.3, ny - nh*0.3, 0, nx, ny, nw);
+  ng.addColorStop(0, '#4a2010'); ng.addColorStop(1, '#1a0808');
+  c.save(); c.fillStyle = ng; c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.ellipse(nx-nw*0.35, ny-nh*0.35, nw*0.3, nh*0.25, -0.3, 0, Math.PI*2); c.fill();
+  c.restore();
+  // Bear mouth
+  c.save(); c.strokeStyle = '#7a3010'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round'; c.globalAlpha = 0.75;
+  c.beginPath(); c.moveTo(nx, ny + nh);
+  c.quadraticCurveTo(nx - fw*0.065, my + mh*0.55, nx - fw*0.12, my + mh*0.40); c.stroke();
+  c.beginPath(); c.moveTo(nx, ny + nh);
+  c.quadraticCurveTo(nx + fw*0.065, my + mh*0.55, nx + fw*0.12, my + mh*0.40); c.stroke();
+  c.restore();
 }
 
-// Dog ears — floppy drooping ears
+// ── DOG — floppy fur ears, snout, wet nose ──
 function _drawDogEars(c, fx, fy, fw, fh) {
-  const earW = fw * 0.20, earH = fh * 0.45;
-  const lx = fx + fw * 0.06, rx = fx + fw * 0.94;
+  const earW = fw * 0.22, earH = fh * 0.50;
+  const lx = fx + fw * 0.04, rx = fx + fw * 0.96;
   [[lx, 1],[rx, -1]].forEach(([ex, dir]) => {
-    c.save(); c.fillStyle = '#c08040';
+    c.save(); c.shadowColor = 'rgba(0,0,0,0.3)'; c.shadowBlur = 8;
+    // Ear gradient — fur-like
+    const eg = c.createLinearGradient(ex, fy, ex - dir*earW, fy + earH);
+    eg.addColorStop(0, '#b07030'); eg.addColorStop(0.5, '#c88040'); eg.addColorStop(1, '#a05820');
+    c.fillStyle = eg;
     c.beginPath();
-    c.moveTo(ex, fy + fh * 0.10);
-    c.bezierCurveTo(
-      ex - dir*earW*0.6, fy + fh*0.10,
-      ex - dir*earW*0.7, fy + earH,
-      ex - dir*earW*0.2, fy + earH * 1.1
-    );
-    c.bezierCurveTo(
-      ex + dir*earW*0.3, fy + earH,
-      ex + dir*earW*0.1, fy + fh*0.08,
-      ex, fy + fh * 0.10
-    );
+    c.moveTo(ex + dir*fw*0.04, fy + fh * 0.06);
+    c.bezierCurveTo(ex + dir*earW*0.5, fy - fh*0.04, ex - dir*earW*1.1, fy + earH*0.3, ex - dir*earW*0.85, fy + earH*1.0);
+    c.bezierCurveTo(ex - dir*earW*0.55, fy + earH*1.12, ex + dir*earW*0.1, fy + fh*0.18, ex + dir*fw*0.04, fy + fh*0.06);
+    c.closePath(); c.fill(); c.restore();
+    // inner ear lighter
+    c.save(); c.globalAlpha = 0.5;
+    c.fillStyle = '#e8a860';
+    c.beginPath();
+    c.moveTo(ex + dir*fw*0.03, fy + fh * 0.10);
+    c.bezierCurveTo(ex + dir*earW*0.3, fy + fh*0.05, ex - dir*earW*0.7, fy + earH*0.4, ex - dir*earW*0.55, fy + earH*0.88);
+    c.bezierCurveTo(ex - dir*earW*0.35, fy + earH*0.95, ex + dir*earW*0.05, fy + fh*0.22, ex + dir*fw*0.03, fy + fh*0.10);
     c.closePath(); c.fill(); c.restore();
   });
+  // Dog snout muzzle
+  const mx = fx + fw*0.5, my = fy + fh*0.590, mw = fw*0.26, mh = fw*0.155;
+  c.save(); c.shadowColor = 'rgba(0,0,0,0.12)'; c.shadowBlur = 4;
+  c.fillStyle = '#f5dab0';
+  c.beginPath(); c.ellipse(mx, my, mw, mh, 0, 0, Math.PI*2); c.fill(); c.restore();
+  // Dog nose — big oval
+  const nx = fx + fw*0.5, ny = fy + fh*0.565;
+  const nw = fw*0.095, nh = fw*0.060;
+  const ng = c.createRadialGradient(nx - nw*0.3, ny - nh*0.3, 0, nx, ny, nw);
+  ng.addColorStop(0, '#302010'); ng.addColorStop(1, '#080404');
+  c.save(); c.fillStyle = ng; c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill();
+  // wet nose highlight
+  c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.ellipse(nx-nw*0.32, ny-nh*0.32, nw*0.32, nh*0.26, -0.3, 0, Math.PI*2); c.fill();
+  c.restore();
+  // Dog mouth
+  c.save(); c.strokeStyle = '#7a4010'; c.lineWidth = Math.max(1.5, fw*0.017); c.lineCap = 'round'; c.globalAlpha = 0.8;
+  c.beginPath(); c.moveTo(nx, ny + nh);
+  c.quadraticCurveTo(nx - fw*0.07, my + mh*0.6, nx - fw*0.13, my + mh*0.42); c.stroke();
+  c.beginPath(); c.moveTo(nx, ny + nh);
+  c.quadraticCurveTo(nx + fw*0.07, my + mh*0.6, nx + fw*0.13, my + mh*0.42); c.stroke();
+  c.restore();
 }
 
-// Crown — drawn shape above head
+// ── FOX — pointed ears with black tips, orange snout, sharp markings ──
+function _drawFox(c, fx, fy, fw, fh) {
+  const earW = fw * 0.22, earH = fw * 0.33;
+  const lx = fx + fw * 0.20, rx = fx + fw * 0.80;
+  const baseY = fy + fw*0.02, tipY = fy - earH * 0.88;
+  [[lx],[rx]].forEach(([ex]) => {
+    // Orange ear
+    c.save(); c.shadowColor = 'rgba(0,0,0,0.25)'; c.shadowBlur = 6;
+    c.fillStyle = '#e06820';
+    c.beginPath();
+    c.moveTo(ex - earW/2, baseY);
+    c.quadraticCurveTo(ex - earW*0.52, tipY + earH*0.18, ex, tipY);
+    c.quadraticCurveTo(ex + earW*0.52, tipY + earH*0.18, ex + earW/2, baseY);
+    c.closePath(); c.fill(); c.restore();
+    // Black ear tip
+    c.save(); c.fillStyle = '#1a1008';
+    c.beginPath();
+    c.moveTo(ex - earW*0.28, tipY + earH*0.28);
+    c.quadraticCurveTo(ex - earW*0.18, tipY + earH*0.05, ex, tipY);
+    c.quadraticCurveTo(ex + earW*0.18, tipY + earH*0.05, ex + earW*0.28, tipY + earH*0.28);
+    c.closePath(); c.fill(); c.restore();
+    // White inner
+    c.save(); c.fillStyle = '#f8ece0'; c.globalAlpha = 0.85;
+    c.beginPath();
+    c.moveTo(ex - earW*0.18, baseY);
+    c.quadraticCurveTo(ex - earW*0.22, tipY + earH*0.42, ex, tipY + earH*0.28);
+    c.quadraticCurveTo(ex + earW*0.22, tipY + earH*0.42, ex + earW*0.18, baseY);
+    c.closePath(); c.fill(); c.restore();
+  });
+  // White facial mask stripe
+  c.save(); c.globalAlpha = 0.55; c.fillStyle = '#f8ece8';
+  c.beginPath(); c.ellipse(fx + fw*0.5, fy + fh*0.44, fw*0.30, fh*0.22, 0, 0, Math.PI*2); c.fill(); c.restore();
+  // Fox snout
+  const mx = fx + fw*0.5, my = fy + fh*0.588, mw = fw*0.24, mh = fw*0.14;
+  c.save(); c.fillStyle = '#f5daba'; c.shadowColor='rgba(0,0,0,0.1)'; c.shadowBlur=4;
+  c.beginPath(); c.ellipse(mx, my, mw, mh, 0, 0, Math.PI*2); c.fill(); c.restore();
+  // Fox nose — small dark
+  const nx = fx + fw*0.5, ny = fy + fh*0.565, nw = fw*0.07, nh = fw*0.044;
+  c.save(); c.fillStyle = '#1a0808'; c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.ellipse(nx-nw*0.35, ny-nh*0.35, nw*0.3, nh*0.25, -0.3, 0, Math.PI*2); c.fill();
+  c.restore();
+  // Fox mouth
+  c.save(); c.strokeStyle = '#8a3010'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round'; c.globalAlpha = 0.8;
+  c.beginPath(); c.moveTo(nx, ny + nh);
+  c.quadraticCurveTo(nx - fw*0.06, my + mh*0.55, nx - fw*0.11, my + mh*0.38); c.stroke();
+  c.beginPath(); c.moveTo(nx, ny + nh);
+  c.quadraticCurveTo(nx + fw*0.06, my + mh*0.55, nx + fw*0.11, my + mh*0.38); c.stroke();
+  c.restore();
+  // Whiskers
+  _drawWhiskers(c, fx, fy, fw, fh, '#8a4010');
+}
+
+// ── CROWN ── (kept, improved gems + glow)
 function _drawCrown(c, fx, fy, fw) {
-  const cw = fw * 0.70, ch = fw * 0.28;
-  const cx = fx + fw * 0.5, cy = fy - ch * 0.3;
+  const cw = fw * 0.72, ch = fw * 0.30;
+  const cx = fx + fw * 0.5, cy = fy - ch * 0.25;
   const x0 = cx - cw/2;
   c.save();
-  // Crown body
+  c.shadowColor = 'rgba(255,200,0,0.5)'; c.shadowBlur = 18;
   const grad = c.createLinearGradient(x0, cy-ch, x0, cy);
-  grad.addColorStop(0, '#ffe44d'); grad.addColorStop(1, '#f5a800');
+  grad.addColorStop(0, '#fff176'); grad.addColorStop(0.4, '#ffd740'); grad.addColorStop(1, '#e65100');
   c.fillStyle = grad;
   c.beginPath();
   c.moveTo(x0, cy);
-  c.lineTo(x0, cy - ch*0.55);
-  c.lineTo(x0 + cw*0.18, cy - ch*0.25);
+  c.lineTo(x0, cy - ch*0.52);
+  c.lineTo(x0 + cw*0.18, cy - ch*0.22);
   c.lineTo(x0 + cw*0.38, cy - ch);
-  c.lineTo(x0 + cw*0.50, cy - ch*0.30);
+  c.lineTo(x0 + cw*0.50, cy - ch*0.28);
   c.lineTo(x0 + cw*0.62, cy - ch);
-  c.lineTo(x0 + cw*0.82, cy - ch*0.25);
-  c.lineTo(x0 + cw, cy - ch*0.55);
+  c.lineTo(x0 + cw*0.82, cy - ch*0.22);
+  c.lineTo(x0 + cw, cy - ch*0.52);
   c.lineTo(x0 + cw, cy);
   c.closePath(); c.fill();
-  // Crown outline
-  c.strokeStyle = '#c8860a'; c.lineWidth = Math.max(1.5, fw*0.015);
-  c.stroke();
-  // Gems
-  [0.20, 0.50, 0.80].forEach(t => {
-    c.fillStyle = t === 0.50 ? '#ff4488' : '#44aaff';
-    c.beginPath(); c.arc(x0 + cw*t, cy - ch*0.18, fw*0.028, 0, Math.PI*2); c.fill();
+  c.strokeStyle = '#bf6f00'; c.lineWidth = Math.max(1.5, fw*0.016); c.stroke();
+  c.restore();
+  // Gems with glow
+  [[0.18,'#ff3399'],[0.50,'#e040fb'],[0.82,'#29b6f6']].forEach(([t, col]) => {
+    const gx = x0 + cw*t, gy = cy - ch*0.22, gr2 = fw*0.032;
+    const gg = c.createRadialGradient(gx-gr2*0.3, gy-gr2*0.3, 0, gx, gy, gr2);
+    gg.addColorStop(0, '#fff'); gg.addColorStop(0.3, col); gg.addColorStop(1, col+'aa');
+    c.save(); c.shadowColor = col; c.shadowBlur = 10;
+    c.fillStyle = gg; c.beginPath(); c.arc(gx, gy, gr2, 0, Math.PI*2); c.fill(); c.restore();
+  });
+}
+
+// ── DEVIL — red horns, dark shadow under eyes, crimson blush ──
+function _drawDevil(c, fx, fy, fw, fh) {
+  const hW = fw * 0.14, hH = fw * 0.28;
+  const lx = fx + fw * 0.22, rx = fx + fw * 0.78;
+  [[lx],[rx]].forEach(([hx]) => {
+    c.save(); c.shadowColor = 'rgba(180,0,0,0.5)'; c.shadowBlur = 12;
+    const hg = c.createLinearGradient(hx, fy - hH, hx, fy);
+    hg.addColorStop(0, '#cc0000'); hg.addColorStop(1, '#8b0000');
+    c.fillStyle = hg;
+    c.beginPath();
+    c.moveTo(hx - hW/2, fy + fw*0.01);
+    c.quadraticCurveTo(hx - hW*0.6, fy - hH*0.3, hx, fy - hH);
+    c.quadraticCurveTo(hx + hW*0.6, fy - hH*0.3, hx + hW/2, fy + fw*0.01);
+    c.closePath(); c.fill(); c.restore();
+    // horn highlight
+    c.save(); c.globalAlpha = 0.4; c.fillStyle = '#ff6666';
+    c.beginPath();
+    c.moveTo(hx - hW*0.15, fy + fw*0.005);
+    c.quadraticCurveTo(hx - hW*0.22, fy - hH*0.38, hx + hW*0.05, fy - hH*0.82);
+    c.quadraticCurveTo(hx + hW*0.18, fy - hH*0.38, hx + hW*0.05, fy + fw*0.005);
+    c.closePath(); c.fill(); c.restore();
+  });
+  // Dark shadow under eyes
+  c.save(); c.globalAlpha = 0.38;
+  const lEye = fx + fw*0.33, rEye = fx + fw*0.67, eyeY = fy + fh*0.35, ew = fw*0.10, eh = fw*0.055;
+  [lEye, rEye].forEach(ex => {
+    const sg = c.createRadialGradient(ex, eyeY, 0, ex, eyeY, ew);
+    sg.addColorStop(0, '#550000'); sg.addColorStop(1, 'transparent');
+    c.fillStyle = sg; c.beginPath(); c.ellipse(ex, eyeY + eh, ew, eh, 0, 0, Math.PI*2); c.fill();
   });
   c.restore();
+  // Crimson blush
+  _drawBlush(c, fx, fy, fw, fh, 'rgba(160,0,30,0.45)');
+}
+
+// ── SKULL — white skull overlay: eye sockets, nose hole, teeth ──
+function _drawSkull(c, fx, fy, fw, fh) {
+  // Semi-transparent skull face wash
+  c.save(); c.globalAlpha = 0.22; c.fillStyle = '#e8e8e8';
+  c.beginPath(); c.ellipse(fx + fw*0.5, fy + fh*0.42, fw*0.44, fh*0.50, 0, 0, Math.PI*2); c.fill(); c.restore();
+  // Eye sockets — dark ovals
+  const lEye = fx + fw*0.33, rEye = fx + fw*0.67, eyeY = fy + fh*0.36, ew = fw*0.115, eh = fw*0.09;
+  [lEye, rEye].forEach(ex => {
+    const eg = c.createRadialGradient(ex, eyeY, 0, ex, eyeY, ew);
+    eg.addColorStop(0, 'rgba(0,0,0,0.92)'); eg.addColorStop(0.7, 'rgba(10,10,10,0.80)'); eg.addColorStop(1, 'transparent');
+    c.save(); c.fillStyle = eg; c.beginPath(); c.ellipse(ex, eyeY, ew, eh, 0, 0, Math.PI*2); c.fill(); c.restore();
+  });
+  // Nose cavity
+  const nx = fx + fw*0.5, ny = fy + fh*0.575, nw = fw*0.07, nh = fw*0.065;
+  c.save();
+  const ng = c.createRadialGradient(nx, ny, 0, nx, ny, nw);
+  ng.addColorStop(0, 'rgba(0,0,0,0.88)'); ng.addColorStop(1, 'transparent');
+  c.fillStyle = ng; c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill(); c.restore();
+  // Teeth
+  const teethY = fy + fh*0.72, teethW = fw*0.36, toothW = teethW/5, toothH = fw*0.065;
+  c.save(); c.shadowColor = 'rgba(0,0,0,0.4)'; c.shadowBlur = 4;
+  for (let i = 0; i < 5; i++) {
+    const tx = fx + fw*0.5 - teethW/2 + i*toothW;
+    c.fillStyle = i%2===0 ? '#f0f0f0' : '#d8d8d8';
+    c.beginPath();
+    c.roundRect ? c.roundRect(tx + 1, teethY, toothW - 2, toothH, [2,2,5,5]) :
+      (() => { c.rect(tx+1, teethY, toothW-2, toothH); })();
+    c.fill();
+  }
+  c.restore();
+  // Crack line on forehead
+  c.save(); c.strokeStyle = 'rgba(50,50,50,0.55)'; c.lineWidth = Math.max(1, fw*0.012); c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(fx + fw*0.50, fy + fh*0.08);
+  c.lineTo(fx + fw*0.52, fy + fh*0.18);
+  c.lineTo(fx + fw*0.48, fy + fh*0.26);
+  c.stroke(); c.restore();
+}
+
+// ── GHOST — floating wispy ghost above head + face overlay ──
+function _initGhost(ctx) {
+  _ghostParticles[ctx] = Array.from({length: 6}, (_, i) => ({
+    phase: (i / 6) * Math.PI * 2, speed: 0.6 + Math.random()*0.5,
+    ox: -0.18 + i*0.07, size: 0.08 + Math.random()*0.05
+  }));
+}
+function _drawGhost(c, fx, fy, fw, fh, ctx) {
+  const t = Date.now() / 1000;
+  // Ghostly face wash — cold blue-white
+  c.save(); c.globalAlpha = 0.18; c.fillStyle = '#b0e0ff';
+  c.beginPath(); c.ellipse(fx + fw*0.5, fy + fh*0.42, fw*0.44, fh*0.50, 0, 0, Math.PI*2); c.fill(); c.restore();
+  // Ghost floating above head
+  const gx = fx + fw*0.5, gy = fy - fw*0.30 + Math.sin(t*1.2)*fw*0.04;
+  const gw = fw * 0.36, gh = fw * 0.44;
+  c.save(); c.shadowColor = 'rgba(140,220,255,0.6)'; c.shadowBlur = 20;
+  const gg = c.createRadialGradient(gx, gy - gh*0.1, 0, gx, gy + gh*0.1, gw);
+  gg.addColorStop(0, 'rgba(220,240,255,0.96)'); gg.addColorStop(0.7, 'rgba(180,220,255,0.80)'); gg.addColorStop(1, 'rgba(140,200,255,0.0)');
+  c.fillStyle = gg;
+  // Ghost body shape
+  c.beginPath();
+  c.arc(gx, gy - gh*0.18, gw*0.5, Math.PI, 0);
+  c.lineTo(gx + gw*0.5, gy + gh*0.42);
+  // wavy bottom
+  const segs = 4;
+  for (let i = 0; i < segs; i++) {
+    const bx1 = gx + gw*0.5 - (gw/segs)*(i + 0.5);
+    const bx2 = gx + gw*0.5 - (gw/segs)*(i + 1);
+    const byMid = gy + gh*0.42 + (i%2===0 ? gw*0.12 : -gw*0.04);
+    c.quadraticCurveTo(bx1, byMid, bx2, gy + gh*0.42);
+  }
+  c.closePath(); c.fill(); c.restore();
+  // Ghost eyes
+  const eyeY = gy - gh*0.10;
+  [gx - gw*0.20, gx + gw*0.20].forEach(ex => {
+    c.save(); c.fillStyle = 'rgba(30,60,120,0.85)';
+    c.beginPath(); c.ellipse(ex, eyeY, gw*0.09, gw*0.10, 0, 0, Math.PI*2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.arc(ex-gw*0.025, eyeY-gw*0.025, gw*0.03, 0, Math.PI*2); c.fill();
+    c.restore();
+  });
+  // Ghost mouth — wiggly
+  c.save(); c.strokeStyle = 'rgba(30,60,120,0.70)'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round';
+  c.beginPath(); c.moveTo(gx - gw*0.18, eyeY + gw*0.18);
+  c.quadraticCurveTo(gx - gw*0.06, eyeY + gw*0.26, gx, eyeY + gw*0.18);
+  c.quadraticCurveTo(gx + gw*0.06, eyeY + gw*0.10, gx + gw*0.18, eyeY + gw*0.18);
+  c.stroke(); c.restore();
+  // Floating orbs around head
+  if (!_ghostParticles[ctx]) _initGhost(ctx);
+  _ghostParticles[ctx].forEach(p => {
+    const ox = Math.cos(t * p.speed + p.phase) * fw * 0.38;
+    const oy = Math.sin(t * p.speed * 0.7 + p.phase) * fh * 0.22 - fh * 0.12;
+    const alpha = 0.3 + 0.3 * Math.abs(Math.sin(t + p.phase));
+    c.save(); c.globalAlpha = alpha; c.shadowColor = '#80d0ff'; c.shadowBlur = 10;
+    const og = c.createRadialGradient(fx+fw*0.5+ox, fy+fh*0.4+oy, 0, fx+fw*0.5+ox, fy+fh*0.4+oy, fw*p.size);
+    og.addColorStop(0, 'rgba(200,235,255,0.9)'); og.addColorStop(1, 'rgba(140,200,255,0)');
+    c.fillStyle = og;
+    c.beginPath(); c.arc(fx+fw*0.5+ox, fy+fh*0.4+oy, fw*p.size, 0, Math.PI*2); c.fill(); c.restore();
+  });
 }
 
 // Floating hearts
@@ -12330,7 +12675,6 @@ function _updateDrawHearts(c, ctx, W, H) {
   _heartParticles[ctx].forEach(p => {
     p.y -= p.vy;
     if (p.y < -0.05) { p.y = 1.05; p.x = 0.05 + Math.random()*0.9; }
-    // Draw a heart shape
     const hx = p.x * W, hy = p.y * H, s = p.size;
     c.save(); c.globalAlpha = p.alpha; c.fillStyle = p.color;
     c.beginPath();
@@ -12356,7 +12700,6 @@ function _drawSparkles(c, ctx, W, H) {
     const s = sp.size * alpha;
     const x = sp.x * W, y = sp.y * H;
     c.save(); c.globalAlpha = alpha; c.fillStyle = '#ffe44d';
-    // 4-point star
     c.beginPath();
     c.moveTo(x, y - s); c.lineTo(x + s*0.25, y - s*0.25); c.lineTo(x + s, y);
     c.lineTo(x + s*0.25, y + s*0.25); c.lineTo(x, y + s); c.lineTo(x - s*0.25, y + s*0.25);
@@ -12372,41 +12715,42 @@ function _drawFunFrame(ctx) {
   if (!oc) return;
   const vid = document.getElementById(_VID[ctx]);
   if (!vid) return;
-
   const rect = vid.getBoundingClientRect();
   const W = Math.round(rect.width), H = Math.round(rect.height);
   if (!W || !H) return;
   if (oc.width !== W || oc.height !== H) { oc.width = W; oc.height = H; }
-
   const c = oc.getContext('2d');
   c.clearRect(0, 0, W, H);
-
-  const { fx, fy, fw, fh } = _getFaceBox(ctx, W, H);
-
+  const { fx, fy, fw, fh } = _getLerpedFaceBox(ctx, W, H);
   if (fname === 'cat') {
-    _drawCatEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.65)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#d03060');
-    _drawWhiskers(c, fx, fy, fw, fh, '#555555');
+    _drawCatEars(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.55)');
+    _drawWhiskers(c, fx, fy, fw, fh, '#664444');
   } else if (fname === 'bunny') {
-    _drawBunnyEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.60)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#e03070');
+    _drawBunnyEars(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.52)');
   } else if (fname === 'bear') {
-    _drawBearEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.60)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#5a2000');
+    _drawBearEars(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.52)');
   } else if (fname === 'dog') {
     _drawDogEars(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.58)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#3a1800');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.50)');
     _drawWhiskers(c, fx, fy, fw, fh, '#806030');
+  } else if (fname === 'fox') {
+    _drawFox(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,80,20,0.40)');
   } else if (fname === 'crown') {
     _drawCrown(c, fx, fy, fw);
     _drawSparkles(c, ctx, W, H);
   } else if (fname === 'heart') {
     _drawBlush(c, fx, fy, fw, fh, 'rgba(255,60,120,0.60)');
     _updateDrawHearts(c, ctx, W, H);
+  } else if (fname === 'devil') {
+    _drawDevil(c, fx, fy, fw, fh);
+  } else if (fname === 'skull') {
+    _drawSkull(c, fx, fy, fw, fh);
+  } else if (fname === 'ghost') {
+    _drawGhost(c, fx, fy, fw, fh, ctx);
   }
 }
 
@@ -12447,10 +12791,11 @@ function _startLoop(ctx) {
 }
 
 // ── Public API ──
+const _ALL_FUN = ['cat','bunny','bear','dog','fox','crown','heart','devil','skull','ghost'];
 window.setFunFilter = function(ctx, name) {
   const next = _funFilters[ctx] === name ? 'none' : name;
   _funFilters[ctx] = next;
-  ['cat','bunny','bear','dog','crown','heart'].forEach(f => {
+  _ALL_FUN.forEach(f => {
     const el = document.getElementById(`${ctx}-fun-${f}`);
     if (el) el.classList.toggle('active-pill', f === next);
   });
@@ -12458,6 +12803,8 @@ window.setFunFilter = function(ctx, name) {
   else {
     if (next === 'heart') _initHearts(ctx);
     if (next === 'crown') _initSparkles(ctx);
+    if (next === 'ghost') _initGhost(ctx);
+    _faceSmooth[ctx] = null; // reset lerp on new filter
     _startLoop(ctx);
   }
 };
@@ -12725,21 +13072,18 @@ function _bakeFun(ctx, canvas) {
   const W = canvas.width, H = canvas.height;
   const c = canvas.getContext('2d');
 
-  // Get face box scaled to canvas resolution
+  // Get face box scaled to canvas resolution (same logic as live overlay)
   let fx, fy, fw, fh;
   const fd = _faceDataCache[ctx];
   const vid = document.getElementById(_VID[ctx]);
   if (fd && fd.box && vid && vid.videoWidth) {
     const vw = vid.videoWidth, vh = vid.videoHeight;
-    // Canvas is always square (side = min(vw,vh))
     const side = Math.min(vw, vh);
     const offX = (vw - side) / 2, offY = (vh - side) / 2;
     const sx = W / side, sy = H / side;
-    // face-api coords are in full video space
     const bx_full = fd.box.x - offX;
     const by_full = fd.box.y - offY;
     const bw = fd.box.width * sx, bh = fd.box.height * sy;
-    // Mirror X since canvas was drawn mirrored
     fx = W - (bx_full * sx) - bw;
     fy = Math.max(0, by_full * sy);
     fw = bw; fh = bh;
@@ -12748,35 +13092,25 @@ function _bakeFun(ctx, canvas) {
   }
 
   if (fname === 'cat') {
-    _drawCatEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.65)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#d03060');
-    _drawWhiskers(c, fx, fy, fw, fh, '#555555');
+    _drawCatEars(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.55)');
+    _drawWhiskers(c, fx, fy, fw, fh, '#664444');
   } else if (fname === 'bunny') {
-    _drawBunnyEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.60)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#e03070');
+    _drawBunnyEars(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.52)');
   } else if (fname === 'bear') {
-    _drawBearEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.60)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#5a2000');
+    _drawBearEars(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.52)');
   } else if (fname === 'dog') {
     _drawDogEars(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.58)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#3a1800');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.50)');
     _drawWhiskers(c, fx, fy, fw, fh, '#806030');
+  } else if (fname === 'fox') {
+    _drawFox(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,80,20,0.40)');
   } else if (fname === 'crown') {
     _drawCrown(c, fx, fy, fw);
-    if (_sparkleParticles[ctx]) {
-      _sparkleParticles[ctx].forEach(sp => {
-        const s = sp.size, x = sp.x*W, y = sp.y*H;
-        c.save(); c.globalAlpha = 0.85; c.fillStyle = '#ffe44d';
-        c.beginPath();
-        c.moveTo(x,y-s); c.lineTo(x+s*0.25,y-s*0.25); c.lineTo(x+s,y);
-        c.lineTo(x+s*0.25,y+s*0.25); c.lineTo(x,y+s); c.lineTo(x-s*0.25,y+s*0.25);
-        c.lineTo(x-s,y); c.lineTo(x-s*0.25,y-s*0.25); c.closePath(); c.fill(); c.restore();
-      });
-    }
+    _drawSparkles(c, ctx, W, H);
   } else if (fname === 'heart') {
     _drawBlush(c, fx, fy, fw, fh, 'rgba(255,60,120,0.60)');
     if (_heartParticles[ctx]) {
@@ -12790,6 +13124,12 @@ function _bakeFun(ctx, canvas) {
         c.fill(); c.restore();
       });
     }
+  } else if (fname === 'devil') {
+    _drawDevil(c, fx, fy, fw, fh);
+  } else if (fname === 'skull') {
+    _drawSkull(c, fx, fy, fw, fh);
+  } else if (fname === 'ghost') {
+    _drawGhost(c, fx, fy, fw, fh, ctx);
   }
 }
 
@@ -12900,7 +13240,7 @@ window.setSelfieFilter = function(ctx, f) {
   _origSetSelfieFilter2(ctx, f);
   _funFilters[ctx] = 'none';
   _stopOverlay(ctx);
-  ['cat','bunny','bear','dog','crown','heart'].forEach(fn => {
+  _ALL_FUN.forEach(fn => {
     const el = document.getElementById(`${ctx}-fun-${fn}`);
     if (el) el.classList.remove('active-pill');
   });
@@ -12912,7 +13252,7 @@ window.hideFilterBar = function(ctx) {
   _origHideFilterBar2(ctx);
   _stopOverlay(ctx);
   _funFilters[ctx] = 'none';
-  ['cat','bunny','bear','dog','crown','heart'].forEach(f => {
+  _ALL_FUN.forEach(f => {
     const el = document.getElementById(`${ctx}-fun-${f}`);
     if (el) el.classList.remove('active-pill');
   });
