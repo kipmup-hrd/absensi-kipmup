@@ -2267,6 +2267,12 @@ function switchIzinTab(tab) {
             <input type="date" class="form-input filter-input" id="riwayat-piket-from" style="width:auto;">
             <div style="font-size:12px;color:var(--text2);">s/d</div>
             <input type="date" class="form-input filter-input" id="riwayat-piket-to" style="width:auto;">
+            <!-- Filter Tipe Absensi (BARU) -->
+            <select class="form-input" id="riwayat-piket-tipe-absen" style="width:auto;" onchange="loadRiwayatPiket()" title="Filter berdasarkan tipe absensi">
+              <option value="piket">📅 Piket (Terjadwal)</option>
+              <option value="harian">🚶 Datang Harian</option>
+              <option value="semua">📋 Semua (Piket + Harian)</option>
+            </select>
             <select class="form-input" id="riwayat-piket-filter" style="width:auto;" onchange="renderRiwayatTemplate()">
               <option value="">Semua Status</option>
               <option value="hadir">✅ Hadir</option>
@@ -2279,7 +2285,6 @@ function switchIzinTab(tab) {
             <button class="btn-sm primary" onclick="loadRiwayatPiket()">🔍 Tampilkan</button>
             <button class="btn-sm" onclick="exportRiwayatCSV()">⬇ Export CSV</button>
             <button class="btn-sm" onclick="resetTampilanPiket()" title="Kosongkan tampilan riwayat piket. Data di GAS tetap aman." style="background:rgba(248,113,113,0.10);border-color:rgba(248,113,113,0.35);color:var(--red);">🔄 Reset Tampilan</button>
-
           </div>
           <div style="font-size:11px; color:var(--text3);" id="riwayat-piket-info"></div>
         </div>
@@ -6286,10 +6291,58 @@ async function loadRiwayatPiket() {
     return { tgl, nia, nama: a.nama, divisi: a.divisi, statusHadir, statusLabel, statusColor, durasi, keterangan, waktuDatang: pair?.waktuDatang || '-' };
   }
 
+  const tipeAbsen = document.getElementById('riwayat-piket-tipe-absen')?.value || 'piket';
+
+  // Update title dinamis
+  const titleEl = document.querySelector('#tab-riwayat-piket .table-card div[style*="font-weight:700"]');
+  if (titleEl) {
+    if (tipeAbsen === 'harian') titleEl.textContent = '🚶 Riwayat Datang Harian — Per Hari';
+    else if (tipeAbsen === 'semua') titleEl.textContent = '📋 Riwayat Absensi Piket & Harian — Per Hari';
+    else titleEl.textContent = '📅 Riwayat Absensi Piket — Per Hari';
+  }
+
   // Build day groups
   riwayatDayGroups = allDays.reverse().map(({ tgl, dow, namaHari }) => {
     const jadwalNIA = jadwalMingguan[dow] || [];
-    const rows = jadwalNIA.map(nia => resolveRow(nia, tgl)).filter(Boolean);
+    let rows = [];
+
+    if (tipeAbsen === 'piket' || tipeAbsen === 'semua') {
+      // Anggota terjadwal piket hari ini
+      const piketRows = jadwalNIA.map(nia => resolveRow(nia, tgl)).filter(Boolean)
+        .map(r => ({ ...r, tipeAbsen: 'piket' }));
+      rows = rows.concat(piketRows);
+    }
+
+    if (tipeAbsen === 'harian' || tipeAbsen === 'semua') {
+      // Anggota yang absen DATANG pada hari ini tapi TIDAK ada di jadwal piket
+      const jadwalNIASet = new Set(jadwalNIA);
+      const harianNIASet = new Set();
+      absensiData.forEach(r => {
+        if (r.tanggal === tgl && r.tipe === 'DATANG' && !jadwalNIASet.has(r.NIA)) {
+          harianNIASet.add(r.NIA);
+        }
+      });
+      harianNIASet.forEach(nia => {
+        const a = allAnggota.find(x => x.NIA === nia);
+        if (!a) return;
+        const pairKey = nia + '_' + tgl;
+        const pair = pairMap[pairKey];
+        const today = getTodayWIB();
+        let statusHadir, statusLabel, statusColor, durasi = '-';
+        if (pair?.adaDatang && pair?.adaPulang) {
+          statusHadir = 'hadir'; statusLabel = '✅ Hadir Lengkap'; statusColor = 'var(--accent)'; durasi = pair.durasi;
+        } else if (pair?.adaDatang) {
+          statusHadir = 'hadir';
+          statusLabel = tgl < today ? '⚠️ Hadir (lupa pulang)' : '🟢 Datang';
+          statusColor = tgl < today ? '#fbbf24' : 'var(--accent)';
+          durasi = pair?.durasi || '-';
+        } else {
+          return; // tidak ada data datang, skip
+        }
+        rows.push({ tgl, nia, nama: a.nama, divisi: a.divisi, statusHadir, statusLabel, statusColor, durasi, keterangan: '-', waktuDatang: pair?.waktuDatang || '-', tipeAbsen: 'harian' });
+      });
+    }
+
     return { tgl, dow, namaHari, rows };
   });
 
@@ -6304,20 +6357,30 @@ async function loadRiwayatPiket() {
   const countIzin  = riwayatAllRows.filter(r => r.statusHadir === 'izin' || r.statusHadir === 'tukar-jadwal').length;
   const countTotal = riwayatAllRows.length;
 
-  const statItems = [
-    { label: 'Total Entri', val: countTotal, color: 'var(--text2)', bg: 'var(--bg3)' },
-    { label: '✅ Hadir', val: countHadir, color: 'var(--accent)', bg: 'rgba(74,222,128,0.1)' },
-    { label: '❌ Alpha', val: countAlpha, color: 'var(--red)', bg: 'rgba(248,113,113,0.1)' },
-    { label: '🤒 Sakit', val: countSakit, color: '#fb923c', bg: 'rgba(251,146,60,0.1)' },
-    { label: '📋 Izin/Tukar', val: countIzin, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  ];
-  if(statsEl) statsEl.innerHTML = statItems.map(s => `
+  const statItems = tipeAbsen === 'harian'
+    ? [
+        { label: 'Total Datang Harian', val: countTotal, color: 'var(--accent2)', bg: 'rgba(34,211,238,0.1)' },
+        { label: '✅ Hadir Lengkap', val: countHadir, color: 'var(--accent)', bg: 'rgba(74,222,128,0.1)' },
+        { label: 'Anggota Unik', val: new Set(riwayatAllRows.map(r=>r.nia)).size, color: '#c084fc', bg: 'rgba(192,132,252,0.1)' },
+      ]
+    : [
+        { label: 'Total Entri', val: countTotal, color: 'var(--text2)', bg: 'var(--bg3)' },
+        { label: '✅ Hadir', val: countHadir, color: 'var(--accent)', bg: 'rgba(74,222,128,0.1)' },
+        { label: '❌ Alpha', val: countAlpha, color: 'var(--red)', bg: 'rgba(248,113,113,0.1)' },
+        { label: '🤒 Sakit', val: countSakit, color: '#fb923c', bg: 'rgba(251,146,60,0.1)' },
+        { label: '📋 Izin/Tukar', val: countIzin, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+      ];
+  if(statsEl) {
+    statsEl.style.gridTemplateColumns = tipeAbsen === 'harian' ? 'repeat(3,1fr)' : 'repeat(5,1fr)';
+    statsEl.innerHTML = statItems.map(s => `
     <div style="background:${s.bg}; border-radius:10px; padding:12px; text-align:center;">
       <div style="font-size:22px; font-weight:700; color:${s.color};">${s.val}</div>
       <div style="font-size:11px; color:var(--text2); margin-top:2px;">${s.label}</div>
     </div>`).join('');
+  }
 
-  if(infoEl) infoEl.textContent = `${countTotal} entri · periode ${from} s/d ${to}`;
+  const tipeAbsenLabel = tipeAbsen === 'harian' ? 'Datang Harian' : tipeAbsen === 'semua' ? 'Semua (Piket + Harian)' : 'Piket Terjadwal';
+  if(infoEl) infoEl.textContent = `${countTotal} entri · ${tipeAbsenLabel} · periode ${from} s/d ${to}`;
 
   // Render sesuai mode
   if(riwayatViewMode === 'template') renderRiwayatTemplate();
@@ -6364,21 +6427,34 @@ function renderRiwayatTemplate() {
     const pct = total > 0 ? Math.round((hadirCount/total)*100) : 0;
     const pctColor = pct >= 75 ? 'var(--accent)' : pct >= 50 ? '#f59e0b' : 'var(--red)';
 
+    const tipeAbsenFilter = document.getElementById('riwayat-piket-tipe-absen')?.value || 'piket';
+    const showTipeBadge = tipeAbsenFilter === 'semua';
+
     const rowsHTML = visRows.map(r => {
       const namaPendek = r.nama.split(' ').slice(0,2).join(' ');
       // Highlight baris alpha / tidak hadir
       const rowBg = r.statusHadir === 'alpha' ? 'rgba(248,113,113,0.05)' : r.statusHadir === 'belum' ? 'rgba(255,255,255,0.02)' : '';
       const rowBorder = r.statusHadir === 'alpha' ? 'border-left:3px solid rgba(248,113,113,0.5);' : r.statusHadir === 'hadir' ? 'border-left:3px solid rgba(74,222,128,0.4);' : r.statusHadir === 'belum' ? 'border-left:3px solid rgba(255,255,255,0.08);' : 'border-left:3px solid rgba(245,158,11,0.4);';
+      const tipeBadgeHtml = showTipeBadge
+        ? (r.tipeAbsen === 'harian'
+          ? `<span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:8px;background:rgba(34,211,238,0.13);color:var(--accent2);white-space:nowrap;flex-shrink:0;">🚶 Harian</span>`
+          : `<span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:8px;background:rgba(245,158,11,0.13);color:#f59e0b;white-space:nowrap;flex-shrink:0;">📅 Piket</span>`)
+        : '';
       return `<div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-radius:8px; background:${rowBg}; ${rowBorder} margin-bottom:4px; gap:8px;">
         <div style="flex:1; min-width:0;">
           <div style="font-size:13px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${namaPendek}</div>
           <div style="font-size:10px; color:var(--text3); margin-top:1px;">${r.divisi}${r.durasi !== '-' ? ' · '+r.durasi : ''}</div>
         </div>
+        ${tipeBadgeHtml}
         <span style="font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; background:${r.statusColor}22; color:${r.statusColor}; white-space:nowrap; flex-shrink:0;">${r.statusLabel}</span>
       </div>`;
     }).join('');
 
-    const emptyMsg = filterStatus || cari ? `<div style="color:var(--text3); font-size:12px; padding:10px; text-align:center;">Tidak ada anggota dengan filter ini</div>` : `<div style="color:var(--text3); font-size:12px; padding:10px; text-align:center;">Tidak ada jadwal piket</div>`;
+    const emptyMsg = filterStatus || cari
+      ? `<div style="color:var(--text3); font-size:12px; padding:10px; text-align:center;">Tidak ada anggota dengan filter ini</div>`
+      : tipeAbsenFilter === 'harian'
+        ? `<div style="color:var(--text3); font-size:12px; padding:10px; text-align:center;">Tidak ada datang harian hari ini</div>`
+        : `<div style="color:var(--text3); font-size:12px; padding:10px; text-align:center;">Tidak ada jadwal piket</div>`;
 
     return `<div style="background:var(--bg2); border:1px solid ${dowBorder[dow]||'var(--border2)'}; border-radius:14px; margin-bottom:14px; overflow:hidden;">
       <!-- Header hari -->
