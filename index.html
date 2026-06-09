@@ -1012,6 +1012,9 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setPhotoFrame('ujicoba','glitter')" id="ujicoba-frame-glitter" class="filter-pill">✨ Glitter</button>
           <button onclick="setPhotoFrame('ujicoba','rainbow')" id="ujicoba-frame-rainbow" class="filter-pill">🌈 Rainbow</button>
           <button onclick="setPhotoFrame('ujicoba','dark')" id="ujicoba-frame-dark" class="filter-pill">🖤 Dark</button>
+          <button onclick="setPhotoFrame('ujicoba','kipmup')" id="ujicoba-frame-kipmup" class="filter-pill">🏅 KIPM-UP</button>
+          <button onclick="setPhotoFrame('ujicoba','lovekipmup')" id="ujicoba-frame-lovekipmup" class="filter-pill">💛 Love KIPM-UP</button>
+          <button onclick="setPhotoFrame('ujicoba','lovefounder')" id="ujicoba-frame-lovefounder" class="filter-pill">👑 Love Founder</button>
         </div>
       </div>
 
@@ -1396,6 +1399,9 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
               <button onclick="setPhotoFrame('kiosk','glitter')" id="kiosk-frame-glitter" class="filter-pill">✨ Glitter</button>
               <button onclick="setPhotoFrame('kiosk','rainbow')" id="kiosk-frame-rainbow" class="filter-pill">🌈 Rainbow</button>
               <button onclick="setPhotoFrame('kiosk','dark')" id="kiosk-frame-dark" class="filter-pill">🖤 Dark</button>
+              <button onclick="setPhotoFrame('kiosk','kipmup')" id="kiosk-frame-kipmup" class="filter-pill">🏅 KIPM-UP</button>
+              <button onclick="setPhotoFrame('kiosk','lovekipmup')" id="kiosk-frame-lovekipmup" class="filter-pill">💛 Love KIPM-UP</button>
+              <button onclick="setPhotoFrame('kiosk','lovefounder')" id="kiosk-frame-lovefounder" class="filter-pill">👑 Love Founder</button>
             </div>
           </div>
           <button id="kiosk-btn-lanjut-scan" onclick="kioskLanjutScan()" style="display:none; margin-bottom:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:700; padding:12px 32px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
@@ -1829,6 +1835,9 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setPhotoFrame('kegiatan','glitter')" id="kegiatan-frame-glitter" class="filter-pill">✨ Glitter</button>
           <button onclick="setPhotoFrame('kegiatan','rainbow')" id="kegiatan-frame-rainbow" class="filter-pill">🌈 Rainbow</button>
           <button onclick="setPhotoFrame('kegiatan','dark')" id="kegiatan-frame-dark" class="filter-pill">🖤 Dark</button>
+          <button onclick="setPhotoFrame('kegiatan','kipmup')" id="kegiatan-frame-kipmup" class="filter-pill">🏅 KIPM-UP</button>
+          <button onclick="setPhotoFrame('kegiatan','lovekipmup')" id="kegiatan-frame-lovekipmup" class="filter-pill">💛 Love KIPM-UP</button>
+          <button onclick="setPhotoFrame('kegiatan','lovefounder')" id="kegiatan-frame-lovefounder" class="filter-pill">👑 Love Founder</button>
         </div>
       </div>
       <button id="kegiatan-btn-lanjut" onclick="kegiatanLanjutScan()" style="display:none; width:100%; margin-top:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:12px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
@@ -12595,6 +12604,136 @@ function _drawFrameOnCanvas(c, W, H, fname) {
     c.fillStyle = vig;
     c.fillRect(0, 0, W, H);
     c.restore();
+
+  } else if (fname === 'kipmup') {
+    // ── KIPM-UP Official Frame ──
+    c.save();
+    const bw2 = Math.max(8, Math.round(W * 0.045));
+    // outer gold border
+    const gOuter = c.createLinearGradient(0,0,W,H);
+    gOuter.addColorStop(0,'#f5d060'); gOuter.addColorStop(0.5,'#ffd700'); gOuter.addColorStop(1,'#c8a700');
+    c.strokeStyle = gOuter; c.lineWidth = bw2 * 1.8;
+    c.strokeRect(bw2*0.9, bw2*0.9, W - bw2*1.8, H - bw2*1.8);
+    // inner thin gold line
+    c.strokeStyle = 'rgba(255,215,0,0.5)'; c.lineWidth = 1.5;
+    c.strokeRect(bw2*2, bw2*2, W - bw2*4, H - bw2*4);
+    // corner ornaments
+    const cSize = bw2 * 2.2;
+    const corners2 = [[0,0,1,1],[W,0,-1,1],[0,H,1,-1],[W,H,-1,-1]];
+    c.strokeStyle = '#ffd700'; c.lineWidth = Math.max(2, bw2*0.4);
+    corners2.forEach(([cx,cy,sx,sy]) => {
+      c.beginPath();
+      c.moveTo(cx + sx*cSize, cy); c.lineTo(cx, cy); c.lineTo(cx, cy + sy*cSize);
+      c.stroke();
+    });
+    // bottom banner
+    const banH = Math.round(H * 0.13);
+    const banGrad = c.createLinearGradient(0, H-banH, 0, H);
+    banGrad.addColorStop(0,'rgba(0,0,0,0.0)'); banGrad.addColorStop(0.3,'rgba(0,0,0,0.82)'); banGrad.addColorStop(1,'rgba(0,0,0,0.95)');
+    c.fillStyle = banGrad; c.fillRect(0, H - banH, W, banH);
+    // KIPM-UP text
+    const fsize = Math.max(14, Math.round(W * 0.075));
+    c.font = `900 ${fsize}px Arial Black, Arial, sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    const tGrad = c.createLinearGradient(W/2 - W*0.3, 0, W/2 + W*0.3, 0);
+    tGrad.addColorStop(0,'#f5d060'); tGrad.addColorStop(0.5,'#fffbe0'); tGrad.addColorStop(1,'#c8a700');
+    c.fillStyle = tGrad;
+    c.fillText('KIPM-UP', W/2, H - Math.round(H * 0.04));
+    c.restore();
+
+  } else if (fname === 'lovekipmup') {
+    // ── Love KIPM-UP Frame ──
+    c.save();
+    const bw3 = Math.max(8, Math.round(W * 0.05));
+    // pink-gold gradient border
+    const lgPink = c.createLinearGradient(0,0,W,H);
+    lgPink.addColorStop(0,'#ffd700'); lgPink.addColorStop(0.5,'#ff6090'); lgPink.addColorStop(1,'#ffd700');
+    c.strokeStyle = lgPink; c.lineWidth = bw3 * 1.8;
+    c.strokeRect(bw3*0.9, bw3*0.9, W - bw3*1.8, H - bw3*1.8);
+    c.strokeStyle = 'rgba(255,100,150,0.4)'; c.lineWidth = 1;
+    c.strokeRect(bw3*2.2, bw3*2.2, W - bw3*4.4, H - bw3*4.4);
+    // scattered hearts on border
+    const heartCoords = [
+      [0.1,0.05],[0.3,0.02],[0.5,0.03],[0.7,0.02],[0.9,0.05],
+      [0.1,0.95],[0.3,0.97],[0.5,0.96],[0.7,0.97],[0.9,0.95],
+      [0.02,0.25],[0.02,0.5],[0.02,0.75],
+      [0.97,0.25],[0.97,0.5],[0.97,0.75]
+    ];
+    const hs = Math.max(5, Math.round(W*0.022));
+    heartCoords.forEach(([tx,ty]) => {
+      const hx = tx*W, hy = ty*H;
+      c.fillStyle = (tx < 0.05 || tx > 0.95) ? '#ff6090' : '#ffd700';
+      c.globalAlpha = 0.9;
+      c.beginPath();
+      c.moveTo(hx, hy+hs*0.35);
+      c.bezierCurveTo(hx, hy, hx-hs, hy, hx-hs, hy+hs*0.45);
+      c.bezierCurveTo(hx-hs, hy+hs*0.85, hx, hy+hs*1.1, hx, hy+hs*1.25);
+      c.bezierCurveTo(hx, hy+hs*1.1, hx+hs, hy+hs*0.85, hx+hs, hy+hs*0.45);
+      c.bezierCurveTo(hx+hs, hy, hx, hy, hx, hy+hs*0.35);
+      c.fill();
+    });
+    c.globalAlpha = 1;
+    // bottom banner
+    const bbanH = Math.round(H * 0.15);
+    const bbanG = c.createLinearGradient(0, H-bbanH, 0, H);
+    bbanG.addColorStop(0,'rgba(0,0,0,0)'); bbanG.addColorStop(0.25,'rgba(20,0,10,0.88)'); bbanG.addColorStop(1,'rgba(20,0,10,0.97)');
+    c.fillStyle = bbanG; c.fillRect(0, H - bbanH, W, bbanH);
+    const fs2 = Math.max(12, Math.round(W * 0.065));
+    c.font = `900 ${fs2}px Arial Black, Arial, sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    const tPink = c.createLinearGradient(W/2-W*0.25,0,W/2+W*0.25,0);
+    tPink.addColorStop(0,'#ffd700'); tPink.addColorStop(0.5,'#ffb0cc'); tPink.addColorStop(1,'#ffd700');
+    c.fillStyle = tPink;
+    c.fillText('♥ LOVE KIPM-UP ♥', W/2, H - Math.round(H*0.04));
+    c.restore();
+
+  } else if (fname === 'lovefounder') {
+    // ── Love Founder KIPM-UP Frame ──
+    c.save();
+    const bw4 = Math.max(8, Math.round(W * 0.05));
+    // triple gold border
+    const lgGold = c.createLinearGradient(0,0,W,H);
+    lgGold.addColorStop(0,'#f5d060'); lgGold.addColorStop(0.35,'#fff0a0'); lgGold.addColorStop(0.7,'#c8a700'); lgGold.addColorStop(1,'#f5d060');
+    c.strokeStyle = lgGold; c.lineWidth = bw4 * 2;
+    c.strokeRect(bw4, bw4, W - bw4*2, H - bw4*2);
+    c.strokeStyle = 'rgba(255,215,0,0.6)'; c.lineWidth = 1.5;
+    c.strokeRect(bw4*2.5, bw4*2.5, W - bw4*5, H - bw4*5);
+    c.strokeStyle = 'rgba(255,215,0,0.25)'; c.lineWidth = 1;
+    c.strokeRect(bw4*3.2, bw4*3.2, W - bw4*6.4, H - bw4*6.4);
+    // crown top center
+    const cx4 = W/2, cy4 = bw4 * 1.0;
+    const cs = Math.max(10, Math.round(W * 0.055));
+    const crGrad = c.createLinearGradient(cx4-cs*1.5, cy4-cs, cx4+cs*1.5, cy4+cs);
+    crGrad.addColorStop(0,'#f5d060'); crGrad.addColorStop(0.5,'#fffbe0'); crGrad.addColorStop(1,'#c8a700');
+    c.fillStyle = crGrad;
+    c.beginPath();
+    c.rect(cx4 - cs*1.4, cy4, cs*2.8, cs*0.8);
+    c.moveTo(cx4 - cs*1.4, cy4); c.lineTo(cx4 - cs*1.4, cy4 - cs*0.8);
+    c.lineTo(cx4 - cs*0.7, cy4 - cs*0.35); c.lineTo(cx4, cy4 - cs);
+    c.lineTo(cx4 + cs*0.7, cy4 - cs*0.35); c.lineTo(cx4 + cs*1.4, cy4 - cs*0.8);
+    c.lineTo(cx4 + cs*1.4, cy4); c.closePath();
+    c.fill();
+    // corner stars
+    const starCorners = [[bw4*2.8, bw4*2.8],[W-bw4*2.8, bw4*2.8],[bw4*2.8, H-bw4*2.8],[W-bw4*2.8, H-bw4*2.8]];
+    c.fillStyle = '#ffd700'; c.font = `${Math.round(W*0.04)}px Arial`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    starCorners.forEach(([sx,sy]) => { c.fillText('★', sx, sy); });
+    // bottom banner
+    const bbH2 = Math.round(H * 0.17);
+    const bbG2 = c.createLinearGradient(0, H-bbH2, 0, H);
+    bbG2.addColorStop(0,'rgba(0,0,0,0)'); bbG2.addColorStop(0.2,'rgba(10,8,0,0.88)'); bbG2.addColorStop(1,'rgba(10,8,0,0.97)');
+    c.fillStyle = bbG2; c.fillRect(0, H - bbH2, W, bbH2);
+    const fs3 = Math.max(10, Math.round(W * 0.055));
+    c.font = `700 ${Math.round(fs3*0.75)}px Arial, sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    c.fillStyle = '#ff6090';
+    c.fillText('♥ LOVE FOUNDER ♥', W/2, H - Math.round(H*0.085));
+    c.font = `900 ${fs3}px Arial Black, Arial, sans-serif`;
+    const tGold2 = c.createLinearGradient(W/2-W*0.28,0,W/2+W*0.28,0);
+    tGold2.addColorStop(0,'#f5d060'); tGold2.addColorStop(0.5,'#fffbe0'); tGold2.addColorStop(1,'#c8a700');
+    c.fillStyle = tGold2;
+    c.fillText('KIPM-UP', W/2, H - Math.round(H*0.03));
+    c.restore();
   }
 }
 
@@ -12615,7 +12754,7 @@ function _updateFrameOverlay(ctx) {
 
 window.setPhotoFrame = function(ctx, name) {
   _photoFrames[ctx] = name;
-  ['none','simple','polaroid','glitter','rainbow','dark'].forEach(f => {
+  ['none','simple','polaroid','glitter','rainbow','dark','kipmup','lovekipmup','lovefounder'].forEach(f => {
     const el = document.getElementById(`${ctx}-frame-${f}`);
     if (el) el.classList.toggle('active-pill', f === name);
   });
