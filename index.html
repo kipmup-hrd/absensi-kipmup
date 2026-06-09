@@ -981,6 +981,7 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
       <!-- Filter Kamera -->
       <div id="ujicoba-filter-bar" style="display:none; flex-direction:column; align-items:center; gap:6px; width:100%;">
         <div style="font-size:10px; color:var(--text3); font-weight:600; letter-spacing:1px; text-transform:uppercase;">🎨 Filter Foto</div>
+        <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:-2px;">Warna Foto</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;" id="ujicoba-filter-pills">
           <button onclick="setSelfieFilter('ujicoba','none')" id="ujicoba-f-none" class="filter-pill active-pill">✨ Normal</button>
           <button onclick="setSelfieFilter('ujicoba','grayscale')" id="ujicoba-f-grayscale" class="filter-pill">⚫ B&W</button>
@@ -988,6 +989,15 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setSelfieFilter('ujicoba','cool')" id="ujicoba-f-cool" class="filter-pill">❄️ Cool</button>
           <button onclick="setSelfieFilter('ujicoba','vivid')" id="ujicoba-f-vivid" class="filter-pill">💎 Vivid</button>
           <button onclick="setSelfieFilter('ujicoba','vintage')" id="ujicoba-f-vintage" class="filter-pill">📷 Vintage</button>
+        </div>
+        <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Filter Lucu 🎭</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;" id="ujicoba-fun-pills">
+          <button onclick="setFunFilter('ujicoba','cat')" id="ujicoba-fun-cat" class="filter-pill">🐱 Kucing</button>
+          <button onclick="setFunFilter('ujicoba','bunny')" id="ujicoba-fun-bunny" class="filter-pill">🐰 Bunny</button>
+          <button onclick="setFunFilter('ujicoba','bear')" id="ujicoba-fun-bear" class="filter-pill">🐻 Bear</button>
+          <button onclick="setFunFilter('ujicoba','dog')" id="ujicoba-fun-dog" class="filter-pill">🐶 Anjing</button>
+          <button onclick="setFunFilter('ujicoba','crown')" id="ujicoba-fun-crown" class="filter-pill">👑 Crown</button>
+          <button onclick="setFunFilter('ujicoba','heart')" id="ujicoba-fun-heart" class="filter-pill">💕 Heart</button>
         </div>
       </div>
 
@@ -1341,6 +1351,7 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <!-- Filter Kamera Kiosk -->
           <div id="kiosk-filter-bar" style="display:none; flex-direction:column; align-items:center; gap:6px; margin-bottom:12px;">
             <div style="font-size:10px; color:var(--text3); font-weight:600; letter-spacing:1px; text-transform:uppercase;">🎨 Filter Foto</div>
+            <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:-2px;">Warna Foto</div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
               <button onclick="setSelfieFilter('kiosk','none')" id="kiosk-f-none" class="filter-pill active-pill">✨ Normal</button>
               <button onclick="setSelfieFilter('kiosk','grayscale')" id="kiosk-f-grayscale" class="filter-pill">⚫ B&W</button>
@@ -1348,6 +1359,15 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
               <button onclick="setSelfieFilter('kiosk','cool')" id="kiosk-f-cool" class="filter-pill">❄️ Cool</button>
               <button onclick="setSelfieFilter('kiosk','vivid')" id="kiosk-f-vivid" class="filter-pill">💎 Vivid</button>
               <button onclick="setSelfieFilter('kiosk','vintage')" id="kiosk-f-vintage" class="filter-pill">📷 Vintage</button>
+            </div>
+            <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Filter Lucu 🎭</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+              <button onclick="setFunFilter('kiosk','cat')" id="kiosk-fun-cat" class="filter-pill">🐱 Kucing</button>
+              <button onclick="setFunFilter('kiosk','bunny')" id="kiosk-fun-bunny" class="filter-pill">🐰 Bunny</button>
+              <button onclick="setFunFilter('kiosk','bear')" id="kiosk-fun-bear" class="filter-pill">🐻 Bear</button>
+              <button onclick="setFunFilter('kiosk','dog')" id="kiosk-fun-dog" class="filter-pill">🐶 Anjing</button>
+              <button onclick="setFunFilter('kiosk','crown')" id="kiosk-fun-crown" class="filter-pill">👑 Crown</button>
+              <button onclick="setFunFilter('kiosk','heart')" id="kiosk-fun-heart" class="filter-pill">💕 Heart</button>
             </div>
           </div>
           <button id="kiosk-btn-lanjut-scan" onclick="kioskLanjutScan()" style="display:none; margin-bottom:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:700; padding:12px 32px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
@@ -1750,6 +1770,7 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
       <!-- Filter Kamera Kegiatan -->
       <div id="kegiatan-filter-bar" style="display:none; flex-direction:column; align-items:center; gap:6px; margin-top:10px;">
         <div style="font-size:10px; color:var(--text3); font-weight:600; letter-spacing:1px; text-transform:uppercase;">🎨 Filter Foto</div>
+        <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:-2px;">Warna Foto</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
           <button onclick="setSelfieFilter('kegiatan','none')" id="kegiatan-f-none" class="filter-pill active-pill">✨ Normal</button>
           <button onclick="setSelfieFilter('kegiatan','grayscale')" id="kegiatan-f-grayscale" class="filter-pill">⚫ B&W</button>
@@ -1757,6 +1778,15 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setSelfieFilter('kegiatan','cool')" id="kegiatan-f-cool" class="filter-pill">❄️ Cool</button>
           <button onclick="setSelfieFilter('kegiatan','vivid')" id="kegiatan-f-vivid" class="filter-pill">💎 Vivid</button>
           <button onclick="setSelfieFilter('kegiatan','vintage')" id="kegiatan-f-vintage" class="filter-pill">📷 Vintage</button>
+        </div>
+        <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Filter Lucu 🎭</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+          <button onclick="setFunFilter('kegiatan','cat')" id="kegiatan-fun-cat" class="filter-pill">🐱 Kucing</button>
+          <button onclick="setFunFilter('kegiatan','bunny')" id="kegiatan-fun-bunny" class="filter-pill">🐰 Bunny</button>
+          <button onclick="setFunFilter('kegiatan','bear')" id="kegiatan-fun-bear" class="filter-pill">🐻 Bear</button>
+          <button onclick="setFunFilter('kegiatan','dog')" id="kegiatan-fun-dog" class="filter-pill">🐶 Anjing</button>
+          <button onclick="setFunFilter('kegiatan','crown')" id="kegiatan-fun-crown" class="filter-pill">👑 Crown</button>
+          <button onclick="setFunFilter('kegiatan','heart')" id="kegiatan-fun-heart" class="filter-pill">💕 Heart</button>
         </div>
       </div>
       <button id="kegiatan-btn-lanjut" onclick="kegiatanLanjutScan()" style="display:none; width:100%; margin-top:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:12px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
@@ -12027,5 +12057,399 @@ window.showFilterBar   = showFilterBar;
 window.hideFilterBar   = hideFilterBar;
 </script>
 
+<!-- ══ FUN FILTER ENGINE (Stiker Wajah) ══ -->
+<script>
+// State fun filter per konteks
+const _funFilters = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
+
+// Definisi stiker per filter
+const FUN_FILTER_DEF = {
+  cat: {
+    ears: { emoji: '🐱', topOffset: -0.52, scale: 1.3, type: 'head-top' },
+    nose: { emoji: '🐾', midOffset: 0.08, scale: 0.35 },
+    blush: true, blushColor: 'rgba(255,150,150,0.35)'
+  },
+  bunny: {
+    ears: { emoji: '🐰', topOffset: -0.60, scale: 1.2, type: 'head-top' },
+    nose: { emoji: '🌸', midOffset: 0.06, scale: 0.28 },
+    blush: true, blushColor: 'rgba(255,182,193,0.4)'
+  },
+  bear: {
+    ears: { emoji: '🐻', topOffset: -0.48, scale: 1.2, type: 'head-top' },
+    nose: { emoji: '🍯', midOffset: 0.1, scale: 0.32 },
+    blush: true, blushColor: 'rgba(210,140,80,0.3)'
+  },
+  dog: {
+    ears: { emoji: '🐶', topOffset: -0.50, scale: 1.3, type: 'head-top' },
+    nose: { emoji: '🦴', midOffset: 0.09, scale: 0.30 },
+    blush: true, blushColor: 'rgba(200,160,100,0.3)'
+  },
+  crown: {
+    ears: { emoji: '👑', topOffset: -0.45, scale: 1.0, type: 'head-top' },
+    nose: { emoji: '✨', midOffset: 0.05, scale: 0.25 },
+    blush: false,
+    sparkles: true
+  },
+  heart: {
+    ears: null,
+    nose: { emoji: '💕', midOffset: 0.0, scale: 0.30 },
+    blush: true, blushColor: 'rgba(255,100,150,0.35)',
+    floatingHearts: true
+  }
+};
+
+// Overlay canvas per konteks
+const _overlayCanvases = {};
+const _overlayAnimFrames = {};
+
+function _getOrCreateOverlay(ctx) {
+  if (_overlayCanvases[ctx]) return _overlayCanvases[ctx];
+  const videoIds = { ujicoba: 'ujicoba-video', kegiatan: 'kegiatan-selfie-video', kiosk: 'kiosk-selfie-video' };
+  const vid = document.getElementById(videoIds[ctx]);
+  if (!vid) return null;
+  const wrapper = vid.parentElement;
+  // Make wrapper relative if not already
+  const cs = getComputedStyle(wrapper);
+  if (cs.position === 'static') wrapper.style.position = 'relative';
+  const oc = document.createElement('canvas');
+  oc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
+  oc.id = ctx + '-fun-overlay';
+  wrapper.appendChild(oc);
+  _overlayCanvases[ctx] = oc;
+  return oc;
+}
+
+function _stopOverlay(ctx) {
+  if (_overlayAnimFrames[ctx]) { cancelAnimationFrame(_overlayAnimFrames[ctx]); _overlayAnimFrames[ctx] = null; }
+  const oc = _overlayCanvases[ctx];
+  if (oc) { const c = oc.getContext('2d'); c.clearRect(0,0,oc.width,oc.height); }
+}
+
+// Blush circles
+function _drawBlush(c, fx, fy, fw, fh, color) {
+  const bx = fw * 0.22, br = fw * 0.13;
+  const by = fy + fh * 0.58;
+  c.save();
+  c.globalAlpha = 1;
+  c.fillStyle = color;
+  c.beginPath(); c.ellipse(fx - bx, by, br, br*0.65, 0, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.ellipse(fx + fw + bx - fw, by, br, br*0.65, 0, 0, Math.PI*2); c.fill();
+  c.restore();
+}
+
+// Draw emoji centered
+function _drawEmoji(c, emoji, x, y, size) {
+  c.save();
+  c.font = size + 'px serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(emoji, x, y);
+  c.restore();
+}
+
+// Floating hearts animation state
+const _heartParticles = {};
+function _initHearts(ctx) {
+  _heartParticles[ctx] = Array.from({length:8}, (_,i) => ({
+    x: 0.1 + Math.random()*0.8, y: 0.8 + Math.random()*0.2,
+    vy: -(0.003 + Math.random()*0.004),
+    size: 12 + Math.random()*14,
+    opacity: 0.7 + Math.random()*0.3,
+    emojis: ['💕','💖','💗','❤️','🩷'][Math.floor(Math.random()*5)]
+  }));
+}
+
+function _updateHearts(ctx, w, h) {
+  if (!_heartParticles[ctx]) _initHearts(ctx);
+  _heartParticles[ctx].forEach(p => {
+    p.y += p.vy;
+    if (p.y < -0.1) { p.y = 1.05; p.x = 0.1 + Math.random()*0.8; p.emojis = ['💕','💖','💗','❤️','🩷'][Math.floor(Math.random()*5)]; }
+  });
+}
+
+// Sparkle state
+const _sparkles = {};
+function _initSparkles(ctx) {
+  _sparkles[ctx] = Array.from({length:10}, () => ({
+    x: Math.random(), y: Math.random()*0.5,
+    phase: Math.random()*Math.PI*2,
+    size: 10 + Math.random()*10
+  }));
+}
+
+// Main overlay draw loop
+function _drawFunOverlay(ctx, def, faceData) {
+  const oc = _getOrCreateOverlay(ctx);
+  if (!oc) return;
+  const videoIds = { ujicoba: 'ujicoba-video', kegiatan: 'kegiatan-selfie-video', kiosk: 'kiosk-selfie-video' };
+  const vid = document.getElementById(videoIds[ctx]);
+  if (!vid) return;
+
+  // Sync canvas size
+  const rect = vid.getBoundingClientRect();
+  if (oc.width !== Math.round(rect.width) || oc.height !== Math.round(rect.height)) {
+    oc.width = Math.round(rect.width);
+    oc.height = Math.round(rect.height);
+  }
+  const W = oc.width, H = oc.height;
+  const c = oc.getContext('2d');
+  c.clearRect(0, 0, W, H);
+
+  if (!def) return;
+
+  // Use face detection data if available, else estimate
+  let fx, fy, fw, fh;
+  if (faceData && faceData.box) {
+    const scaleX = W / (vid.videoWidth || W);
+    const scaleY = H / (vid.videoHeight || H);
+    // Mirror x since video is mirrored
+    const bw = faceData.box.width * scaleX;
+    const bh = faceData.box.height * scaleY;
+    const bx = W - (faceData.box.x * scaleX) - bw;
+    const by = faceData.box.y * scaleY;
+    fx = bx; fy = by; fw = bw; fh = bh;
+  } else {
+    // Fallback estimate: center face area
+    fw = W * 0.42; fh = H * 0.52;
+    fx = (W - fw) / 2; fy = H * 0.12;
+  }
+
+  const fcx = fx + fw / 2;
+
+  // Draw blush
+  if (def.blush) _drawBlush(c, fx, fy, fw, fh, def.blushColor);
+
+  // Draw ears/hat
+  if (def.ears) {
+    const earSize = fw * def.ears.scale;
+    const earY = fy + fh * def.ears.topOffset + fh * 0.5;
+    _drawEmoji(c, def.ears.emoji, fcx, earY, earSize);
+  }
+
+  // Draw nose sticker
+  if (def.nose) {
+    const noseSize = fw * def.nose.scale;
+    const noseY = fy + fh * (0.5 + def.nose.midOffset);
+    _drawEmoji(c, def.nose.emoji, fcx, noseY, noseSize);
+  }
+
+  // Sparkles for crown
+  if (def.sparkles) {
+    if (!_sparkles[ctx]) _initSparkles(ctx);
+    const t = Date.now() / 800;
+    _sparkles[ctx].forEach(sp => {
+      const alpha = 0.5 + 0.5 * Math.sin(t + sp.phase);
+      c.save(); c.globalAlpha = alpha;
+      _drawEmoji(c, '✨', sp.x * W, sp.y * H, sp.size);
+      c.restore();
+    });
+  }
+
+  // Floating hearts for heart filter
+  if (def.floatingHearts) {
+    _updateHearts(ctx, W, H);
+    _heartParticles[ctx].forEach(p => {
+      c.save(); c.globalAlpha = p.opacity;
+      _drawEmoji(c, p.emojis, p.x * W, p.y * H, p.size);
+      c.restore();
+    });
+  }
+}
+
+// Face detection state per ctx
+const _faceDataCache = {};
+
+// Detection loop using face-api if available
+async function _detectFaceLoop(ctx) {
+  const videoIds = { ujicoba: 'ujicoba-video', kegiatan: 'kegiatan-selfie-video', kiosk: 'kiosk-selfie-video' };
+  const vid = document.getElementById(videoIds[ctx]);
+  if (!vid || vid.readyState < 2) { setTimeout(() => _detectFaceLoop(ctx), 300); return; }
+  try {
+    if (typeof faceapi !== 'undefined' && faceapi.nets && faceapi.nets.tinyFaceDetector && faceapi.nets.tinyFaceDetector.isLoaded) {
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 }));
+      if (det) _faceDataCache[ctx] = { box: det.box };
+    }
+  } catch(e) {}
+}
+
+// Load face-api models once
+let _faceModelsLoaded = false;
+async function _ensureFaceModels() {
+  if (_faceModelsLoaded) return;
+  if (typeof faceapi === 'undefined') return;
+  try {
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    _faceModelsLoaded = true;
+  } catch(e) { console.warn('face-api model load failed, using fallback positioning'); }
+}
+
+// Animation loop
+function _startFunOverlayLoop(ctx) {
+  _stopOverlay(ctx);
+  _ensureFaceModels();
+  let lastDetect = 0;
+  function loop() {
+    const def = _funFilters[ctx] !== 'none' ? FUN_FILTER_DEF[_funFilters[ctx]] : null;
+    if (!def) { _stopOverlay(ctx); return; }
+    const now = Date.now();
+    if (now - lastDetect > 500) { lastDetect = now; _detectFaceLoop(ctx); }
+    _drawFunOverlay(ctx, def, _faceDataCache[ctx]);
+    _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
+  }
+  _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
+}
+
+// setFunFilter: toggle fun filter, reset color filter pills
+window.setFunFilter = function(ctx, filterName) {
+  const prev = _funFilters[ctx];
+  // Toggle off if same
+  const next = prev === filterName ? 'none' : filterName;
+  _funFilters[ctx] = next;
+
+  // Reset all fun pill UI
+  ['cat','bunny','bear','dog','crown','heart'].forEach(f => {
+    const el = document.getElementById(`${ctx}-fun-${f}`);
+    if (el) el.classList.toggle('active-pill', f === next);
+  });
+
+  if (next === 'none') { _stopOverlay(ctx); }
+  else {
+    if (filterName === 'heart') _initHearts(ctx);
+    _startFunOverlayLoop(ctx);
+  }
+};
+
+// Patch capture functions to bake fun filter onto canvas
+const _origApplyFilter = window._applyFilterToCanvas || function(){};
+
+function _bakeFunFilterOnCanvas(ctx, canvas, videoEl) {
+  const funName = _funFilters[ctx];
+  if (!funName || funName === 'none') return;
+  const def = FUN_FILTER_DEF[funName];
+  if (!def) return;
+  const c = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Use cached face data scaled to canvas size
+  let fx, fy, fw, fh;
+  const faceData = _faceDataCache[ctx];
+  if (faceData && faceData.box && videoEl) {
+    const scaleX = W / (videoEl.videoWidth || W);
+    const scaleY = H / (videoEl.videoHeight || H);
+    const bw = faceData.box.width * scaleX;
+    const bh = faceData.box.height * scaleY;
+    // Mirror x
+    const bx = W - (faceData.box.x * scaleX) - bw;
+    const by = faceData.box.y * scaleY;
+    fx = bx; fy = by; fw = bw; fh = bh;
+  } else {
+    fw = W * 0.42; fh = H * 0.52;
+    fx = (W - fw) / 2; fy = H * 0.12;
+  }
+
+  const fcx = fx + fw / 2;
+
+  if (def.blush) _drawBlush(c, fx, fy, fw, fh, def.blushColor);
+
+  if (def.ears) {
+    const earSize = fw * def.ears.scale;
+    const earY = fy + fh * def.ears.topOffset + fh * 0.5;
+    _drawEmoji(c, def.ears.emoji, fcx, earY, earSize);
+  }
+
+  if (def.nose) {
+    const noseSize = fw * def.nose.scale;
+    const noseY = fy + fh * (0.5 + def.nose.midOffset);
+    _drawEmoji(c, def.nose.emoji, fcx, noseY, noseSize);
+  }
+
+  if (def.sparkles) {
+    if (_sparkles[ctx]) {
+      _sparkles[ctx].forEach(sp => {
+        c.save(); c.globalAlpha = 0.8;
+        _drawEmoji(c, '✨', sp.x * W, sp.y * H * 0.5, sp.size);
+        c.restore();
+      });
+    }
+  }
+
+  if (def.floatingHearts && _heartParticles[ctx]) {
+    _heartParticles[ctx].forEach(p => {
+      c.save(); c.globalAlpha = p.opacity;
+      _drawEmoji(c, p.emojis, p.x * W, p.y * H, p.size);
+      c.restore();
+    });
+  }
+}
+
+// Patch ujicobaAmbilFoto to bake fun filter
+const _origUjicobaAmbilFoto2 = window.ujicobaAmbilFoto;
+window.ujicobaAmbilFoto = function() {
+  _origUjicobaAmbilFoto2.call(this, ...arguments);
+  // bake after capture — re-draw on canvas
+  setTimeout(() => {
+    const canvas = document.getElementById('ujicoba-canvas');
+    const video = document.getElementById('ujicoba-video');
+    _bakeFunFilterOnCanvas('ujicoba', canvas, video);
+    ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
+    const preview = document.getElementById('ujicoba-preview');
+    if (preview) preview.src = ujicobaFotoData;
+  }, 50);
+};
+
+// Patch kegiatanAmbilFoto
+const _origKegiatanAmbilFoto2 = window.kegiatanAmbilFoto;
+window.kegiatanAmbilFoto = function() {
+  _origKegiatanAmbilFoto2.call(this, ...arguments);
+  setTimeout(() => {
+    const canvas = document.getElementById('kegiatan-selfie-canvas');
+    const video = document.getElementById('kegiatan-selfie-video');
+    _bakeFunFilterOnCanvas('kegiatan', canvas, video);
+    kegiatanSelfieDataURL = canvas.toDataURL('image/jpeg', 0.6);
+    const preview = document.getElementById('kegiatan-selfie-preview');
+    if (preview) preview.src = kegiatanSelfieDataURL;
+  }, 4200); // after 3s countdown + buffer
+};
+
+// Patch kioskAmbilFoto
+const _origKioskAmbilFoto2 = window.kioskAmbilFoto;
+window.kioskAmbilFoto = function() {
+  _origKioskAmbilFoto2.call(this, ...arguments);
+  setTimeout(() => {
+    const canvas = document.getElementById('kiosk-selfie-canvas');
+    const video = document.getElementById('kiosk-selfie-video');
+    _bakeFunFilterOnCanvas('kiosk', canvas, video);
+    kioskSelfieDataURL = canvas.toDataURL('image/jpeg', 0.75);
+    const preview = document.getElementById('kiosk-selfie-preview');
+    if (preview) preview.src = kioskSelfieDataURL;
+  }, 4200);
+};
+
+// Reset fun filter when ulang/buka
+const _origSetSelfieFilter = window.setSelfieFilter;
+window.setSelfieFilter = function(ctx, f) {
+  _origSetSelfieFilter(ctx, f);
+  // Clear fun filter when a color filter is picked
+  _funFilters[ctx] = 'none';
+  _stopOverlay(ctx);
+  ['cat','bunny','bear','dog','crown','heart'].forEach(fn => {
+    const el = document.getElementById(`${ctx}-fun-${fn}`);
+    if (el) el.classList.remove('active-pill');
+  });
+};
+
+// Also stop overlay on hideFilterBar
+const _origHideFilterBar = window.hideFilterBar;
+window.hideFilterBar = function(ctx) {
+  _origHideFilterBar(ctx);
+  _stopOverlay(ctx);
+  _funFilters[ctx] = 'none';
+  ['cat','bunny','bear','dog','crown','heart'].forEach(f => {
+    const el = document.getElementById(`${ctx}-fun-${f}`);
+    if (el) el.classList.remove('active-pill');
+  });
+};
+</script>
 </body>
 </html>
