@@ -958,7 +958,7 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
       </div>
 
       <!-- Kamera Lingkaran -->
-      <div id="ujicoba-cam-wrapper" style="position:relative; width:200px; height:200px; border-radius:50%; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+      <div id="ujicoba-cam-wrapper" style="position:relative; width:260px; height:260px; border-radius:16px; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
         <video id="ujicoba-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none;"></video>
         <img id="ujicoba-preview" style="display:none; width:100%; height:100%; object-fit:cover;" alt="Selfie">
         <div id="ujicoba-placeholder" style="display:flex; flex-direction:column; align-items:center; gap:6px; color:var(--text3);">
@@ -989,6 +989,11 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setSelfieFilter('ujicoba','cool')" id="ujicoba-f-cool" class="filter-pill">❄️ Cool</button>
           <button onclick="setSelfieFilter('ujicoba','vivid')" id="ujicoba-f-vivid" class="filter-pill">💎 Vivid</button>
           <button onclick="setSelfieFilter('ujicoba','vintage')" id="ujicoba-f-vintage" class="filter-pill">📷 Vintage</button>
+          <button onclick="setSelfieFilter('ujicoba','sunset')" id="ujicoba-f-sunset" class="filter-pill">🌇 Sunset</button>
+          <button onclick="setSelfieFilter('ujicoba','neon')" id="ujicoba-f-neon" class="filter-pill">⚡ Neon</button>
+          <button onclick="setSelfieFilter('ujicoba','frosty')" id="ujicoba-f-frosty" class="filter-pill">🧊 Frosty</button>
+          <button onclick="setSelfieFilter('ujicoba','dramatic')" id="ujicoba-f-dramatic" class="filter-pill">🎭 Dramatic</button>
+          <button onclick="setSelfieFilter('ujicoba','golden')" id="ujicoba-f-golden" class="filter-pill">✨ Golden</button>
         </div>
         <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Filter Lucu 🎭</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;" id="ujicoba-fun-pills">
@@ -998,6 +1003,15 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setFunFilter('ujicoba','dog')" id="ujicoba-fun-dog" class="filter-pill">🐶 Anjing</button>
           <button onclick="setFunFilter('ujicoba','crown')" id="ujicoba-fun-crown" class="filter-pill">👑 Crown</button>
           <button onclick="setFunFilter('ujicoba','heart')" id="ujicoba-fun-heart" class="filter-pill">💕 Heart</button>
+        </div>
+        <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;" id="ujicoba-frame-pills">
+          <button onclick="setPhotoFrame('ujicoba','none')" id="ujicoba-frame-none" class="filter-pill active-pill">✕ Tanpa Frame</button>
+          <button onclick="setPhotoFrame('ujicoba','simple')" id="ujicoba-frame-simple" class="filter-pill">⬜ Simple</button>
+          <button onclick="setPhotoFrame('ujicoba','polaroid')" id="ujicoba-frame-polaroid" class="filter-pill">🟤 Polaroid</button>
+          <button onclick="setPhotoFrame('ujicoba','glitter')" id="ujicoba-frame-glitter" class="filter-pill">✨ Glitter</button>
+          <button onclick="setPhotoFrame('ujicoba','rainbow')" id="ujicoba-frame-rainbow" class="filter-pill">🌈 Rainbow</button>
+          <button onclick="setPhotoFrame('ujicoba','dark')" id="ujicoba-frame-dark" class="filter-pill">🖤 Dark</button>
         </div>
       </div>
 
@@ -1331,7 +1345,7 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
             <input class="form-input" id="kiosk-selfie-nia" placeholder="NIA Anggota (opsional untuk Foto+QR)" style="text-align:center; font-size:13px;">
           </div>
           <!-- 3. Kamera (lingkaran) -->
-          <div id="kiosk-cam-wrapper" style="position:relative; width:260px; height:260px; border-radius:50%; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); margin:0 auto 8px; display:flex; align-items:center; justify-content:center;">
+          <div id="kiosk-cam-wrapper" style="position:relative; width:260px; height:260px; border-radius:16px; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); margin:0 auto 8px; display:flex; align-items:center; justify-content:center;">
             <video id="kiosk-selfie-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none;"></video>
             <img id="kiosk-selfie-preview" style="display:none; width:100%; height:100%; object-fit:cover;" alt="Selfie">
             <div id="kiosk-selfie-placeholder" style="display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text3);">
@@ -1359,6 +1373,11 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
               <button onclick="setSelfieFilter('kiosk','cool')" id="kiosk-f-cool" class="filter-pill">❄️ Cool</button>
               <button onclick="setSelfieFilter('kiosk','vivid')" id="kiosk-f-vivid" class="filter-pill">💎 Vivid</button>
               <button onclick="setSelfieFilter('kiosk','vintage')" id="kiosk-f-vintage" class="filter-pill">📷 Vintage</button>
+              <button onclick="setSelfieFilter('kiosk','sunset')" id="kiosk-f-sunset" class="filter-pill">🌇 Sunset</button>
+              <button onclick="setSelfieFilter('kiosk','neon')" id="kiosk-f-neon" class="filter-pill">⚡ Neon</button>
+              <button onclick="setSelfieFilter('kiosk','frosty')" id="kiosk-f-frosty" class="filter-pill">🧊 Frosty</button>
+              <button onclick="setSelfieFilter('kiosk','dramatic')" id="kiosk-f-dramatic" class="filter-pill">🎭 Dramatic</button>
+              <button onclick="setSelfieFilter('kiosk','golden')" id="kiosk-f-golden" class="filter-pill">✨ Golden</button>
             </div>
             <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Filter Lucu 🎭</div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
@@ -1368,6 +1387,15 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
               <button onclick="setFunFilter('kiosk','dog')" id="kiosk-fun-dog" class="filter-pill">🐶 Anjing</button>
               <button onclick="setFunFilter('kiosk','crown')" id="kiosk-fun-crown" class="filter-pill">👑 Crown</button>
               <button onclick="setFunFilter('kiosk','heart')" id="kiosk-fun-heart" class="filter-pill">💕 Heart</button>
+            </div>
+            <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+              <button onclick="setPhotoFrame('kiosk','none')" id="kiosk-frame-none" class="filter-pill active-pill">✕ Tanpa Frame</button>
+              <button onclick="setPhotoFrame('kiosk','simple')" id="kiosk-frame-simple" class="filter-pill">⬜ Simple</button>
+              <button onclick="setPhotoFrame('kiosk','polaroid')" id="kiosk-frame-polaroid" class="filter-pill">🟤 Polaroid</button>
+              <button onclick="setPhotoFrame('kiosk','glitter')" id="kiosk-frame-glitter" class="filter-pill">✨ Glitter</button>
+              <button onclick="setPhotoFrame('kiosk','rainbow')" id="kiosk-frame-rainbow" class="filter-pill">🌈 Rainbow</button>
+              <button onclick="setPhotoFrame('kiosk','dark')" id="kiosk-frame-dark" class="filter-pill">🖤 Dark</button>
             </div>
           </div>
           <button id="kiosk-btn-lanjut-scan" onclick="kioskLanjutScan()" style="display:none; margin-bottom:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:700; padding:12px 32px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
@@ -1754,7 +1782,7 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
       <div style="font-size:13px; font-weight:600; color:var(--text2); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px; display:none;">Step 1 dari 2</div>
       <div style="font-size:15px; font-weight:600; margin-bottom:4px;">📸 Foto Selfie (Opsional)</div>
       <div style="font-size:12px; color:var(--text2); margin-bottom:14px;">Bisa langsung lanjut scan QR tanpa foto selfie</div>
-      <div id="kegiatan-selfie-cam-wrapper" style="position:relative; width:220px; height:220px; margin:0 auto 12px; border-radius:50%; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); display:flex; align-items:center; justify-content:center;">
+      <div id="kegiatan-selfie-cam-wrapper" style="position:relative; width:260px; height:260px; margin:0 auto 12px; border-radius:16px; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); display:flex; align-items:center; justify-content:center;">
         <video id="kegiatan-selfie-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none;"></video>
         <div id="kegiatan-selfie-placeholder" style="color:var(--text3); text-align:center;"><div style="font-size:36px;">👤</div><div style="font-size:11px;">Kamera belum aktif</div></div>
         <img id="kegiatan-selfie-preview" style="display:none; width:100%; height:100%; object-fit:cover;" alt="">
@@ -1778,6 +1806,11 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setSelfieFilter('kegiatan','cool')" id="kegiatan-f-cool" class="filter-pill">❄️ Cool</button>
           <button onclick="setSelfieFilter('kegiatan','vivid')" id="kegiatan-f-vivid" class="filter-pill">💎 Vivid</button>
           <button onclick="setSelfieFilter('kegiatan','vintage')" id="kegiatan-f-vintage" class="filter-pill">📷 Vintage</button>
+          <button onclick="setSelfieFilter('kegiatan','sunset')" id="kegiatan-f-sunset" class="filter-pill">🌇 Sunset</button>
+          <button onclick="setSelfieFilter('kegiatan','neon')" id="kegiatan-f-neon" class="filter-pill">⚡ Neon</button>
+          <button onclick="setSelfieFilter('kegiatan','frosty')" id="kegiatan-f-frosty" class="filter-pill">🧊 Frosty</button>
+          <button onclick="setSelfieFilter('kegiatan','dramatic')" id="kegiatan-f-dramatic" class="filter-pill">🎭 Dramatic</button>
+          <button onclick="setSelfieFilter('kegiatan','golden')" id="kegiatan-f-golden" class="filter-pill">✨ Golden</button>
         </div>
         <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Filter Lucu 🎭</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
@@ -1787,6 +1820,15 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setFunFilter('kegiatan','dog')" id="kegiatan-fun-dog" class="filter-pill">🐶 Anjing</button>
           <button onclick="setFunFilter('kegiatan','crown')" id="kegiatan-fun-crown" class="filter-pill">👑 Crown</button>
           <button onclick="setFunFilter('kegiatan','heart')" id="kegiatan-fun-heart" class="filter-pill">💕 Heart</button>
+        </div>
+        <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+          <button onclick="setPhotoFrame('kegiatan','none')" id="kegiatan-frame-none" class="filter-pill active-pill">✕ Tanpa Frame</button>
+          <button onclick="setPhotoFrame('kegiatan','simple')" id="kegiatan-frame-simple" class="filter-pill">⬜ Simple</button>
+          <button onclick="setPhotoFrame('kegiatan','polaroid')" id="kegiatan-frame-polaroid" class="filter-pill">🟤 Polaroid</button>
+          <button onclick="setPhotoFrame('kegiatan','glitter')" id="kegiatan-frame-glitter" class="filter-pill">✨ Glitter</button>
+          <button onclick="setPhotoFrame('kegiatan','rainbow')" id="kegiatan-frame-rainbow" class="filter-pill">🌈 Rainbow</button>
+          <button onclick="setPhotoFrame('kegiatan','dark')" id="kegiatan-frame-dark" class="filter-pill">🖤 Dark</button>
         </div>
       </div>
       <button id="kegiatan-btn-lanjut" onclick="kegiatanLanjutScan()" style="display:none; width:100%; margin-top:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:12px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
@@ -11849,6 +11891,11 @@ const FILTER_CSS = {
   cool:      'hue-rotate(20deg) saturate(90%) brightness(100%)',
   vivid:     'saturate(180%) contrast(110%)',
   vintage:   'sepia(60%) contrast(90%) brightness(95%)',
+  sunset:    'sepia(30%) saturate(160%) hue-rotate(-15deg) brightness(108%)',
+  neon:      'saturate(200%) contrast(125%) brightness(110%) hue-rotate(10deg)',
+  frosty:    'hue-rotate(200deg) saturate(70%) brightness(105%) contrast(95%)',
+  dramatic:  'contrast(145%) saturate(80%) brightness(90%)',
+  golden:    'sepia(50%) saturate(150%) brightness(110%) hue-rotate(-10deg)',
 };
 
 // Canvas pixel filter
@@ -11878,6 +11925,39 @@ function _applyFilterToCanvas(ctx2d, canvas, filterName) {
       d[i]   = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
       d[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
       d[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+    } else if (filterName === 'sunset') {
+      d[i]   = Math.min(255, r + 30);
+      d[i+1] = Math.min(255, g - 5);
+      d[i+2] = Math.max(0,   b - 40);
+    } else if (filterName === 'neon') {
+      const avg3 = (r + g + b) / 3;
+      d[i]   = Math.min(255, Math.round(avg3 + (r - avg3) * 2.0));
+      d[i+1] = Math.min(255, Math.round(avg3 + (g - avg3) * 2.0));
+      d[i+2] = Math.min(255, Math.round(avg3 + (b - avg3) * 2.0));
+      // boost brightness
+      d[i]   = Math.min(255, d[i]   + 15);
+      d[i+1] = Math.min(255, d[i+1] + 15);
+      d[i+2] = Math.min(255, d[i+2] + 15);
+    } else if (filterName === 'frosty') {
+      d[i]   = Math.max(0,   r - 20);
+      d[i+1] = Math.min(255, g + 10);
+      d[i+2] = Math.min(255, b + 50);
+      // desaturate slightly
+      const fr = 0.6*d[i] + 0.2*d[i+1] + 0.2*d[i+2];
+      d[i]   = Math.round(d[i]   * 0.75 + fr * 0.25);
+      d[i+1] = Math.round(d[i+1] * 0.75 + fr * 0.25);
+      d[i+2] = Math.round(d[i+2] * 0.75 + fr * 0.25);
+    } else if (filterName === 'dramatic') {
+      // high contrast B&W tinted
+      const lum = 0.299*r + 0.587*g + 0.114*b;
+      const contr = Math.round(Math.min(255, Math.max(0, (lum - 128) * 1.45 + 128)));
+      d[i]   = contr;
+      d[i+1] = Math.round(contr * 0.88);
+      d[i+2] = Math.round(contr * 0.82);
+    } else if (filterName === 'golden') {
+      d[i]   = Math.min(255, r + 25);
+      d[i+1] = Math.min(255, g + 8);
+      d[i+2] = Math.max(0,   b - 30);
     }
   }
   ctx2d.putImageData(imageData, 0, 0);
@@ -11885,7 +11965,7 @@ function _applyFilterToCanvas(ctx2d, canvas, filterName) {
 
 function setSelfieFilter(ctx, filterName) {
   _selfieFilters[ctx] = filterName;
-  ['none','grayscale','warm','cool','vivid','vintage'].forEach(f => {
+  ['none','grayscale','warm','cool','vivid','vintage','sunset','neon','frosty','dramatic','golden'].forEach(f => {
     const el = document.getElementById(`${ctx}-f-${f}`);
     if (el) el.classList.toggle('active-pill', f === filterName);
   });
@@ -12095,11 +12175,29 @@ function _getFaceBox(ctx, W, H) {
   const vid = document.getElementById(_VID[ctx]);
   const fd = _faceDataCache[ctx];
   if (fd && fd.box && vid && vid.videoWidth) {
-    const sx = W / vid.videoWidth, sy = H / vid.videoHeight;
-    const bw = fd.box.width * sx, bh = fd.box.height * sy;
-    const bx = W - (fd.box.x * sx) - bw;
-    const by = fd.box.y * sy;
-    return { fx: bx, fy: by, fw: bw, fh: bh };
+    const vw = vid.videoWidth, vh = vid.videoHeight;
+    // The video is displayed as object-fit:cover in a square container.
+    // We need to account for the crop to match the display correctly.
+    const displayAspect = W / H;
+    const videoAspect = vw / vh;
+    let scaleX, scaleY, cropX = 0, cropY = 0;
+    if (videoAspect > displayAspect) {
+      // video is wider than display → sides are cropped
+      scaleY = H / vh;
+      scaleX = scaleY;
+      cropX = (vw * scaleX - W) / 2;
+    } else {
+      // video is taller than display → top/bottom cropped
+      scaleX = W / vw;
+      scaleY = scaleX;
+      cropY = (vh * scaleY - H) / 2;
+    }
+    // Mirror X (video is scaleX(-1))
+    const bx = W - (fd.box.x * scaleX - cropX) - fd.box.width * scaleX;
+    const by = fd.box.y * scaleY - cropY;
+    const bw = fd.box.width * scaleX;
+    const bh = fd.box.height * scaleY;
+    return { fx: bx, fy: Math.max(0, by), fw: bw, fh: bh };
   }
   // Fallback: estimate face in center
   const fw = W * 0.44, fh = H * 0.50;
@@ -12406,6 +12504,107 @@ window.setFunFilter = function(ctx, name) {
   }
 };
 
+// ── Photo Frame System ──
+const _photoFrames = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
+
+window.setPhotoFrame = function(ctx, name) {
+  _photoFrames[ctx] = name;
+  ['none','simple','polaroid','glitter','rainbow','dark'].forEach(f => {
+    const el = document.getElementById(`${ctx}-frame-${f}`);
+    if (el) el.classList.toggle('active-pill', f === name);
+  });
+};
+
+function _bakeFrame(ctx, canvas) {
+  const fname = _photoFrames[ctx];
+  if (!fname || fname === 'none') return;
+  const W = canvas.width, H = canvas.height;
+  const c = canvas.getContext('2d');
+  const bw = Math.max(4, Math.round(W * 0.04)); // border width
+
+  if (fname === 'simple') {
+    c.save();
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = bw;
+    c.strokeRect(bw/2, bw/2, W - bw, H - bw);
+    c.restore();
+  } else if (fname === 'polaroid') {
+    // White border with thicker bottom (polaroid style)
+    c.save();
+    const pad = Math.round(W * 0.06);
+    const btm = Math.round(W * 0.16);
+    // Draw white border by compositing — fill corners
+    c.fillStyle = '#f5f0e8';
+    c.fillRect(0, 0, W, pad);              // top
+    c.fillRect(0, H - btm, W, btm);       // bottom
+    c.fillRect(0, 0, pad, H);             // left
+    c.fillRect(W - pad, 0, pad, H);       // right
+    // Subtle shadow inside
+    c.shadowColor = 'rgba(0,0,0,0.15)';
+    c.shadowBlur = 4;
+    c.strokeStyle = '#e0dbd0';
+    c.lineWidth = 1;
+    c.strokeRect(pad, pad, W - 2*pad, H - pad - btm);
+    c.restore();
+  } else if (fname === 'glitter') {
+    // Gold glitter border
+    c.save();
+    const grd = c.createLinearGradient(0, 0, W, H);
+    grd.addColorStop(0, '#ffe44d');
+    grd.addColorStop(0.25, '#ffb700');
+    grd.addColorStop(0.5, '#fff200');
+    grd.addColorStop(0.75, '#ffd700');
+    grd.addColorStop(1, '#ffe44d');
+    c.strokeStyle = grd;
+    c.lineWidth = bw * 1.5;
+    c.strokeRect(bw, bw, W - 2*bw, H - 2*bw);
+    // sparkle dots
+    const rng = [0.1,0.9,0.3,0.7,0.5,0.15,0.85,0.45,0.55];
+    rng.forEach((t, i) => {
+      const angle = (i / rng.length) * Math.PI * 2;
+      const r = W * 0.48;
+      const sx = W/2 + r * Math.cos(angle);
+      const sy = H/2 + r * Math.sin(angle);
+      const ss = bw * 0.8;
+      c.fillStyle = '#fff';
+      c.globalAlpha = 0.85;
+      c.beginPath();
+      c.moveTo(sx, sy - ss); c.lineTo(sx + ss*0.25, sy - ss*0.25); c.lineTo(sx + ss, sy);
+      c.lineTo(sx + ss*0.25, sy + ss*0.25); c.lineTo(sx, sy + ss);
+      c.lineTo(sx - ss*0.25, sy + ss*0.25); c.lineTo(sx - ss, sy);
+      c.lineTo(sx - ss*0.25, sy - ss*0.25); c.closePath(); c.fill();
+    });
+    c.restore();
+  } else if (fname === 'rainbow') {
+    // Multi-color rainbow border
+    const colors = ['#ff4466','#ff8c00','#ffe000','#44cc44','#22aaee','#8844ee'];
+    const segW = bw / colors.length;
+    colors.forEach((col, i) => {
+      c.save();
+      c.strokeStyle = col;
+      c.lineWidth = segW;
+      const off = segW * i + segW / 2;
+      c.strokeRect(off, off, W - 2*off, H - 2*off);
+      c.restore();
+    });
+  } else if (fname === 'dark') {
+    // Dark cinematic border with vignette
+    c.save();
+    // Top/bottom dark bars (letterbox)
+    const barH = Math.round(H * 0.07);
+    c.fillStyle = '#000000';
+    c.fillRect(0, 0, W, barH);
+    c.fillRect(0, H - barH, W, barH);
+    // Vignette overlay
+    const vig = c.createRadialGradient(W/2, H/2, W*0.30, W/2, H/2, W*0.72);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.60)');
+    c.fillStyle = vig;
+    c.fillRect(0, 0, W, H);
+    c.restore();
+  }
+}
+
 // ── Bake fun filter onto canvas (inline, before toDataURL) ──
 function _bakeFun(ctx, canvas) {
   const fname = _funFilters[ctx];
@@ -12419,13 +12618,18 @@ function _bakeFun(ctx, canvas) {
   const vid = document.getElementById(_VID[ctx]);
   if (fd && fd.box && vid && vid.videoWidth) {
     const vw = vid.videoWidth, vh = vid.videoHeight;
+    // Canvas is always square (side = min(vw,vh))
     const side = Math.min(vw, vh);
-    const sx = W / side, sy = H / side;
     const offX = (vw - side) / 2, offY = (vh - side) / 2;
+    const sx = W / side, sy = H / side;
+    // face-api coords are in full video space
+    const bx_full = fd.box.x - offX;
+    const by_full = fd.box.y - offY;
     const bw = fd.box.width * sx, bh = fd.box.height * sy;
-    const bx = W - ((fd.box.x - offX) * sx) - bw;
-    const by = (fd.box.y - offY) * sy;
-    fx = bx; fy = Math.max(0, by); fw = bw; fh = bh;
+    // Mirror X since canvas was drawn mirrored
+    fx = W - (bx_full * sx) - bw;
+    fy = Math.max(0, by_full * sy);
+    fw = bw; fh = bh;
   } else {
     fw = W * 0.44; fh = H * 0.52; fx = (W - fw) / 2; fy = H * 0.10;
   }
@@ -12492,6 +12696,7 @@ window.ujicobaAmbilFoto = function() {
   c.restore();
   _applyFilterToCanvas(c, canvas, colorFilter);
   _bakeFun('ujicoba', canvas); // ★ bake sebelum toDataURL
+  _bakeFrame('ujicoba', canvas); // ★ bake frame
   ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
   if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
   video.style.display = 'none'; video.style.filter = '';
@@ -12523,6 +12728,7 @@ window.kegiatanAmbilFoto = function() {
       c.setTransform(1,0,0,1,0,0);
       _applyFilterToCanvas(c, canvas, colorFilter);
       _bakeFun('kegiatan', canvas); // ★ bake sebelum toDataURL
+      _bakeFrame('kegiatan', canvas); // ★ bake frame
       kegiatanSelfieDataURL = canvas.toDataURL('image/jpeg', 0.6);
       if (kegiatanSelfieStream) { kegiatanSelfieStream.getTracks().forEach(t => t.stop()); kegiatanSelfieStream = null; }
       const preview = document.getElementById('kegiatan-selfie-preview');
@@ -12557,6 +12763,7 @@ window.kioskAmbilFoto = function() {
       c.setTransform(1,0,0,1,0,0);
       _applyFilterToCanvas(c, canvas, colorFilter);
       _bakeFun('kiosk', canvas); // ★ bake sebelum toDataURL
+      _bakeFrame('kiosk', canvas); // ★ bake frame
       kioskSelfieDataURL = canvas.toDataURL('image/jpeg', 0.75);
       if (typeof stopKioskCam === 'function') stopKioskCam();
       video.style.filter = '';
@@ -12595,6 +12802,12 @@ window.hideFilterBar = function(ctx) {
   ['cat','bunny','bear','dog','crown','heart'].forEach(f => {
     const el = document.getElementById(`${ctx}-fun-${f}`);
     if (el) el.classList.remove('active-pill');
+  });
+  // Reset frame to none on hide
+  _photoFrames[ctx] = 'none';
+  ['none','simple','polaroid','glitter','rainbow','dark'].forEach(f => {
+    const el = document.getElementById(`${ctx}-frame-${f}`);
+    if (el) el.classList.toggle('active-pill', f === 'none');
   });
 };
 </script>
