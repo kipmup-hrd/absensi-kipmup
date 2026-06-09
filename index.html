@@ -1007,6 +1007,10 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setFunFilter('ujicoba','devil')" id="ujicoba-fun-devil" class="filter-pill">😈 Devil</button>
           <button onclick="setFunFilter('ujicoba','skull')" id="ujicoba-fun-skull" class="filter-pill">💀 Skull</button>
           <button onclick="setFunFilter('ujicoba','ghost')" id="ujicoba-fun-ghost" class="filter-pill">👻 Ghost</button>
+          <button onclick="setFunFilter('ujicoba','beauty')" id="ujicoba-fun-beauty" class="filter-pill">✨ Beauty</button>
+          <button onclick="setFunFilter('ujicoba','cute')" id="ujicoba-fun-cute" class="filter-pill">🌸 Cute</button>
+          <button onclick="setFunFilter('ujicoba','alien')" id="ujicoba-fun-alien" class="filter-pill">👽 Alien</button>
+          <button onclick="setFunFilter('ujicoba','wobble')" id="ujicoba-fun-wobble" class="filter-pill">🫠 Melt</button>
         </div>
         <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;" id="ujicoba-frame-pills">
@@ -1398,6 +1402,10 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
               <button onclick="setFunFilter('kiosk','devil')" id="kiosk-fun-devil" class="filter-pill">😈 Devil</button>
               <button onclick="setFunFilter('kiosk','skull')" id="kiosk-fun-skull" class="filter-pill">💀 Skull</button>
               <button onclick="setFunFilter('kiosk','ghost')" id="kiosk-fun-ghost" class="filter-pill">👻 Ghost</button>
+              <button onclick="setFunFilter('kiosk','beauty')" id="kiosk-fun-beauty" class="filter-pill">✨ Beauty</button>
+              <button onclick="setFunFilter('kiosk','cute')" id="kiosk-fun-cute" class="filter-pill">🌸 Cute</button>
+              <button onclick="setFunFilter('kiosk','alien')" id="kiosk-fun-alien" class="filter-pill">👽 Alien</button>
+              <button onclick="setFunFilter('kiosk','wobble')" id="kiosk-fun-wobble" class="filter-pill">🫠 Melt</button>
             </div>
             <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
@@ -1838,6 +1846,10 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
           <button onclick="setFunFilter('kegiatan','devil')" id="kegiatan-fun-devil" class="filter-pill">😈 Devil</button>
           <button onclick="setFunFilter('kegiatan','skull')" id="kegiatan-fun-skull" class="filter-pill">💀 Skull</button>
           <button onclick="setFunFilter('kegiatan','ghost')" id="kegiatan-fun-ghost" class="filter-pill">👻 Ghost</button>
+          <button onclick="setFunFilter('kegiatan','beauty')" id="kegiatan-fun-beauty" class="filter-pill">✨ Beauty</button>
+          <button onclick="setFunFilter('kegiatan','cute')" id="kegiatan-fun-cute" class="filter-pill">🌸 Cute</button>
+          <button onclick="setFunFilter('kegiatan','alien')" id="kegiatan-fun-alien" class="filter-pill">👽 Alien</button>
+          <button onclick="setFunFilter('kegiatan','wobble')" id="kegiatan-fun-wobble" class="filter-pill">🫠 Melt</button>
         </div>
         <div style="font-size:9px; color:var(--text3); opacity:0.7; margin-top:2px;">Frame Foto 🖼️</div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
@@ -12754,44 +12766,355 @@ function _drawFunFrame(ctx) {
   }
 }
 
-// Face detection
+// Face detection — dengan landmark support untuk beauty/distort filters
 let _faceModelsLoaded = false;
+let _landmarkModelsLoaded = false;
+const _landmarkCache = {}; // ctx → [{x,y}] array of 68 points
+
 async function _ensureFaceModels() {
   if (_faceModelsLoaded) return;
   if (typeof faceapi === 'undefined') return;
   try {
-    await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/');
-    _faceModelsLoaded = true;
+    const URLS = [
+      'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
+      'https://unpkg.com/face-api.js@0.22.2/weights'
+    ];
+    for (const url of URLS) {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(url),
+          faceapi.nets.faceLandmark68TinyNet.isLoaded ? Promise.resolve() : faceapi.nets.faceLandmark68TinyNet.loadFromUri(url),
+        ]);
+        _faceModelsLoaded = true;
+        _landmarkModelsLoaded = true;
+        break;
+      } catch(e) {}
+    }
   } catch(e) {}
 }
+
 async function _detectFace(ctx) {
   const vid = document.getElementById(_VID[ctx]);
   if (!vid || vid.readyState < 2) return;
   try {
-    if (typeof faceapi !== 'undefined' && faceapi.nets.tinyFaceDetector.isLoaded) {
+    if (typeof faceapi === 'undefined') return;
+    if (!faceapi.nets.tinyFaceDetector.isLoaded) return;
+    const needsLandmarks = ['beauty','cute','alien','wobble'].includes(_funFilters[ctx]);
+    if (needsLandmarks && faceapi.nets.faceLandmark68TinyNet.isLoaded) {
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:224, scoreThreshold:0.3 }))
+        .withFaceLandmarks(true);
+      if (det) {
+        _faceDataCache[ctx] = { box: det.detection.box };
+        _landmarkCache[ctx] = det.landmarks.positions; // [{x,y}×68]
+      }
+    } else {
       const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:224, scoreThreshold:0.3 }));
-      if (det) _faceDataCache[ctx] = { box: det.box };
+      if (det) { _faceDataCache[ctx] = { box: det.box }; _landmarkCache[ctx] = null; }
     }
   } catch(e) {}
+}
+
+// ══ WARP ENGINE ══
+// Semua filter beauty/distort bekerja dengan cara:
+// 1. Sample video frame ke offscreen canvas
+// 2. Warp pixel regions berdasarkan landmark positions
+// 3. Render ke overlay canvas
+
+// Convert landmark positions (video space) → display canvas space (mirrored)
+function _landmarkToDisplay(pts, vid, W, H) {
+  if (!pts || !vid || !vid.videoWidth) return null;
+  const vw = vid.videoWidth, vh = vid.videoHeight;
+  const displayAspect = W / H, videoAspect = vw / vh;
+  let scaleX, scaleY, cropX = 0, cropY = 0;
+  if (videoAspect > displayAspect) {
+    scaleY = H / vh; scaleX = scaleY; cropX = (vw * scaleX - W) / 2;
+  } else {
+    scaleX = W / vw; scaleY = scaleX; cropY = (vh * scaleY - H) / 2;
+  }
+  return pts.map(p => ({
+    x: W - (p.x * scaleX - cropX), // mirror X
+    y: p.y * scaleY - cropY
+  }));
+}
+
+// Warp a circular region: pull/push pixels around center point
+// strength > 0 = bulge out, < 0 = pinch in
+function _warpRegion(srcData, dstData, W, H, cx, cy, radius, strength) {
+  const r2 = radius * radius;
+  const x0 = Math.max(0, Math.floor(cx - radius));
+  const x1 = Math.min(W - 1, Math.ceil(cx + radius));
+  const y0 = Math.max(0, Math.floor(cy - radius));
+  const y1 = Math.min(H - 1, Math.ceil(cy + radius));
+  for (let py = y0; py <= y1; py++) {
+    for (let px = x0; px <= x1; px++) {
+      const dx = px - cx, dy = py - cy;
+      const dist2 = dx*dx + dy*dy;
+      if (dist2 >= r2) continue;
+      const dist = Math.sqrt(dist2);
+      const norm = dist / radius; // 0..1
+      // smooth falloff using cosine curve
+      const falloff = Math.cos(norm * Math.PI * 0.5);
+      const warpAmt = strength * falloff * (1 - norm);
+      // source pixel offset (inverse warp)
+      const sx = Math.round(px - dx * warpAmt);
+      const sy = Math.round(py - dy * warpAmt);
+      const srcX = Math.max(0, Math.min(W-1, sx));
+      const srcY = Math.max(0, Math.min(H-1, sy));
+      const di = (py * W + px) * 4;
+      const si = (srcY * W + srcX) * 4;
+      dstData[di]   = srcData[si];
+      dstData[di+1] = srcData[si+1];
+      dstData[di+2] = srcData[si+2];
+      dstData[di+3] = srcData[si+3];
+    }
+  }
+}
+
+// Draw video frame onto a canvas, return ImageData
+function _captureVideoFrame(vid, W, H) {
+  const tmp = document.createElement('canvas');
+  tmp.width = W; tmp.height = H;
+  const tc = tmp.getContext('2d');
+  // Mirror like video display
+  tc.save(); tc.translate(W, 0); tc.scale(-1, 1);
+  tc.drawImage(vid, 0, 0, W, H); tc.restore();
+  return tc.getImageData(0, 0, W, H);
+}
+
+// ── WARP-BASED DRAW FRAME (beauty/distort) ──
+// These filters work on a SEPARATE warp canvas layered below overlay
+const _warpCanvases = {};
+function _getOrCreateWarpCanvas(ctx) {
+  if (_warpCanvases[ctx]) return _warpCanvases[ctx];
+  const vid = document.getElementById(_VID[ctx]);
+  if (!vid) return null;
+  const wrapper = vid.parentElement;
+  if (getComputedStyle(wrapper).position === 'static') wrapper.style.position = 'relative';
+  const wc = document.createElement('canvas');
+  wc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9;';
+  wc.id = ctx + '-warp-canvas';
+  wrapper.insertBefore(wc, wrapper.firstChild);
+  _warpCanvases[ctx] = wc;
+  return wc;
+}
+function _stopWarpCanvas(ctx) {
+  const wc = _warpCanvases[ctx];
+  if (wc) { wc.getContext('2d').clearRect(0,0,wc.width,wc.height); }
+}
+
+// Landmark index reference (face-api 68-point):
+// Jaw: 0-16 | Eyebrows: 17-26 | Nose: 27-35 | Eyes: 36-47 | Mouth: 48-67
+
+function _drawBeautyFrame(ctx, lmDisplay, W, H, fname) {
+  const vid = document.getElementById(_VID[ctx]);
+  if (!vid || !lmDisplay) return;
+  const wc = _getOrCreateWarpCanvas(ctx);
+  if (!wc || !wc.width) return;
+  const c = wc.getContext('2d');
+
+  const frame = _captureVideoFrame(vid, W, H);
+  const src = frame.data;
+  const dst = new Uint8ClampedArray(src);
+
+  if (fname === 'beauty') {
+    // ── BEAUTY: slim jaw, enlarge eyes, lift nose, smooth skin ──
+    const lEye = lmDisplay[39]; // outer left eye corner
+    const rEye = lmDisplay[42]; // outer right eye corner
+    const eyeR = W * 0.10;
+    // Slim jaw: pinch both sides of jaw inward
+    for (let j = 1; j <= 7; j++) {
+      const p = lmDisplay[j];
+      if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, -0.28);
+    }
+    for (let j = 9; j <= 15; j++) {
+      const p = lmDisplay[j];
+      if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, -0.28);
+    }
+    // Enlarge eyes: bulge out each eye center
+    const lEyeC = { x: (lmDisplay[36].x + lmDisplay[39].x)/2, y: (lmDisplay[36].y + lmDisplay[39].y)/2 };
+    const rEyeC = { x: (lmDisplay[42].x + lmDisplay[45].x)/2, y: (lmDisplay[42].y + lmDisplay[45].y)/2 };
+    _warpRegion(src, dst, W, H, lEyeC.x, lEyeC.y, eyeR, 0.30);
+    _warpRegion(src, dst, W, H, rEyeC.x, rEyeC.y, eyeR, 0.30);
+    // Slim nose: pinch nose bridge
+    const noseTip = lmDisplay[33];
+    if (noseTip) _warpRegion(src, dst, W, H, noseTip.x, noseTip.y, W*0.08, -0.20);
+    // Write warped frame
+    const warpedImg = new ImageData(dst, W, H);
+    c.putImageData(warpedImg, 0, 0);
+    // Beauty overlay: soft skin-smoothing glow + brightness
+    c.save();
+    c.filter = 'blur(1.5px) brightness(108%) saturate(108%) contrast(96%)';
+    c.globalAlpha = 0.38;
+    c.drawImage(wc, 0, 0);
+    c.restore(); c.filter = 'none';
+    // Soft pink blush via landmark cheek positions
+    const lCheek = lmDisplay[3], rCheek = lmDisplay[13];
+    if (lCheek && rCheek) {
+      [lCheek, rCheek].forEach(p => {
+        const bg = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, W*0.10);
+        bg.addColorStop(0, 'rgba(255,160,160,0.30)'); bg.addColorStop(1, 'rgba(255,160,160,0)');
+        c.save(); c.fillStyle = bg; c.beginPath(); c.arc(p.x, p.y, W*0.10, 0, Math.PI*2); c.fill(); c.restore();
+      });
+    }
+    // Eye sparkle dots
+    [lmDisplay[37], lmDisplay[44]].forEach(p => {
+      if (!p) return;
+      c.save(); c.fillStyle = 'rgba(255,255,255,0.75)'; c.shadowColor='white'; c.shadowBlur=4;
+      c.beginPath(); c.arc(p.x - W*0.005, p.y - W*0.005, W*0.007, 0, Math.PI*2); c.fill(); c.restore();
+    });
+
+  } else if (fname === 'cute') {
+    // ── CUTE: huge eyes, tiny nose, chubby cheeks, upturned mouth ──
+    const lEyeC = { x: (lmDisplay[36].x + lmDisplay[39].x)/2, y: (lmDisplay[36].y + lmDisplay[39].y)/2 };
+    const rEyeC = { x: (lmDisplay[42].x + lmDisplay[45].x)/2, y: (lmDisplay[42].y + lmDisplay[45].y)/2 };
+    // Big big eyes
+    _warpRegion(src, dst, W, H, lEyeC.x, lEyeC.y, W*0.13, 0.45);
+    _warpRegion(src, dst, W, H, rEyeC.x, rEyeC.y, W*0.13, 0.45);
+    // Chubby cheeks: bulge cheek area
+    const lCheek = lmDisplay[4], rCheek = lmDisplay[12];
+    if (lCheek) _warpRegion(src, dst, W, H, lCheek.x, lCheek.y, W*0.14, 0.22);
+    if (rCheek) _warpRegion(src, dst, W, H, rCheek.x, rCheek.y, W*0.14, 0.22);
+    // Tiny nose: pinch
+    const noseTip = lmDisplay[33];
+    if (noseTip) _warpRegion(src, dst, W, H, noseTip.x, noseTip.y, W*0.09, -0.32);
+    // Small chin: pinch jaw tip
+    const chin = lmDisplay[8];
+    if (chin) _warpRegion(src, dst, W, H, chin.x, chin.y, W*0.12, -0.25);
+    const warpedImg = new ImageData(dst, W, H);
+    c.putImageData(warpedImg, 0, 0);
+    // Cute pastel overlay + soft warm glow
+    c.save(); c.filter = 'brightness(112%) saturate(120%) contrast(95%)';
+    c.globalAlpha = 0.30; c.drawImage(wc, 0, 0); c.restore(); c.filter = 'none';
+    // Big sparkly blush
+    [lmDisplay[3], lmDisplay[13]].forEach(p => {
+      if (!p) return;
+      const bg = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, W*0.13);
+      bg.addColorStop(0, 'rgba(255,130,180,0.45)'); bg.addColorStop(1, 'rgba(255,130,180,0)');
+      c.save(); c.fillStyle = bg; c.beginPath(); c.arc(p.x, p.y, W*0.13, 0, Math.PI*2); c.fill(); c.restore();
+    });
+    // Heart pupils
+    [lEyeC, rEyeC].forEach(p => {
+      const s = W * 0.025;
+      c.save(); c.fillStyle = 'rgba(255,60,120,0.85)'; c.shadowColor='#ff60a0'; c.shadowBlur=6;
+      c.beginPath();
+      c.moveTo(p.x, p.y + s*0.35);
+      c.bezierCurveTo(p.x - s*0.6, p.y - s*0.2, p.x - s, p.y + s*0.4, p.x, p.y + s);
+      c.bezierCurveTo(p.x + s, p.y + s*0.4, p.x + s*0.6, p.y - s*0.2, p.x, p.y + s*0.35);
+      c.fill(); c.restore();
+    });
+
+  } else if (fname === 'alien') {
+    // ── ALIEN: huge forehead, tiny mouth, enormous eyes, no nose ──
+    // Stretch forehead: push top of face up
+    for (let j = 17; j <= 26; j++) {
+      const p = lmDisplay[j];
+      if (p) _warpRegion(src, dst, W, H, p.x, p.y - W*0.04, W*0.12, -0.55);
+    }
+    // Enormous eyes
+    const lEyeC = { x: (lmDisplay[36].x + lmDisplay[39].x)/2, y: (lmDisplay[36].y + lmDisplay[39].y)/2 };
+    const rEyeC = { x: (lmDisplay[42].x + lmDisplay[45].x)/2, y: (lmDisplay[42].y + lmDisplay[45].y)/2 };
+    _warpRegion(src, dst, W, H, lEyeC.x, lEyeC.y, W*0.16, 0.65);
+    _warpRegion(src, dst, W, H, rEyeC.x, rEyeC.y, W*0.16, 0.65);
+    // Shrink mouth area
+    const mouthC = lmDisplay[62];
+    if (mouthC) _warpRegion(src, dst, W, H, mouthC.x, mouthC.y, W*0.09, -0.50);
+    // Shrink nose
+    const noseTip = lmDisplay[33];
+    if (noseTip) _warpRegion(src, dst, W, H, noseTip.x, noseTip.y, W*0.10, -0.55);
+    // Pointy chin: stretch jaw tip down
+    const chin = lmDisplay[8];
+    if (chin) _warpRegion(src, dst, W, H, chin.x, chin.y + W*0.03, W*0.10, 0.35);
+    const warpedImg = new ImageData(dst, W, H);
+    c.putImageData(warpedImg, 0, 0);
+    // Green skin tint overlay
+    c.save(); c.globalAlpha = 0.28; c.fillStyle = '#30c060';
+    c.fillRect(0, 0, W, H); c.restore();
+    // Glow eyes
+    [lEyeC, rEyeC].forEach(p => {
+      const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, W*0.09);
+      gr.addColorStop(0, 'rgba(80,255,120,0.90)'); gr.addColorStop(1, 'rgba(80,255,120,0)');
+      c.save(); c.fillStyle = gr; c.beginPath(); c.arc(p.x, p.y, W*0.09, 0, Math.PI*2); c.fill(); c.restore();
+    });
+
+  } else if (fname === 'wobble') {
+    // ── MELT/WOBBLE: everything droops/melts downward, nose huge, mouth stretched ──
+    const t = Date.now() / 800;
+    // Droop cheeks
+    [lmDisplay[2], lmDisplay[14]].forEach((p, i) => {
+      if (!p) return;
+      const drift = Math.sin(t + i) * W * 0.008;
+      _warpRegion(src, dst, W, H, p.x + drift, p.y, W*0.13, 0.40);
+    });
+    // Inflate nose hugely
+    const noseTip = lmDisplay[33];
+    if (noseTip) _warpRegion(src, dst, W, H, noseTip.x, noseTip.y, W*0.12, 0.60);
+    // Stretch mouth wide
+    [lmDisplay[48], lmDisplay[54]].forEach(p => {
+      if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, 0.38);
+    });
+    // Droop eyebrows
+    [lmDisplay[19], lmDisplay[24]].forEach((p, i) => {
+      if (!p) return;
+      const wobble = Math.sin(t * 1.3 + i * 1.5) * W * 0.01;
+      _warpRegion(src, dst, W, H, p.x, p.y + wobble, W*0.09, 0.28);
+    });
+    // Squash chin
+    const chin = lmDisplay[8];
+    if (chin) _warpRegion(src, dst, W, H, chin.x, chin.y, W*0.12, 0.35);
+    const warpedImg = new ImageData(dst, W, H);
+    c.putImageData(warpedImg, 0, 0);
+    // Sickly yellowish tint
+    c.save(); c.globalAlpha = 0.15; c.fillStyle = '#c0d020';
+    c.fillRect(0, 0, W, H); c.restore();
+  }
 }
 
 // Animation loop
 function _startLoop(ctx) {
   _stopOverlay(ctx);
   _ensureFaceModels();
+  const isWarpFilter = () => ['beauty','cute','alien','wobble'].includes(_funFilters[ctx]);
   let lastDet = 0;
   function loop() {
-    if (!_funFilters[ctx] || _funFilters[ctx] === 'none') return;
+    if (!_funFilters[ctx] || _funFilters[ctx] === 'none') { _stopWarpCanvas(ctx); return; }
     const now = Date.now();
-    if (now - lastDet > 400) { lastDet = now; _detectFace(ctx); }
-    _drawFunFrame(ctx);
+    if (now - lastDet > 350) { lastDet = now; _detectFace(ctx); }
+
+    const wc = _warpCanvases[ctx];
+    if (isWarpFilter()) {
+      // Warp filters: render to warpCanvas, clear overlay
+      const vid = document.getElementById(_VID[ctx]);
+      if (vid) {
+        const rect = vid.getBoundingClientRect();
+        const W = Math.round(rect.width), H = Math.round(rect.height);
+        if (W && H) {
+          const wc2 = _getOrCreateWarpCanvas(ctx);
+          if (wc2 && (wc2.width !== W || wc2.height !== H)) { wc2.width = W; wc2.height = H; }
+          const lmRaw = _landmarkCache[ctx];
+          const lmDisplay = lmRaw ? _landmarkToDisplay(lmRaw, vid, W, H) : null;
+          if (lmDisplay) {
+            _drawBeautyFrame(ctx, lmDisplay, W, H, _funFilters[ctx]);
+          } else {
+            // No landmarks yet — just show plain video (warp canvas blank)
+            _stopWarpCanvas(ctx);
+          }
+        }
+      }
+      // Clear decorative overlay
+      const oc = _overlayCanvases[ctx];
+      if (oc) oc.getContext('2d').clearRect(0,0,oc.width,oc.height);
+    } else {
+      // Accessory filters — hide warp canvas, draw decorations
+      _stopWarpCanvas(ctx);
+      _drawFunFrame(ctx);
+    }
     _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
   }
   _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
 }
 
 // ── Public API ──
-const _ALL_FUN = ['cat','bunny','bear','dog','fox','crown','heart','devil','skull','ghost'];
+const _ALL_FUN = ['cat','bunny','bear','dog','fox','crown','heart','devil','skull','ghost','beauty','cute','alien','wobble'];
 window.setFunFilter = function(ctx, name) {
   const next = _funFilters[ctx] === name ? 'none' : name;
   _funFilters[ctx] = next;
@@ -12799,12 +13122,12 @@ window.setFunFilter = function(ctx, name) {
     const el = document.getElementById(`${ctx}-fun-${f}`);
     if (el) el.classList.toggle('active-pill', f === next);
   });
-  if (next === 'none') { _stopOverlay(ctx); }
+  if (next === 'none') { _stopOverlay(ctx); _stopWarpCanvas(ctx); }
   else {
     if (next === 'heart') _initHearts(ctx);
     if (next === 'crown') _initSparkles(ctx);
     if (next === 'ghost') _initGhost(ctx);
-    _faceSmooth[ctx] = null; // reset lerp on new filter
+    _faceSmooth[ctx] = null;
     _startLoop(ctx);
   }
 };
@@ -13072,7 +13395,89 @@ function _bakeFun(ctx, canvas) {
   const W = canvas.width, H = canvas.height;
   const c = canvas.getContext('2d');
 
-  // Get face box scaled to canvas resolution (same logic as live overlay)
+  // ── Warp-based filters (beauty/cute/alien/wobble) ──
+  if (['beauty','cute','alien','wobble'].includes(fname)) {
+    const lmRaw = _landmarkCache[ctx];
+    const vid = document.getElementById(_VID[ctx]);
+    if (lmRaw && vid && vid.videoWidth) {
+      // Scale landmarks to canvas space (canvas is square = min(vw,vh))
+      const vw = vid.videoWidth, vh = vid.videoHeight;
+      const side = Math.min(vw, vh);
+      const offX = (vw - side) / 2, offY = (vh - side) / 2;
+      const sx = W / side, sy = H / side;
+      const lmCanvas = lmRaw.map(p => ({
+        x: W - ((p.x - offX) * sx),  // mirror X
+        y: (p.y - offY) * sy
+      }));
+      // Snapshot current canvas content (already has video frame from caller)
+      const snap = c.getImageData(0, 0, W, H);
+      const src = snap.data;
+      const dst = new Uint8ClampedArray(src);
+
+      if (fname === 'beauty') {
+        for (let j = 1; j <= 7; j++) { const p = lmCanvas[j]; if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, -0.28); }
+        for (let j = 9; j <= 15; j++) { const p = lmCanvas[j]; if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, -0.28); }
+        const lEC = { x: (lmCanvas[36].x + lmCanvas[39].x)/2, y: (lmCanvas[36].y + lmCanvas[39].y)/2 };
+        const rEC = { x: (lmCanvas[42].x + lmCanvas[45].x)/2, y: (lmCanvas[42].y + lmCanvas[45].y)/2 };
+        _warpRegion(src, dst, W, H, lEC.x, lEC.y, W*0.10, 0.30);
+        _warpRegion(src, dst, W, H, rEC.x, rEC.y, W*0.10, 0.30);
+        const nt = lmCanvas[33]; if (nt) _warpRegion(src, dst, W, H, nt.x, nt.y, W*0.08, -0.20);
+        c.putImageData(new ImageData(dst, W, H), 0, 0);
+        // Soft beauty glow
+        const glow = document.createElement('canvas'); glow.width=W; glow.height=H;
+        const gc = glow.getContext('2d'); gc.filter='blur(2px) brightness(108%) saturate(108%)'; gc.drawImage(canvas, 0, 0); gc.filter='none';
+        c.save(); c.globalAlpha = 0.32; c.drawImage(glow, 0, 0); c.restore();
+        [lmCanvas[3], lmCanvas[13]].forEach(p => {
+          if (!p) return; const bg = c.createRadialGradient(p.x,p.y,0,p.x,p.y,W*0.10);
+          bg.addColorStop(0,'rgba(255,160,160,0.28)'); bg.addColorStop(1,'rgba(255,160,160,0)');
+          c.save(); c.fillStyle=bg; c.beginPath(); c.arc(p.x,p.y,W*0.10,0,Math.PI*2); c.fill(); c.restore();
+        });
+      } else if (fname === 'cute') {
+        const lEC = { x: (lmCanvas[36].x + lmCanvas[39].x)/2, y: (lmCanvas[36].y + lmCanvas[39].y)/2 };
+        const rEC = { x: (lmCanvas[42].x + lmCanvas[45].x)/2, y: (lmCanvas[42].y + lmCanvas[45].y)/2 };
+        _warpRegion(src, dst, W, H, lEC.x, lEC.y, W*0.13, 0.45);
+        _warpRegion(src, dst, W, H, rEC.x, rEC.y, W*0.13, 0.45);
+        const lC = lmCanvas[4], rC = lmCanvas[12];
+        if (lC) _warpRegion(src, dst, W, H, lC.x, lC.y, W*0.14, 0.22);
+        if (rC) _warpRegion(src, dst, W, H, rC.x, rC.y, W*0.14, 0.22);
+        const nt = lmCanvas[33]; if (nt) _warpRegion(src, dst, W, H, nt.x, nt.y, W*0.09, -0.32);
+        const ch = lmCanvas[8]; if (ch) _warpRegion(src, dst, W, H, ch.x, ch.y, W*0.12, -0.25);
+        c.putImageData(new ImageData(dst, W, H), 0, 0);
+        [lmCanvas[3], lmCanvas[13]].forEach(p => {
+          if (!p) return; const bg = c.createRadialGradient(p.x,p.y,0,p.x,p.y,W*0.13);
+          bg.addColorStop(0,'rgba(255,130,180,0.42)'); bg.addColorStop(1,'rgba(255,130,180,0)');
+          c.save(); c.fillStyle=bg; c.beginPath(); c.arc(p.x,p.y,W*0.13,0,Math.PI*2); c.fill(); c.restore();
+        });
+      } else if (fname === 'alien') {
+        for (let j = 17; j <= 26; j++) { const p = lmCanvas[j]; if (p) _warpRegion(src, dst, W, H, p.x, p.y - W*0.04, W*0.12, -0.55); }
+        const lEC = { x: (lmCanvas[36].x + lmCanvas[39].x)/2, y: (lmCanvas[36].y + lmCanvas[39].y)/2 };
+        const rEC = { x: (lmCanvas[42].x + lmCanvas[45].x)/2, y: (lmCanvas[42].y + lmCanvas[45].y)/2 };
+        _warpRegion(src, dst, W, H, lEC.x, lEC.y, W*0.16, 0.65);
+        _warpRegion(src, dst, W, H, rEC.x, rEC.y, W*0.16, 0.65);
+        const mc = lmCanvas[62]; if (mc) _warpRegion(src, dst, W, H, mc.x, mc.y, W*0.09, -0.50);
+        const nt = lmCanvas[33]; if (nt) _warpRegion(src, dst, W, H, nt.x, nt.y, W*0.10, -0.55);
+        const ch = lmCanvas[8]; if (ch) _warpRegion(src, dst, W, H, ch.x, ch.y + W*0.03, W*0.10, 0.35);
+        c.putImageData(new ImageData(dst, W, H), 0, 0);
+        c.save(); c.globalAlpha = 0.25; c.fillStyle = '#30c060'; c.fillRect(0,0,W,H); c.restore();
+        [lEC, rEC].forEach(p => {
+          const gr = c.createRadialGradient(p.x,p.y,0,p.x,p.y,W*0.09);
+          gr.addColorStop(0,'rgba(80,255,120,0.88)'); gr.addColorStop(1,'rgba(80,255,120,0)');
+          c.save(); c.fillStyle=gr; c.beginPath(); c.arc(p.x,p.y,W*0.09,0,Math.PI*2); c.fill(); c.restore();
+        });
+      } else if (fname === 'wobble') {
+        [lmCanvas[2], lmCanvas[14]].forEach(p => { if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.13, 0.40); });
+        const nt = lmCanvas[33]; if (nt) _warpRegion(src, dst, W, H, nt.x, nt.y, W*0.12, 0.60);
+        [lmCanvas[48], lmCanvas[54]].forEach(p => { if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, 0.38); });
+        [lmCanvas[19], lmCanvas[24]].forEach(p => { if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.09, 0.28); });
+        const ch = lmCanvas[8]; if (ch) _warpRegion(src, dst, W, H, ch.x, ch.y, W*0.12, 0.35);
+        c.putImageData(new ImageData(dst, W, H), 0, 0);
+        c.save(); c.globalAlpha = 0.12; c.fillStyle = '#c0d020'; c.fillRect(0,0,W,H); c.restore();
+      }
+    }
+    return; // done for warp filters
+  }
+
+  // ── Accessory filters (original logic) ──
   let fx, fy, fw, fh;
   const fd = _faceDataCache[ctx];
   const vid = document.getElementById(_VID[ctx]);
@@ -13117,8 +13522,7 @@ function _bakeFun(ctx, canvas) {
       _heartParticles[ctx].forEach(p => {
         const hx=p.x*W, hy=p.y*H, s=p.size;
         c.save(); c.globalAlpha=p.alpha; c.fillStyle=p.color;
-        c.beginPath();
-        c.moveTo(hx,hy+s*0.3);
+        c.beginPath(); c.moveTo(hx,hy+s*0.3);
         c.bezierCurveTo(hx-s*0.6,hy-s*0.2,hx-s,hy+s*0.4,hx,hy+s);
         c.bezierCurveTo(hx+s,hy+s*0.4,hx+s*0.6,hy-s*0.2,hx,hy+s*0.3);
         c.fill(); c.restore();
@@ -13239,7 +13643,7 @@ const _origSetSelfieFilter2 = window.setSelfieFilter;
 window.setSelfieFilter = function(ctx, f) {
   _origSetSelfieFilter2(ctx, f);
   _funFilters[ctx] = 'none';
-  _stopOverlay(ctx);
+  _stopOverlay(ctx); _stopWarpCanvas(ctx);
   _ALL_FUN.forEach(fn => {
     const el = document.getElementById(`${ctx}-fun-${fn}`);
     if (el) el.classList.remove('active-pill');
@@ -13250,7 +13654,7 @@ window.setSelfieFilter = function(ctx, f) {
 const _origHideFilterBar2 = window.hideFilterBar;
 window.hideFilterBar = function(ctx) {
   _origHideFilterBar2(ctx);
-  _stopOverlay(ctx);
+  _stopOverlay(ctx); _stopWarpCanvas(ctx);
   _funFilters[ctx] = 'none';
   _ALL_FUN.forEach(f => {
     const el = document.getElementById(`${ctx}-fun-${f}`);
