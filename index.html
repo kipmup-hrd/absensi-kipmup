@@ -12506,6 +12506,112 @@ window.setFunFilter = function(ctx, name) {
 
 // ── Photo Frame System ──
 const _photoFrames = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
+const _frameOverlayCanvases = {};
+
+function _getOrCreateFrameOverlay(ctx) {
+  if (_frameOverlayCanvases[ctx]) return _frameOverlayCanvases[ctx];
+  const vid = document.getElementById(_VID[ctx]);
+  if (!vid) return null;
+  const wrapper = vid.parentElement;
+  if (getComputedStyle(wrapper).position === 'static') wrapper.style.position = 'relative';
+  const oc = document.createElement('canvas');
+  oc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:11;';
+  oc.id = ctx + '-frame-overlay';
+  wrapper.appendChild(oc);
+  _frameOverlayCanvases[ctx] = oc;
+  return oc;
+}
+
+function _drawFrameOnCanvas(c, W, H, fname) {
+  if (!fname || fname === 'none') return;
+  const bw = Math.max(10, Math.round(W * 0.055));
+
+  if (fname === 'simple') {
+    c.save();
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = bw;
+    c.shadowColor = 'rgba(0,0,0,0.4)';
+    c.shadowBlur = bw * 0.5;
+    c.strokeRect(bw/2, bw/2, W - bw, H - bw);
+    c.restore();
+  } else if (fname === 'polaroid') {
+    const pad = Math.round(W * 0.06);
+    const btm = Math.round(W * 0.18);
+    c.save();
+    c.fillStyle = '#f5f0e8';
+    c.fillRect(0, 0, W, pad);
+    c.fillRect(0, H - btm, W, btm);
+    c.fillRect(0, 0, pad, H);
+    c.fillRect(W - pad, 0, pad, H);
+    c.strokeStyle = '#d8d0c0';
+    c.lineWidth = 1.5;
+    c.strokeRect(pad, pad, W - 2*pad, H - pad - btm);
+    c.restore();
+  } else if (fname === 'glitter') {
+    c.save();
+    const grd = c.createLinearGradient(0, 0, W, H);
+    grd.addColorStop(0,    '#ffe44d');
+    grd.addColorStop(0.25, '#ffb700');
+    grd.addColorStop(0.5,  '#fff200');
+    grd.addColorStop(0.75, '#ffd700');
+    grd.addColorStop(1,    '#ffe44d');
+    c.strokeStyle = grd;
+    c.lineWidth = bw * 1.8;
+    c.strokeRect(bw, bw, W - 2*bw, H - 2*bw);
+    // sparkle stars on border
+    const positions = [
+      [0.5, 0], [0, 0.5], [1, 0.5], [0.5, 1],
+      [0.15, 0.05], [0.85, 0.05], [0.15, 0.95], [0.85, 0.95]
+    ];
+    positions.forEach(([tx, ty]) => {
+      const x = tx * W, y = ty * H, ss = bw * 0.7;
+      c.fillStyle = '#fff'; c.globalAlpha = 0.9;
+      c.beginPath();
+      c.moveTo(x, y-ss); c.lineTo(x+ss*0.25, y-ss*0.25); c.lineTo(x+ss, y);
+      c.lineTo(x+ss*0.25, y+ss*0.25); c.lineTo(x, y+ss);
+      c.lineTo(x-ss*0.25, y+ss*0.25); c.lineTo(x-ss, y);
+      c.lineTo(x-ss*0.25, y-ss*0.25); c.closePath(); c.fill();
+    });
+    c.restore();
+  } else if (fname === 'rainbow') {
+    const colors = ['#ff3355','#ff8800','#ffdd00','#33cc55','#1199ee','#9933ff'];
+    colors.forEach((col, i) => {
+      const off = (bw / colors.length) * i + (bw / colors.length) / 2;
+      c.save();
+      c.strokeStyle = col;
+      c.lineWidth = bw / colors.length;
+      c.strokeRect(off, off, W - 2*off, H - 2*off);
+      c.restore();
+    });
+  } else if (fname === 'dark') {
+    c.save();
+    const barH = Math.round(H * 0.08);
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, W, barH);
+    c.fillRect(0, H - barH, W, barH);
+    const vig = c.createRadialGradient(W/2, H/2, W*0.28, W/2, H/2, W*0.68);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.65)');
+    c.fillStyle = vig;
+    c.fillRect(0, 0, W, H);
+    c.restore();
+  }
+}
+
+function _updateFrameOverlay(ctx) {
+  const fname = _photoFrames[ctx];
+  const oc = _getOrCreateFrameOverlay(ctx);
+  if (!oc) return;
+  const vid = document.getElementById(_VID[ctx]);
+  if (!vid) return;
+  const rect = vid.getBoundingClientRect();
+  const W = Math.round(rect.width), H = Math.round(rect.height);
+  if (!W || !H) return;
+  if (oc.width !== W || oc.height !== H) { oc.width = W; oc.height = H; }
+  const c = oc.getContext('2d');
+  c.clearRect(0, 0, W, H);
+  if (fname && fname !== 'none') _drawFrameOnCanvas(c, W, H, fname);
+}
 
 window.setPhotoFrame = function(ctx, name) {
   _photoFrames[ctx] = name;
@@ -12513,6 +12619,7 @@ window.setPhotoFrame = function(ctx, name) {
     const el = document.getElementById(`${ctx}-frame-${f}`);
     if (el) el.classList.toggle('active-pill', f === name);
   });
+  _updateFrameOverlay(ctx);
 };
 
 function _bakeFrame(ctx, canvas) {
@@ -12520,89 +12627,7 @@ function _bakeFrame(ctx, canvas) {
   if (!fname || fname === 'none') return;
   const W = canvas.width, H = canvas.height;
   const c = canvas.getContext('2d');
-  const bw = Math.max(4, Math.round(W * 0.04)); // border width
-
-  if (fname === 'simple') {
-    c.save();
-    c.strokeStyle = '#ffffff';
-    c.lineWidth = bw;
-    c.strokeRect(bw/2, bw/2, W - bw, H - bw);
-    c.restore();
-  } else if (fname === 'polaroid') {
-    // White border with thicker bottom (polaroid style)
-    c.save();
-    const pad = Math.round(W * 0.06);
-    const btm = Math.round(W * 0.16);
-    // Draw white border by compositing — fill corners
-    c.fillStyle = '#f5f0e8';
-    c.fillRect(0, 0, W, pad);              // top
-    c.fillRect(0, H - btm, W, btm);       // bottom
-    c.fillRect(0, 0, pad, H);             // left
-    c.fillRect(W - pad, 0, pad, H);       // right
-    // Subtle shadow inside
-    c.shadowColor = 'rgba(0,0,0,0.15)';
-    c.shadowBlur = 4;
-    c.strokeStyle = '#e0dbd0';
-    c.lineWidth = 1;
-    c.strokeRect(pad, pad, W - 2*pad, H - pad - btm);
-    c.restore();
-  } else if (fname === 'glitter') {
-    // Gold glitter border
-    c.save();
-    const grd = c.createLinearGradient(0, 0, W, H);
-    grd.addColorStop(0, '#ffe44d');
-    grd.addColorStop(0.25, '#ffb700');
-    grd.addColorStop(0.5, '#fff200');
-    grd.addColorStop(0.75, '#ffd700');
-    grd.addColorStop(1, '#ffe44d');
-    c.strokeStyle = grd;
-    c.lineWidth = bw * 1.5;
-    c.strokeRect(bw, bw, W - 2*bw, H - 2*bw);
-    // sparkle dots
-    const rng = [0.1,0.9,0.3,0.7,0.5,0.15,0.85,0.45,0.55];
-    rng.forEach((t, i) => {
-      const angle = (i / rng.length) * Math.PI * 2;
-      const r = W * 0.48;
-      const sx = W/2 + r * Math.cos(angle);
-      const sy = H/2 + r * Math.sin(angle);
-      const ss = bw * 0.8;
-      c.fillStyle = '#fff';
-      c.globalAlpha = 0.85;
-      c.beginPath();
-      c.moveTo(sx, sy - ss); c.lineTo(sx + ss*0.25, sy - ss*0.25); c.lineTo(sx + ss, sy);
-      c.lineTo(sx + ss*0.25, sy + ss*0.25); c.lineTo(sx, sy + ss);
-      c.lineTo(sx - ss*0.25, sy + ss*0.25); c.lineTo(sx - ss, sy);
-      c.lineTo(sx - ss*0.25, sy - ss*0.25); c.closePath(); c.fill();
-    });
-    c.restore();
-  } else if (fname === 'rainbow') {
-    // Multi-color rainbow border
-    const colors = ['#ff4466','#ff8c00','#ffe000','#44cc44','#22aaee','#8844ee'];
-    const segW = bw / colors.length;
-    colors.forEach((col, i) => {
-      c.save();
-      c.strokeStyle = col;
-      c.lineWidth = segW;
-      const off = segW * i + segW / 2;
-      c.strokeRect(off, off, W - 2*off, H - 2*off);
-      c.restore();
-    });
-  } else if (fname === 'dark') {
-    // Dark cinematic border with vignette
-    c.save();
-    // Top/bottom dark bars (letterbox)
-    const barH = Math.round(H * 0.07);
-    c.fillStyle = '#000000';
-    c.fillRect(0, 0, W, barH);
-    c.fillRect(0, H - barH, W, barH);
-    // Vignette overlay
-    const vig = c.createRadialGradient(W/2, H/2, W*0.30, W/2, H/2, W*0.72);
-    vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(0,0,0,0.60)');
-    c.fillStyle = vig;
-    c.fillRect(0, 0, W, H);
-    c.restore();
-  }
+  _drawFrameOnCanvas(c, W, H, fname);
 }
 
 // ── Bake fun filter onto canvas (inline, before toDataURL) ──
@@ -12809,6 +12834,9 @@ window.hideFilterBar = function(ctx) {
     const el = document.getElementById(`${ctx}-frame-${f}`);
     if (el) el.classList.toggle('active-pill', f === 'none');
   });
+  // Clear frame overlay canvas
+  const foc = _frameOverlayCanvases[ctx];
+  if (foc) foc.getContext('2d').clearRect(0, 0, foc.width, foc.height);
 };
 </script>
 </body>
