@@ -12329,27 +12329,27 @@ function _drawFunFrame(ctx) {
 
   if (fname === 'cat') {
     _drawCatEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,130,160,0.40)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#e05080');
-    _drawWhiskers(c, fx, fy, fw, fh, '#888888');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.65)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#d03060');
+    _drawWhiskers(c, fx, fy, fw, fh, '#555555');
   } else if (fname === 'bunny') {
     _drawBunnyEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,160,200,0.40)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#ff6699');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.60)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#e03070');
   } else if (fname === 'bear') {
     _drawBearEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(210,140,80,0.35)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#7a3c10');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.60)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#5a2000');
   } else if (fname === 'dog') {
     _drawDogEars(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,155,90,0.35)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#5a2800');
-    _drawWhiskers(c, fx, fy, fw, fh, '#a07040');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.58)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#3a1800');
+    _drawWhiskers(c, fx, fy, fw, fh, '#806030');
   } else if (fname === 'crown') {
     _drawCrown(c, fx, fy, fw);
     _drawSparkles(c, ctx, W, H);
   } else if (fname === 'heart') {
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,150,0.38)');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,60,120,0.60)');
     _updateDrawHearts(c, ctx, W, H);
   }
 }
@@ -12406,45 +12406,62 @@ window.setFunFilter = function(ctx, name) {
   }
 };
 
-// Bake fun filter onto captured canvas
-function _bakeFun(ctx, canvas, videoEl) {
+// ── Bake fun filter onto canvas (inline, before toDataURL) ──
+function _bakeFun(ctx, canvas) {
   const fname = _funFilters[ctx];
   if (!fname || fname === 'none') return;
   const W = canvas.width, H = canvas.height;
   const c = canvas.getContext('2d');
 
+  // Get face box scaled to canvas resolution
   let fx, fy, fw, fh;
   const fd = _faceDataCache[ctx];
-  if (fd && fd.box && videoEl && videoEl.videoWidth) {
-    const sx = W / videoEl.videoWidth, sy = H / videoEl.videoHeight;
-    const bw = fd.box.width*sx, bh = fd.box.height*sy;
-    fx = W - (fd.box.x*sx) - bw; fy = fd.box.y*sy; fw = bw; fh = bh;
+  const vid = document.getElementById(_VID[ctx]);
+  if (fd && fd.box && vid && vid.videoWidth) {
+    const vw = vid.videoWidth, vh = vid.videoHeight;
+    const side = Math.min(vw, vh);
+    const sx = W / side, sy = H / side;
+    const offX = (vw - side) / 2, offY = (vh - side) / 2;
+    const bw = fd.box.width * sx, bh = fd.box.height * sy;
+    const bx = W - ((fd.box.x - offX) * sx) - bw;
+    const by = (fd.box.y - offY) * sy;
+    fx = bx; fy = Math.max(0, by); fw = bw; fh = bh;
   } else {
-    fw = W*0.44; fh = H*0.50; fx = (W-fw)/2; fy = H*0.13;
+    fw = W * 0.44; fh = H * 0.52; fx = (W - fw) / 2; fy = H * 0.10;
   }
 
   if (fname === 'cat') {
     _drawCatEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,130,160,0.40)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#e05080');
-    _drawWhiskers(c, fx, fy, fw, fh, '#888888');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.65)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#d03060');
+    _drawWhiskers(c, fx, fy, fw, fh, '#555555');
   } else if (fname === 'bunny') {
     _drawBunnyEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,160,200,0.40)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#ff6699');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.60)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#e03070');
   } else if (fname === 'bear') {
     _drawBearEars(c, fx, fy, fw);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(210,140,80,0.35)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#7a3c10');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.60)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#5a2000');
   } else if (fname === 'dog') {
     _drawDogEars(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,155,90,0.35)');
-    _drawNoseDot(c, fx, fy, fw, fh, '#5a2800');
-    _drawWhiskers(c, fx, fy, fw, fh, '#a07040');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.58)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#3a1800');
+    _drawWhiskers(c, fx, fy, fw, fh, '#806030');
   } else if (fname === 'crown') {
     _drawCrown(c, fx, fy, fw);
+    if (_sparkleParticles[ctx]) {
+      _sparkleParticles[ctx].forEach(sp => {
+        const s = sp.size, x = sp.x*W, y = sp.y*H;
+        c.save(); c.globalAlpha = 0.85; c.fillStyle = '#ffe44d';
+        c.beginPath();
+        c.moveTo(x,y-s); c.lineTo(x+s*0.25,y-s*0.25); c.lineTo(x+s,y);
+        c.lineTo(x+s*0.25,y+s*0.25); c.lineTo(x,y+s); c.lineTo(x-s*0.25,y+s*0.25);
+        c.lineTo(x-s,y); c.lineTo(x-s*0.25,y-s*0.25); c.closePath(); c.fill(); c.restore();
+      });
+    }
   } else if (fname === 'heart') {
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,150,0.38)');
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,60,120,0.60)');
     if (_heartParticles[ctx]) {
       _heartParticles[ctx].forEach(p => {
         const hx=p.x*W, hy=p.y*H, s=p.size;
@@ -12459,47 +12476,105 @@ function _bakeFun(ctx, canvas, videoEl) {
   }
 }
 
-// Patch capture — bake fun filter after photo taken
-const _origUjicobaAmbilFoto2 = window.ujicobaAmbilFoto;
+// ── FULLY OVERRIDE capture functions — bake fun filter INLINE sebelum toDataURL ──
+
 window.ujicobaAmbilFoto = function() {
-  _origUjicobaAmbilFoto2.call(this, ...arguments);
-  setTimeout(() => {
-    const canvas = document.getElementById('ujicoba-canvas');
-    const video = document.getElementById('ujicoba-video');
-    _bakeFun('ujicoba', canvas, video);
-    ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
-    const prev = document.getElementById('ujicoba-preview');
-    if (prev) prev.src = ujicobaFotoData;
-  }, 60);
+  const video = document.getElementById('ujicoba-video');
+  const canvas = document.getElementById('ujicoba-canvas');
+  const colorFilter = _selfieFilters['ujicoba'] || 'none';
+  const vw = video.videoWidth || 480, vh = video.videoHeight || 480;
+  const side = Math.min(vw, vh);
+  canvas.width = side; canvas.height = side;
+  const c = canvas.getContext('2d');
+  const sx = Math.floor((vw - side) / 2), sy = Math.floor((vh - side) / 2);
+  c.save(); c.translate(canvas.width, 0); c.scale(-1, 1);
+  c.drawImage(video, sx, sy, side, side, 0, 0, side, side);
+  c.restore();
+  _applyFilterToCanvas(c, canvas, colorFilter);
+  _bakeFun('ujicoba', canvas); // ★ bake sebelum toDataURL
+  ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
+  if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
+  video.style.display = 'none'; video.style.filter = '';
+  const preview = document.getElementById('ujicoba-preview');
+  preview.src = ujicobaFotoData; preview.style.display = 'block';
+  document.getElementById('ujicoba-cam-status').textContent = '📸 Foto diambil — siap submit';
+  document.getElementById('ujicoba-btn-ambil').style.display = 'none';
+  document.getElementById('ujicoba-btn-ulang').style.display = 'inline-block';
+  document.getElementById('ujicoba-btn-submit').style.display = 'block';
+  hideFilterBar('ujicoba');
 };
 
-const _origKegiatanAmbilFoto2 = window.kegiatanAmbilFoto;
 window.kegiatanAmbilFoto = function() {
-  _origKegiatanAmbilFoto2.call(this, ...arguments);
-  setTimeout(() => {
-    const canvas = document.getElementById('kegiatan-selfie-canvas');
-    const video = document.getElementById('kegiatan-selfie-video');
-    _bakeFun('kegiatan', canvas, video);
-    kegiatanSelfieDataURL = canvas.toDataURL('image/jpeg', 0.6);
-    const prev = document.getElementById('kegiatan-selfie-preview');
-    if (prev) prev.src = kegiatanSelfieDataURL;
-  }, 4200);
+  const video = document.getElementById('kegiatan-selfie-video');
+  const canvas = document.getElementById('kegiatan-selfie-canvas');
+  const colorFilter = _selfieFilters['kegiatan'] || 'none';
+  let count = 3;
+  const cntEl = document.getElementById('kegiatan-selfie-countdown');
+  cntEl.style.display = 'flex'; cntEl.textContent = count;
+  const iv = setInterval(() => {
+    count--;
+    if (count > 0) { cntEl.textContent = count; }
+    else {
+      clearInterval(iv); cntEl.style.display = 'none';
+      canvas.width = video.videoWidth || 480; canvas.height = video.videoHeight || 480;
+      const c = canvas.getContext('2d');
+      c.translate(canvas.width, 0); c.scale(-1, 1);
+      c.drawImage(video, 0, 0, canvas.width, canvas.height);
+      c.setTransform(1,0,0,1,0,0);
+      _applyFilterToCanvas(c, canvas, colorFilter);
+      _bakeFun('kegiatan', canvas); // ★ bake sebelum toDataURL
+      kegiatanSelfieDataURL = canvas.toDataURL('image/jpeg', 0.6);
+      if (kegiatanSelfieStream) { kegiatanSelfieStream.getTracks().forEach(t => t.stop()); kegiatanSelfieStream = null; }
+      const preview = document.getElementById('kegiatan-selfie-preview');
+      preview.src = kegiatanSelfieDataURL; preview.style.display = 'block';
+      video.style.display = 'none'; video.style.filter = '';
+      document.getElementById('kegiatan-btn-ambil-foto').style.display = 'none';
+      document.getElementById('kegiatan-btn-ulang').style.display = 'inline-block';
+      document.getElementById('kegiatan-btn-lanjut').style.display = 'block';
+      document.getElementById('kegiatan-selfie-status').textContent = '✅ Foto berhasil!';
+      document.getElementById('kegiatan-selfie-status').style.color = 'var(--accent)';
+      hideFilterBar('kegiatan');
+    }
+  }, 1000);
 };
 
-const _origKioskAmbilFoto2 = window.kioskAmbilFoto;
 window.kioskAmbilFoto = function() {
-  _origKioskAmbilFoto2.call(this, ...arguments);
-  setTimeout(() => {
-    const canvas = document.getElementById('kiosk-selfie-canvas');
-    const video = document.getElementById('kiosk-selfie-video');
-    _bakeFun('kiosk', canvas, video);
-    kioskSelfieDataURL = canvas.toDataURL('image/jpeg', 0.75);
-    const prev = document.getElementById('kiosk-selfie-preview');
-    if (prev) prev.src = kioskSelfieDataURL;
-  }, 4200);
+  const video = document.getElementById('kiosk-selfie-video');
+  const colorFilter = _selfieFilters['kiosk'] || 'none';
+  let count = 3;
+  const overlay = document.getElementById('kiosk-countdown-overlay');
+  overlay.style.display = 'flex'; overlay.textContent = count;
+  const iv = setInterval(() => {
+    count--;
+    if (count > 0) { overlay.textContent = count; }
+    else {
+      clearInterval(iv); overlay.style.display = 'none';
+      const canvas = document.getElementById('kiosk-selfie-canvas');
+      canvas.width = video.videoWidth || 480; canvas.height = video.videoHeight || 480;
+      const c = canvas.getContext('2d');
+      c.translate(canvas.width, 0); c.scale(-1, 1);
+      c.drawImage(video, 0, 0, canvas.width, canvas.height);
+      c.setTransform(1,0,0,1,0,0);
+      _applyFilterToCanvas(c, canvas, colorFilter);
+      _bakeFun('kiosk', canvas); // ★ bake sebelum toDataURL
+      kioskSelfieDataURL = canvas.toDataURL('image/jpeg', 0.75);
+      if (typeof stopKioskCam === 'function') stopKioskCam();
+      video.style.filter = '';
+      const preview = document.getElementById('kiosk-selfie-preview');
+      preview.src = kioskSelfieDataURL; preview.style.display = 'block';
+      document.getElementById('kiosk-selfie-placeholder').style.display = 'none';
+      document.getElementById('kiosk-btn-ambil').style.display = 'none';
+      document.getElementById('kiosk-btn-ulang').style.display = 'inline-block';
+      document.getElementById('kiosk-btn-lanjut-scan').style.display = 'inline-block';
+      document.getElementById('kiosk-selfie-status').textContent = '✅ Foto berhasil!';
+      document.getElementById('kiosk-selfie-status').style.color = 'var(--accent)';
+      document.getElementById('kiosk-cam-wrapper').style.borderColor = 'var(--accent)';
+      hideFilterBar('kiosk');
+    }
+  }, 1000);
 };
 
-// When color filter is picked, clear fun filter
+// Saat warna filter dipilih, clear fun filter
 const _origSetSelfieFilter2 = window.setSelfieFilter;
 window.setSelfieFilter = function(ctx, f) {
   _origSetSelfieFilter2(ctx, f);
@@ -12511,7 +12586,7 @@ window.setSelfieFilter = function(ctx, f) {
   });
 };
 
-// Stop overlay on hide filter bar
+// Stop overlay saat filter bar disembunyikan
 const _origHideFilterBar2 = window.hideFilterBar;
 window.hideFilterBar = function(ctx) {
   _origHideFilterBar2(ctx);
