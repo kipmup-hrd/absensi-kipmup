@@ -12057,60 +12057,25 @@ window.showFilterBar   = showFilterBar;
 window.hideFilterBar   = hideFilterBar;
 </script>
 
-<!-- ══ FUN FILTER ENGINE (Stiker Wajah) ══ -->
+<!-- ══ FUN FILTER ENGINE v2 — Canvas-drawn accessories ══ -->
 <script>
-// State fun filter per konteks
 const _funFilters = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
-
-// Definisi stiker per filter
-const FUN_FILTER_DEF = {
-  cat: {
-    ears: { emoji: '🐱', topOffset: -0.52, scale: 1.3, type: 'head-top' },
-    nose: { emoji: '🐾', midOffset: 0.08, scale: 0.35 },
-    blush: true, blushColor: 'rgba(255,150,150,0.35)'
-  },
-  bunny: {
-    ears: { emoji: '🐰', topOffset: -0.60, scale: 1.2, type: 'head-top' },
-    nose: { emoji: '🌸', midOffset: 0.06, scale: 0.28 },
-    blush: true, blushColor: 'rgba(255,182,193,0.4)'
-  },
-  bear: {
-    ears: { emoji: '🐻', topOffset: -0.48, scale: 1.2, type: 'head-top' },
-    nose: { emoji: '🍯', midOffset: 0.1, scale: 0.32 },
-    blush: true, blushColor: 'rgba(210,140,80,0.3)'
-  },
-  dog: {
-    ears: { emoji: '🐶', topOffset: -0.50, scale: 1.3, type: 'head-top' },
-    nose: { emoji: '🦴', midOffset: 0.09, scale: 0.30 },
-    blush: true, blushColor: 'rgba(200,160,100,0.3)'
-  },
-  crown: {
-    ears: { emoji: '👑', topOffset: -0.45, scale: 1.0, type: 'head-top' },
-    nose: { emoji: '✨', midOffset: 0.05, scale: 0.25 },
-    blush: false,
-    sparkles: true
-  },
-  heart: {
-    ears: null,
-    nose: { emoji: '💕', midOffset: 0.0, scale: 0.30 },
-    blush: true, blushColor: 'rgba(255,100,150,0.35)',
-    floatingHearts: true
-  }
-};
-
-// Overlay canvas per konteks
 const _overlayCanvases = {};
 const _overlayAnimFrames = {};
+const _faceDataCache = {};
+const _heartParticles = {};
+const _sparkleParticles = {};
 
+// ── Video ID map ──
+const _VID = { ujicoba:'ujicoba-video', kegiatan:'kegiatan-selfie-video', kiosk:'kiosk-selfie-video' };
+
+// ── Overlay canvas per ctx ──
 function _getOrCreateOverlay(ctx) {
   if (_overlayCanvases[ctx]) return _overlayCanvases[ctx];
-  const videoIds = { ujicoba: 'ujicoba-video', kegiatan: 'kegiatan-selfie-video', kiosk: 'kiosk-selfie-video' };
-  const vid = document.getElementById(videoIds[ctx]);
+  const vid = document.getElementById(_VID[ctx]);
   if (!vid) return null;
   const wrapper = vid.parentElement;
-  // Make wrapper relative if not already
-  const cs = getComputedStyle(wrapper);
-  if (cs.position === 'static') wrapper.style.position = 'relative';
+  if (getComputedStyle(wrapper).position === 'static') wrapper.style.position = 'relative';
   const oc = document.createElement('canvas');
   oc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
   oc.id = ctx + '-fun-overlay';
@@ -12122,315 +12087,422 @@ function _getOrCreateOverlay(ctx) {
 function _stopOverlay(ctx) {
   if (_overlayAnimFrames[ctx]) { cancelAnimationFrame(_overlayAnimFrames[ctx]); _overlayAnimFrames[ctx] = null; }
   const oc = _overlayCanvases[ctx];
-  if (oc) { const c = oc.getContext('2d'); c.clearRect(0,0,oc.width,oc.height); }
+  if (oc) { oc.getContext('2d').clearRect(0,0,oc.width,oc.height); }
 }
 
-// Blush circles
+// ── Get face box (display-space, mirrored) ──
+function _getFaceBox(ctx, W, H) {
+  const vid = document.getElementById(_VID[ctx]);
+  const fd = _faceDataCache[ctx];
+  if (fd && fd.box && vid && vid.videoWidth) {
+    const sx = W / vid.videoWidth, sy = H / vid.videoHeight;
+    const bw = fd.box.width * sx, bh = fd.box.height * sy;
+    const bx = W - (fd.box.x * sx) - bw;
+    const by = fd.box.y * sy;
+    return { fx: bx, fy: by, fw: bw, fh: bh };
+  }
+  // Fallback: estimate face in center
+  const fw = W * 0.44, fh = H * 0.50;
+  return { fx: (W - fw) / 2, fy: H * 0.13, fw, fh };
+}
+
+// ══ DRAWING FUNCTIONS ══
+
+// Blush on cheeks
 function _drawBlush(c, fx, fy, fw, fh, color) {
-  const bx = fw * 0.22, br = fw * 0.13;
-  const by = fy + fh * 0.58;
+  const br = fw * 0.11, by = fy + fh * 0.60;
+  const lx = fx + fw * 0.18, rx = fx + fw * 0.82;
   c.save();
-  c.globalAlpha = 1;
   c.fillStyle = color;
-  c.beginPath(); c.ellipse(fx - bx, by, br, br*0.65, 0, 0, Math.PI*2); c.fill();
-  c.beginPath(); c.ellipse(fx + fw + bx - fw, by, br, br*0.65, 0, 0, Math.PI*2); c.fill();
+  [lx, rx].forEach(x => {
+    c.beginPath(); c.ellipse(x, by, br * 1.3, br * 0.75, 0, 0, Math.PI*2); c.fill();
+  });
   c.restore();
 }
 
-// Draw emoji centered
-function _drawEmoji(c, emoji, x, y, size) {
-  c.save();
-  c.font = size + 'px serif';
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  c.fillText(emoji, x, y);
+// Small nose dot
+function _drawNoseDot(c, fx, fy, fw, fh, color) {
+  const nx = fx + fw * 0.5, ny = fy + fh * 0.60;
+  const nr = fw * 0.055;
+  c.save(); c.fillStyle = color;
+  c.beginPath(); c.arc(nx, ny, nr, 0, Math.PI*2); c.fill(); c.restore();
+}
+
+// Whiskers
+function _drawWhiskers(c, fx, fy, fw, fh, color) {
+  const ny = fy + fh * 0.60;
+  const wLen = fw * 0.28, gap = fw * 0.08;
+  c.save(); c.strokeStyle = color; c.lineWidth = Math.max(1, fw * 0.012); c.globalAlpha = 0.7;
+  // left whiskers
+  [[-0.04, -0.025], [0, 0], [0.04, 0.025]].forEach(([dy1]) => {
+    c.beginPath();
+    c.moveTo(fx + fw*0.5 - gap, ny + dy1*fw);
+    c.lineTo(fx + fw*0.5 - gap - wLen, ny + dy1*fw - fw*0.02);
+    c.stroke();
+  });
+  // right whiskers
+  [[-0.04, -0.025], [0, 0], [0.04, 0.025]].forEach(([dy1]) => {
+    c.beginPath();
+    c.moveTo(fx + fw*0.5 + gap, ny + dy1*fw);
+    c.lineTo(fx + fw*0.5 + gap + wLen, ny + dy1*fw - fw*0.02);
+    c.stroke();
+  });
   c.restore();
 }
 
-// Floating hearts animation state
-const _heartParticles = {};
-function _initHearts(ctx) {
-  _heartParticles[ctx] = Array.from({length:8}, (_,i) => ({
-    x: 0.1 + Math.random()*0.8, y: 0.8 + Math.random()*0.2,
-    vy: -(0.003 + Math.random()*0.004),
-    size: 12 + Math.random()*14,
-    opacity: 0.7 + Math.random()*0.3,
-    emojis: ['💕','💖','💗','❤️','🩷'][Math.floor(Math.random()*5)]
-  }));
-}
-
-function _updateHearts(ctx, w, h) {
-  if (!_heartParticles[ctx]) _initHearts(ctx);
-  _heartParticles[ctx].forEach(p => {
-    p.y += p.vy;
-    if (p.y < -0.1) { p.y = 1.05; p.x = 0.1 + Math.random()*0.8; p.emojis = ['💕','💖','💗','❤️','🩷'][Math.floor(Math.random()*5)]; }
+// Cat ears — pointy triangle ears above head
+function _drawCatEars(c, fx, fy, fw) {
+  const earW = fw * 0.22, earH = fw * 0.26;
+  const lx = fx + fw * 0.20, rx = fx + fw * 0.80;
+  const topY = fy - earH * 0.7;
+  [[lx],[rx]].forEach(([ex]) => {
+    // outer ear
+    c.save(); c.fillStyle = '#f4a4c0';
+    c.beginPath();
+    c.moveTo(ex - earW/2, fy + fw*0.04);
+    c.lineTo(ex, topY);
+    c.lineTo(ex + earW/2, fy + fw*0.04);
+    c.closePath(); c.fill(); c.restore();
+    // inner ear
+    c.save(); c.fillStyle = '#ff6fa0';
+    const iW = earW * 0.52, iH = earH * 0.55;
+    c.beginPath();
+    c.moveTo(ex - iW/2, fy + fw*0.02);
+    c.lineTo(ex, topY + earH*0.22);
+    c.lineTo(ex + iW/2, fy + fw*0.02);
+    c.closePath(); c.fill(); c.restore();
   });
 }
 
-// Sparkle state
-const _sparkles = {};
-function _initSparkles(ctx) {
-  _sparkles[ctx] = Array.from({length:10}, () => ({
-    x: Math.random(), y: Math.random()*0.5,
-    phase: Math.random()*Math.PI*2,
-    size: 10 + Math.random()*10
-  }));
+// Bunny ears — tall rounded ears
+function _drawBunnyEars(c, fx, fy, fw) {
+  const earW = fw * 0.16, earH = fw * 0.55;
+  const lx = fx + fw * 0.25, rx = fx + fw * 0.75;
+  [[lx],[rx]].forEach(([ex]) => {
+    // outer ear
+    c.save(); c.fillStyle = '#f8c6e0';
+    c.beginPath();
+    c.ellipse(ex, fy - earH*0.42, earW/2, earH/2, 0, 0, Math.PI*2);
+    c.fill(); c.restore();
+    // inner ear
+    c.save(); c.fillStyle = '#ff8abf';
+    c.beginPath();
+    c.ellipse(ex, fy - earH*0.42, earW*0.28, earH*0.38, 0, 0, Math.PI*2);
+    c.fill(); c.restore();
+  });
 }
 
-// Main overlay draw loop
-function _drawFunOverlay(ctx, def, faceData) {
+// Bear ears — round ears
+function _drawBearEars(c, fx, fy, fw) {
+  const er = fw * 0.13;
+  const lx = fx + fw * 0.16, rx = fx + fw * 0.84;
+  const ey = fy - er * 0.3;
+  [[lx],[rx]].forEach(([ex]) => {
+    c.save(); c.fillStyle = '#c4824a';
+    c.beginPath(); c.arc(ex, ey, er, 0, Math.PI*2); c.fill(); c.restore();
+    c.save(); c.fillStyle = '#f5b87a';
+    c.beginPath(); c.arc(ex, ey, er * 0.58, 0, Math.PI*2); c.fill(); c.restore();
+  });
+}
+
+// Dog ears — floppy drooping ears
+function _drawDogEars(c, fx, fy, fw, fh) {
+  const earW = fw * 0.20, earH = fh * 0.45;
+  const lx = fx + fw * 0.06, rx = fx + fw * 0.94;
+  [[lx, 1],[rx, -1]].forEach(([ex, dir]) => {
+    c.save(); c.fillStyle = '#c08040';
+    c.beginPath();
+    c.moveTo(ex, fy + fh * 0.10);
+    c.bezierCurveTo(
+      ex - dir*earW*0.6, fy + fh*0.10,
+      ex - dir*earW*0.7, fy + earH,
+      ex - dir*earW*0.2, fy + earH * 1.1
+    );
+    c.bezierCurveTo(
+      ex + dir*earW*0.3, fy + earH,
+      ex + dir*earW*0.1, fy + fh*0.08,
+      ex, fy + fh * 0.10
+    );
+    c.closePath(); c.fill(); c.restore();
+  });
+}
+
+// Crown — drawn shape above head
+function _drawCrown(c, fx, fy, fw) {
+  const cw = fw * 0.70, ch = fw * 0.28;
+  const cx = fx + fw * 0.5, cy = fy - ch * 0.3;
+  const x0 = cx - cw/2;
+  c.save();
+  // Crown body
+  const grad = c.createLinearGradient(x0, cy-ch, x0, cy);
+  grad.addColorStop(0, '#ffe44d'); grad.addColorStop(1, '#f5a800');
+  c.fillStyle = grad;
+  c.beginPath();
+  c.moveTo(x0, cy);
+  c.lineTo(x0, cy - ch*0.55);
+  c.lineTo(x0 + cw*0.18, cy - ch*0.25);
+  c.lineTo(x0 + cw*0.38, cy - ch);
+  c.lineTo(x0 + cw*0.50, cy - ch*0.30);
+  c.lineTo(x0 + cw*0.62, cy - ch);
+  c.lineTo(x0 + cw*0.82, cy - ch*0.25);
+  c.lineTo(x0 + cw, cy - ch*0.55);
+  c.lineTo(x0 + cw, cy);
+  c.closePath(); c.fill();
+  // Crown outline
+  c.strokeStyle = '#c8860a'; c.lineWidth = Math.max(1.5, fw*0.015);
+  c.stroke();
+  // Gems
+  [0.20, 0.50, 0.80].forEach(t => {
+    c.fillStyle = t === 0.50 ? '#ff4488' : '#44aaff';
+    c.beginPath(); c.arc(x0 + cw*t, cy - ch*0.18, fw*0.028, 0, Math.PI*2); c.fill();
+  });
+  c.restore();
+}
+
+// Floating hearts
+function _initHearts(ctx) {
+  _heartParticles[ctx] = Array.from({length:10}, () => ({
+    x: Math.random(), y: 0.75 + Math.random()*0.3,
+    vy: 0.003 + Math.random()*0.004,
+    size: 10 + Math.random()*12,
+    alpha: 0.6 + Math.random()*0.4,
+    color: ['#ff6699','#ff99bb','#ff4488','#ffaacc'][Math.floor(Math.random()*4)]
+  }));
+}
+function _updateDrawHearts(c, ctx, W, H) {
+  if (!_heartParticles[ctx]) _initHearts(ctx);
+  _heartParticles[ctx].forEach(p => {
+    p.y -= p.vy;
+    if (p.y < -0.05) { p.y = 1.05; p.x = 0.05 + Math.random()*0.9; }
+    // Draw a heart shape
+    const hx = p.x * W, hy = p.y * H, s = p.size;
+    c.save(); c.globalAlpha = p.alpha; c.fillStyle = p.color;
+    c.beginPath();
+    c.moveTo(hx, hy + s*0.3);
+    c.bezierCurveTo(hx - s*0.6, hy - s*0.2, hx - s, hy + s*0.4, hx, hy + s);
+    c.bezierCurveTo(hx + s, hy + s*0.4, hx + s*0.6, hy - s*0.2, hx, hy + s*0.3);
+    c.fill(); c.restore();
+  });
+}
+
+// Sparkles
+function _initSparkles(ctx) {
+  _sparkleParticles[ctx] = Array.from({length:8}, () => ({
+    x: 0.05 + Math.random()*0.9, y: 0.05 + Math.random()*0.45,
+    phase: Math.random()*Math.PI*2, size: 8 + Math.random()*10
+  }));
+}
+function _drawSparkles(c, ctx, W, H) {
+  if (!_sparkleParticles[ctx]) _initSparkles(ctx);
+  const t = Date.now() / 700;
+  _sparkleParticles[ctx].forEach(sp => {
+    const alpha = 0.4 + 0.6 * Math.abs(Math.sin(t + sp.phase));
+    const s = sp.size * alpha;
+    const x = sp.x * W, y = sp.y * H;
+    c.save(); c.globalAlpha = alpha; c.fillStyle = '#ffe44d';
+    // 4-point star
+    c.beginPath();
+    c.moveTo(x, y - s); c.lineTo(x + s*0.25, y - s*0.25); c.lineTo(x + s, y);
+    c.lineTo(x + s*0.25, y + s*0.25); c.lineTo(x, y + s); c.lineTo(x - s*0.25, y + s*0.25);
+    c.lineTo(x - s, y); c.lineTo(x - s*0.25, y - s*0.25); c.closePath(); c.fill(); c.restore();
+  });
+}
+
+// ── Main draw frame ──
+function _drawFunFrame(ctx) {
+  const fname = _funFilters[ctx];
+  if (!fname || fname === 'none') return;
   const oc = _getOrCreateOverlay(ctx);
   if (!oc) return;
-  const videoIds = { ujicoba: 'ujicoba-video', kegiatan: 'kegiatan-selfie-video', kiosk: 'kiosk-selfie-video' };
-  const vid = document.getElementById(videoIds[ctx]);
+  const vid = document.getElementById(_VID[ctx]);
   if (!vid) return;
 
-  // Sync canvas size
   const rect = vid.getBoundingClientRect();
-  if (oc.width !== Math.round(rect.width) || oc.height !== Math.round(rect.height)) {
-    oc.width = Math.round(rect.width);
-    oc.height = Math.round(rect.height);
-  }
-  const W = oc.width, H = oc.height;
+  const W = Math.round(rect.width), H = Math.round(rect.height);
+  if (!W || !H) return;
+  if (oc.width !== W || oc.height !== H) { oc.width = W; oc.height = H; }
+
   const c = oc.getContext('2d');
   c.clearRect(0, 0, W, H);
 
-  if (!def) return;
+  const { fx, fy, fw, fh } = _getFaceBox(ctx, W, H);
 
-  // Use face detection data if available, else estimate
-  let fx, fy, fw, fh;
-  if (faceData && faceData.box) {
-    const scaleX = W / (vid.videoWidth || W);
-    const scaleY = H / (vid.videoHeight || H);
-    // Mirror x since video is mirrored
-    const bw = faceData.box.width * scaleX;
-    const bh = faceData.box.height * scaleY;
-    const bx = W - (faceData.box.x * scaleX) - bw;
-    const by = faceData.box.y * scaleY;
-    fx = bx; fy = by; fw = bw; fh = bh;
-  } else {
-    // Fallback estimate: center face area
-    fw = W * 0.42; fh = H * 0.52;
-    fx = (W - fw) / 2; fy = H * 0.12;
-  }
-
-  const fcx = fx + fw / 2;
-
-  // Draw blush
-  if (def.blush) _drawBlush(c, fx, fy, fw, fh, def.blushColor);
-
-  // Draw ears/hat
-  if (def.ears) {
-    const earSize = fw * def.ears.scale;
-    const earY = fy + fh * def.ears.topOffset + fh * 0.5;
-    _drawEmoji(c, def.ears.emoji, fcx, earY, earSize);
-  }
-
-  // Draw nose sticker
-  if (def.nose) {
-    const noseSize = fw * def.nose.scale;
-    const noseY = fy + fh * (0.5 + def.nose.midOffset);
-    _drawEmoji(c, def.nose.emoji, fcx, noseY, noseSize);
-  }
-
-  // Sparkles for crown
-  if (def.sparkles) {
-    if (!_sparkles[ctx]) _initSparkles(ctx);
-    const t = Date.now() / 800;
-    _sparkles[ctx].forEach(sp => {
-      const alpha = 0.5 + 0.5 * Math.sin(t + sp.phase);
-      c.save(); c.globalAlpha = alpha;
-      _drawEmoji(c, '✨', sp.x * W, sp.y * H, sp.size);
-      c.restore();
-    });
-  }
-
-  // Floating hearts for heart filter
-  if (def.floatingHearts) {
-    _updateHearts(ctx, W, H);
-    _heartParticles[ctx].forEach(p => {
-      c.save(); c.globalAlpha = p.opacity;
-      _drawEmoji(c, p.emojis, p.x * W, p.y * H, p.size);
-      c.restore();
-    });
+  if (fname === 'cat') {
+    _drawCatEars(c, fx, fy, fw);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,130,160,0.40)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#e05080');
+    _drawWhiskers(c, fx, fy, fw, fh, '#888888');
+  } else if (fname === 'bunny') {
+    _drawBunnyEars(c, fx, fy, fw);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,160,200,0.40)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#ff6699');
+  } else if (fname === 'bear') {
+    _drawBearEars(c, fx, fy, fw);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(210,140,80,0.35)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#7a3c10');
+  } else if (fname === 'dog') {
+    _drawDogEars(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,155,90,0.35)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#5a2800');
+    _drawWhiskers(c, fx, fy, fw, fh, '#a07040');
+  } else if (fname === 'crown') {
+    _drawCrown(c, fx, fy, fw);
+    _drawSparkles(c, ctx, W, H);
+  } else if (fname === 'heart') {
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,150,0.38)');
+    _updateDrawHearts(c, ctx, W, H);
   }
 }
 
-// Face detection state per ctx
-const _faceDataCache = {};
-
-// Detection loop using face-api if available
-async function _detectFaceLoop(ctx) {
-  const videoIds = { ujicoba: 'ujicoba-video', kegiatan: 'kegiatan-selfie-video', kiosk: 'kiosk-selfie-video' };
-  const vid = document.getElementById(videoIds[ctx]);
-  if (!vid || vid.readyState < 2) { setTimeout(() => _detectFaceLoop(ctx), 300); return; }
-  try {
-    if (typeof faceapi !== 'undefined' && faceapi.nets && faceapi.nets.tinyFaceDetector && faceapi.nets.tinyFaceDetector.isLoaded) {
-      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.35 }));
-      if (det) _faceDataCache[ctx] = { box: det.box };
-    }
-  } catch(e) {}
-}
-
-// Load face-api models once
+// Face detection
 let _faceModelsLoaded = false;
 async function _ensureFaceModels() {
   if (_faceModelsLoaded) return;
   if (typeof faceapi === 'undefined') return;
   try {
-    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/');
     _faceModelsLoaded = true;
-  } catch(e) { console.warn('face-api model load failed, using fallback positioning'); }
+  } catch(e) {}
+}
+async function _detectFace(ctx) {
+  const vid = document.getElementById(_VID[ctx]);
+  if (!vid || vid.readyState < 2) return;
+  try {
+    if (typeof faceapi !== 'undefined' && faceapi.nets.tinyFaceDetector.isLoaded) {
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:224, scoreThreshold:0.3 }));
+      if (det) _faceDataCache[ctx] = { box: det.box };
+    }
+  } catch(e) {}
 }
 
 // Animation loop
-function _startFunOverlayLoop(ctx) {
+function _startLoop(ctx) {
   _stopOverlay(ctx);
   _ensureFaceModels();
-  let lastDetect = 0;
+  let lastDet = 0;
   function loop() {
-    const def = _funFilters[ctx] !== 'none' ? FUN_FILTER_DEF[_funFilters[ctx]] : null;
-    if (!def) { _stopOverlay(ctx); return; }
+    if (!_funFilters[ctx] || _funFilters[ctx] === 'none') return;
     const now = Date.now();
-    if (now - lastDetect > 500) { lastDetect = now; _detectFaceLoop(ctx); }
-    _drawFunOverlay(ctx, def, _faceDataCache[ctx]);
+    if (now - lastDet > 400) { lastDet = now; _detectFace(ctx); }
+    _drawFunFrame(ctx);
     _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
   }
   _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
 }
 
-// setFunFilter: toggle fun filter, reset color filter pills
-window.setFunFilter = function(ctx, filterName) {
-  const prev = _funFilters[ctx];
-  // Toggle off if same
-  const next = prev === filterName ? 'none' : filterName;
+// ── Public API ──
+window.setFunFilter = function(ctx, name) {
+  const next = _funFilters[ctx] === name ? 'none' : name;
   _funFilters[ctx] = next;
-
-  // Reset all fun pill UI
   ['cat','bunny','bear','dog','crown','heart'].forEach(f => {
     const el = document.getElementById(`${ctx}-fun-${f}`);
     if (el) el.classList.toggle('active-pill', f === next);
   });
-
   if (next === 'none') { _stopOverlay(ctx); }
   else {
-    if (filterName === 'heart') _initHearts(ctx);
-    _startFunOverlayLoop(ctx);
+    if (next === 'heart') _initHearts(ctx);
+    if (next === 'crown') _initSparkles(ctx);
+    _startLoop(ctx);
   }
 };
 
-// Patch capture functions to bake fun filter onto canvas
-const _origApplyFilter = window._applyFilterToCanvas || function(){};
-
-function _bakeFunFilterOnCanvas(ctx, canvas, videoEl) {
-  const funName = _funFilters[ctx];
-  if (!funName || funName === 'none') return;
-  const def = FUN_FILTER_DEF[funName];
-  if (!def) return;
-  const c = canvas.getContext('2d');
+// Bake fun filter onto captured canvas
+function _bakeFun(ctx, canvas, videoEl) {
+  const fname = _funFilters[ctx];
+  if (!fname || fname === 'none') return;
   const W = canvas.width, H = canvas.height;
+  const c = canvas.getContext('2d');
 
-  // Use cached face data scaled to canvas size
   let fx, fy, fw, fh;
-  const faceData = _faceDataCache[ctx];
-  if (faceData && faceData.box && videoEl) {
-    const scaleX = W / (videoEl.videoWidth || W);
-    const scaleY = H / (videoEl.videoHeight || H);
-    const bw = faceData.box.width * scaleX;
-    const bh = faceData.box.height * scaleY;
-    // Mirror x
-    const bx = W - (faceData.box.x * scaleX) - bw;
-    const by = faceData.box.y * scaleY;
-    fx = bx; fy = by; fw = bw; fh = bh;
+  const fd = _faceDataCache[ctx];
+  if (fd && fd.box && videoEl && videoEl.videoWidth) {
+    const sx = W / videoEl.videoWidth, sy = H / videoEl.videoHeight;
+    const bw = fd.box.width*sx, bh = fd.box.height*sy;
+    fx = W - (fd.box.x*sx) - bw; fy = fd.box.y*sy; fw = bw; fh = bh;
   } else {
-    fw = W * 0.42; fh = H * 0.52;
-    fx = (W - fw) / 2; fy = H * 0.12;
+    fw = W*0.44; fh = H*0.50; fx = (W-fw)/2; fy = H*0.13;
   }
 
-  const fcx = fx + fw / 2;
-
-  if (def.blush) _drawBlush(c, fx, fy, fw, fh, def.blushColor);
-
-  if (def.ears) {
-    const earSize = fw * def.ears.scale;
-    const earY = fy + fh * def.ears.topOffset + fh * 0.5;
-    _drawEmoji(c, def.ears.emoji, fcx, earY, earSize);
-  }
-
-  if (def.nose) {
-    const noseSize = fw * def.nose.scale;
-    const noseY = fy + fh * (0.5 + def.nose.midOffset);
-    _drawEmoji(c, def.nose.emoji, fcx, noseY, noseSize);
-  }
-
-  if (def.sparkles) {
-    if (_sparkles[ctx]) {
-      _sparkles[ctx].forEach(sp => {
-        c.save(); c.globalAlpha = 0.8;
-        _drawEmoji(c, '✨', sp.x * W, sp.y * H * 0.5, sp.size);
-        c.restore();
+  if (fname === 'cat') {
+    _drawCatEars(c, fx, fy, fw);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,130,160,0.40)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#e05080');
+    _drawWhiskers(c, fx, fy, fw, fh, '#888888');
+  } else if (fname === 'bunny') {
+    _drawBunnyEars(c, fx, fy, fw);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,160,200,0.40)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#ff6699');
+  } else if (fname === 'bear') {
+    _drawBearEars(c, fx, fy, fw);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(210,140,80,0.35)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#7a3c10');
+  } else if (fname === 'dog') {
+    _drawDogEars(c, fx, fy, fw, fh);
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,155,90,0.35)');
+    _drawNoseDot(c, fx, fy, fw, fh, '#5a2800');
+    _drawWhiskers(c, fx, fy, fw, fh, '#a07040');
+  } else if (fname === 'crown') {
+    _drawCrown(c, fx, fy, fw);
+  } else if (fname === 'heart') {
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,150,0.38)');
+    if (_heartParticles[ctx]) {
+      _heartParticles[ctx].forEach(p => {
+        const hx=p.x*W, hy=p.y*H, s=p.size;
+        c.save(); c.globalAlpha=p.alpha; c.fillStyle=p.color;
+        c.beginPath();
+        c.moveTo(hx,hy+s*0.3);
+        c.bezierCurveTo(hx-s*0.6,hy-s*0.2,hx-s,hy+s*0.4,hx,hy+s);
+        c.bezierCurveTo(hx+s,hy+s*0.4,hx+s*0.6,hy-s*0.2,hx,hy+s*0.3);
+        c.fill(); c.restore();
       });
     }
   }
-
-  if (def.floatingHearts && _heartParticles[ctx]) {
-    _heartParticles[ctx].forEach(p => {
-      c.save(); c.globalAlpha = p.opacity;
-      _drawEmoji(c, p.emojis, p.x * W, p.y * H, p.size);
-      c.restore();
-    });
-  }
 }
 
-// Patch ujicobaAmbilFoto to bake fun filter
+// Patch capture — bake fun filter after photo taken
 const _origUjicobaAmbilFoto2 = window.ujicobaAmbilFoto;
 window.ujicobaAmbilFoto = function() {
   _origUjicobaAmbilFoto2.call(this, ...arguments);
-  // bake after capture — re-draw on canvas
   setTimeout(() => {
     const canvas = document.getElementById('ujicoba-canvas');
     const video = document.getElementById('ujicoba-video');
-    _bakeFunFilterOnCanvas('ujicoba', canvas, video);
+    _bakeFun('ujicoba', canvas, video);
     ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
-    const preview = document.getElementById('ujicoba-preview');
-    if (preview) preview.src = ujicobaFotoData;
-  }, 50);
+    const prev = document.getElementById('ujicoba-preview');
+    if (prev) prev.src = ujicobaFotoData;
+  }, 60);
 };
 
-// Patch kegiatanAmbilFoto
 const _origKegiatanAmbilFoto2 = window.kegiatanAmbilFoto;
 window.kegiatanAmbilFoto = function() {
   _origKegiatanAmbilFoto2.call(this, ...arguments);
   setTimeout(() => {
     const canvas = document.getElementById('kegiatan-selfie-canvas');
     const video = document.getElementById('kegiatan-selfie-video');
-    _bakeFunFilterOnCanvas('kegiatan', canvas, video);
+    _bakeFun('kegiatan', canvas, video);
     kegiatanSelfieDataURL = canvas.toDataURL('image/jpeg', 0.6);
-    const preview = document.getElementById('kegiatan-selfie-preview');
-    if (preview) preview.src = kegiatanSelfieDataURL;
-  }, 4200); // after 3s countdown + buffer
+    const prev = document.getElementById('kegiatan-selfie-preview');
+    if (prev) prev.src = kegiatanSelfieDataURL;
+  }, 4200);
 };
 
-// Patch kioskAmbilFoto
 const _origKioskAmbilFoto2 = window.kioskAmbilFoto;
 window.kioskAmbilFoto = function() {
   _origKioskAmbilFoto2.call(this, ...arguments);
   setTimeout(() => {
     const canvas = document.getElementById('kiosk-selfie-canvas');
     const video = document.getElementById('kiosk-selfie-video');
-    _bakeFunFilterOnCanvas('kiosk', canvas, video);
+    _bakeFun('kiosk', canvas, video);
     kioskSelfieDataURL = canvas.toDataURL('image/jpeg', 0.75);
-    const preview = document.getElementById('kiosk-selfie-preview');
-    if (preview) preview.src = kioskSelfieDataURL;
+    const prev = document.getElementById('kiosk-selfie-preview');
+    if (prev) prev.src = kioskSelfieDataURL;
   }, 4200);
 };
 
-// Reset fun filter when ulang/buka
-const _origSetSelfieFilter = window.setSelfieFilter;
+// When color filter is picked, clear fun filter
+const _origSetSelfieFilter2 = window.setSelfieFilter;
 window.setSelfieFilter = function(ctx, f) {
-  _origSetSelfieFilter(ctx, f);
-  // Clear fun filter when a color filter is picked
+  _origSetSelfieFilter2(ctx, f);
   _funFilters[ctx] = 'none';
   _stopOverlay(ctx);
   ['cat','bunny','bear','dog','crown','heart'].forEach(fn => {
@@ -12439,10 +12511,10 @@ window.setSelfieFilter = function(ctx, f) {
   });
 };
 
-// Also stop overlay on hideFilterBar
-const _origHideFilterBar = window.hideFilterBar;
+// Stop overlay on hide filter bar
+const _origHideFilterBar2 = window.hideFilterBar;
 window.hideFilterBar = function(ctx) {
-  _origHideFilterBar(ctx);
+  _origHideFilterBar2(ctx);
   _stopOverlay(ctx);
   _funFilters[ctx] = 'none';
   ['cat','bunny','bear','dog','crown','heart'].forEach(f => {
