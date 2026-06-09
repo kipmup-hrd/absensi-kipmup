@@ -53,6 +53,26 @@
   --radius: 12px;
   --radius-lg: 20px;
 }
+/* ── Filter Kamera Pills ── */
+.filter-pill {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.filter-pill:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+.filter-pill.active-pill {
+  background: rgba(74,222,128,0.18);
+  border-color: rgba(74,222,128,0.5);
+  color: var(--accent);
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: var(--font);
@@ -958,6 +978,19 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
         <button id="ujicoba-btn-ulang" onclick="ujicobaUlangFoto()" style="display:none; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:12px; padding:9px 14px; border-radius:30px; cursor:pointer;">🔄 Ulang</button>
       </div>
 
+      <!-- Filter Kamera -->
+      <div id="ujicoba-filter-bar" style="display:none; flex-direction:column; align-items:center; gap:6px; width:100%;">
+        <div style="font-size:10px; color:var(--text3); font-weight:600; letter-spacing:1px; text-transform:uppercase;">🎨 Filter Foto</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;" id="ujicoba-filter-pills">
+          <button onclick="setSelfieFilter('ujicoba','none')" id="ujicoba-f-none" class="filter-pill active-pill">✨ Normal</button>
+          <button onclick="setSelfieFilter('ujicoba','grayscale')" id="ujicoba-f-grayscale" class="filter-pill">⚫ B&W</button>
+          <button onclick="setSelfieFilter('ujicoba','warm')" id="ujicoba-f-warm" class="filter-pill">🌅 Warm</button>
+          <button onclick="setSelfieFilter('ujicoba','cool')" id="ujicoba-f-cool" class="filter-pill">❄️ Cool</button>
+          <button onclick="setSelfieFilter('ujicoba','vivid')" id="ujicoba-f-vivid" class="filter-pill">💎 Vivid</button>
+          <button onclick="setSelfieFilter('ujicoba','vintage')" id="ujicoba-f-vintage" class="filter-pill">📷 Vintage</button>
+        </div>
+      </div>
+
       <!-- Link Galeri BEI — selalu tampil -->
       <a href="https://rdis.idx.co.id/id/register-visit-onsite/401" target="_blank" id="ujicoba-galeri-link" style="display:block; width:100%; text-decoration:none; background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(234,88,12,0.10)); border:1.5px solid rgba(245,158,11,0.55); border-radius:14px; padding:14px 16px; transition:all 0.2s;">
         <div style="display:flex; align-items:flex-start; gap:12px;">
@@ -1304,6 +1337,18 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
             <button id="kiosk-btn-buka" onclick="kioskBukaKamera()" style="background:rgba(34,211,238,0.12); color:var(--accent2); border:1px solid rgba(34,211,238,0.3); font-family:var(--font); font-size:13px; font-weight:500; padding:10px 22px; border-radius:30px; cursor:pointer;">📷 Buka Kamera</button>
             <button id="kiosk-btn-ambil" onclick="kioskAmbilFoto()" style="display:none; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:13px; font-weight:700; padding:10px 22px; border-radius:30px; cursor:pointer;">📸 Ambil Foto</button>
             <button id="kiosk-btn-ulang" onclick="kioskUlangFoto()" style="display:none; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:13px; padding:10px 18px; border-radius:30px; cursor:pointer;">🔄 Ulang</button>
+          </div>
+          <!-- Filter Kamera Kiosk -->
+          <div id="kiosk-filter-bar" style="display:none; flex-direction:column; align-items:center; gap:6px; margin-bottom:12px;">
+            <div style="font-size:10px; color:var(--text3); font-weight:600; letter-spacing:1px; text-transform:uppercase;">🎨 Filter Foto</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+              <button onclick="setSelfieFilter('kiosk','none')" id="kiosk-f-none" class="filter-pill active-pill">✨ Normal</button>
+              <button onclick="setSelfieFilter('kiosk','grayscale')" id="kiosk-f-grayscale" class="filter-pill">⚫ B&W</button>
+              <button onclick="setSelfieFilter('kiosk','warm')" id="kiosk-f-warm" class="filter-pill">🌅 Warm</button>
+              <button onclick="setSelfieFilter('kiosk','cool')" id="kiosk-f-cool" class="filter-pill">❄️ Cool</button>
+              <button onclick="setSelfieFilter('kiosk','vivid')" id="kiosk-f-vivid" class="filter-pill">💎 Vivid</button>
+              <button onclick="setSelfieFilter('kiosk','vintage')" id="kiosk-f-vintage" class="filter-pill">📷 Vintage</button>
+            </div>
           </div>
           <button id="kiosk-btn-lanjut-scan" onclick="kioskLanjutScan()" style="display:none; margin-bottom:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:700; padding:12px 32px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
           <!-- 5. Daftar anggota piket -->
@@ -1701,6 +1746,18 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
         <button id="kegiatan-btn-buka-kamera" onclick="kegiatanBukaKamera()" style="background:rgba(34,211,238,0.12); color:var(--accent2); border:1px solid rgba(34,211,238,0.3); font-family:var(--font); font-size:13px; padding:9px 18px; border-radius:30px; cursor:pointer;">📷 Buka Kamera</button>
         <button id="kegiatan-btn-ambil-foto" onclick="kegiatanAmbilFoto()" style="display:none; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:13px; font-weight:600; padding:9px 18px; border-radius:30px; cursor:pointer;">📸 Ambil Foto</button>
         <button id="kegiatan-btn-ulang" onclick="kegiatanUlangFoto()" style="display:none; background:var(--bg3); color:var(--text2); border:1px solid var(--border2); font-family:var(--font); font-size:13px; padding:9px 16px; border-radius:30px; cursor:pointer;">🔄 Ulangi</button>
+      </div>
+      <!-- Filter Kamera Kegiatan -->
+      <div id="kegiatan-filter-bar" style="display:none; flex-direction:column; align-items:center; gap:6px; margin-top:10px;">
+        <div style="font-size:10px; color:var(--text3); font-weight:600; letter-spacing:1px; text-transform:uppercase;">🎨 Filter Foto</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+          <button onclick="setSelfieFilter('kegiatan','none')" id="kegiatan-f-none" class="filter-pill active-pill">✨ Normal</button>
+          <button onclick="setSelfieFilter('kegiatan','grayscale')" id="kegiatan-f-grayscale" class="filter-pill">⚫ B&W</button>
+          <button onclick="setSelfieFilter('kegiatan','warm')" id="kegiatan-f-warm" class="filter-pill">🌅 Warm</button>
+          <button onclick="setSelfieFilter('kegiatan','cool')" id="kegiatan-f-cool" class="filter-pill">❄️ Cool</button>
+          <button onclick="setSelfieFilter('kegiatan','vivid')" id="kegiatan-f-vivid" class="filter-pill">💎 Vivid</button>
+          <button onclick="setSelfieFilter('kegiatan','vintage')" id="kegiatan-f-vintage" class="filter-pill">📷 Vintage</button>
+        </div>
       </div>
       <button id="kegiatan-btn-lanjut" onclick="kegiatanLanjutScan()" style="display:none; width:100%; margin-top:14px; background:var(--accent); color:#0a1a0f; border:none; font-family:var(--font); font-size:14px; font-weight:600; padding:12px; border-radius:30px; cursor:pointer;">✅ Foto OK — Lanjut Scan QR →</button>
       <div style="margin-top:8px; font-size:11px; color:var(--text3); text-align:center;">📸 Foto selfie <b style="color:var(--red);">wajib</b> sebelum scan QR</div>
@@ -11748,6 +11805,227 @@ window.syncPendingAbsen = syncPendingAbsen;
   </div>
 </div>
 
+
+<!-- ══ SELFIE FILTER ENGINE ══ -->
+<script>
+// State filter per konteks
+const _selfieFilters = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
+
+// Map filter → CSS preview string
+const FILTER_CSS = {
+  none:      '',
+  grayscale: 'grayscale(100%)',
+  warm:      'sepia(40%) saturate(130%) brightness(105%)',
+  cool:      'hue-rotate(20deg) saturate(90%) brightness(100%)',
+  vivid:     'saturate(180%) contrast(110%)',
+  vintage:   'sepia(60%) contrast(90%) brightness(95%)',
+};
+
+// Canvas pixel filter
+function _applyFilterToCanvas(ctx2d, canvas, filterName) {
+  if (!filterName || filterName === 'none') return;
+  const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i], g = d[i+1], b = d[i+2];
+    if (filterName === 'grayscale') {
+      const gray = Math.round(0.299*r + 0.587*g + 0.114*b);
+      d[i] = d[i+1] = d[i+2] = gray;
+    } else if (filterName === 'warm') {
+      d[i]   = Math.min(255, r + 20);
+      d[i+1] = Math.min(255, g + 5);
+      d[i+2] = Math.max(0,   b - 20);
+    } else if (filterName === 'cool') {
+      d[i]   = Math.max(0,   r - 15);
+      d[i+1] = Math.min(255, g + 5);
+      d[i+2] = Math.min(255, b + 25);
+    } else if (filterName === 'vivid') {
+      const avg = (r + g + b) / 3;
+      d[i]   = Math.min(255, Math.round(avg + (r - avg) * 1.6));
+      d[i+1] = Math.min(255, Math.round(avg + (g - avg) * 1.6));
+      d[i+2] = Math.min(255, Math.round(avg + (b - avg) * 1.6));
+    } else if (filterName === 'vintage') {
+      d[i]   = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
+      d[i+1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
+      d[i+2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
+    }
+  }
+  ctx2d.putImageData(imageData, 0, 0);
+}
+
+function setSelfieFilter(ctx, filterName) {
+  _selfieFilters[ctx] = filterName;
+  ['none','grayscale','warm','cool','vivid','vintage'].forEach(f => {
+    const el = document.getElementById(`${ctx}-f-${f}`);
+    if (el) el.classList.toggle('active-pill', f === filterName);
+  });
+  const videoIds = { ujicoba: 'ujicoba-video', kegiatan: 'kegiatan-selfie-video', kiosk: 'kiosk-selfie-video' };
+  const vid = document.getElementById(videoIds[ctx]);
+  if (vid) vid.style.filter = FILTER_CSS[filterName] || '';
+}
+
+function showFilterBar(ctx) {
+  const bar = document.getElementById(`${ctx}-filter-bar`);
+  if (bar) bar.style.display = 'flex';
+}
+function hideFilterBar(ctx) {
+  const bar = document.getElementById(`${ctx}-filter-bar`);
+  if (bar) bar.style.display = 'none';
+}
+
+// ── Override ujicobaAmbilFoto ──
+window.ujicobaAmbilFoto = function() {
+  const video = document.getElementById('ujicoba-video');
+  const canvas = document.getElementById('ujicoba-canvas');
+  const filterName = _selfieFilters['ujicoba'] || 'none';
+  const vw = video.videoWidth || 480;
+  const vh = video.videoHeight || 480;
+  const side = Math.min(vw, vh);
+  canvas.width = side; canvas.height = side;
+  const c = canvas.getContext('2d');
+  const sx = Math.floor((vw - side) / 2);
+  const sy = Math.floor((vh - side) / 2);
+  c.save(); c.translate(canvas.width, 0); c.scale(-1, 1);
+  c.drawImage(video, sx, sy, side, side, 0, 0, side, side);
+  c.restore();
+  _applyFilterToCanvas(c, canvas, filterName);
+  ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
+  if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
+  video.style.display = 'none'; video.style.filter = '';
+  const preview = document.getElementById('ujicoba-preview');
+  preview.src = ujicobaFotoData; preview.style.display = 'block';
+  document.getElementById('ujicoba-cam-status').textContent = '📸 Foto diambil — siap submit';
+  document.getElementById('ujicoba-btn-ambil').style.display = 'none';
+  document.getElementById('ujicoba-btn-ulang').style.display = 'inline-block';
+  document.getElementById('ujicoba-btn-submit').style.display = 'block';
+  hideFilterBar('ujicoba');
+};
+
+// ── Override kegiatanAmbilFoto ──
+window.kegiatanAmbilFoto = function() {
+  const video = document.getElementById('kegiatan-selfie-video');
+  const canvas = document.getElementById('kegiatan-selfie-canvas');
+  const filterName = _selfieFilters['kegiatan'] || 'none';
+  let count = 3;
+  const cntEl = document.getElementById('kegiatan-selfie-countdown');
+  cntEl.style.display = 'flex'; cntEl.textContent = count;
+  const iv = setInterval(() => {
+    count--;
+    if (count > 0) { cntEl.textContent = count; }
+    else {
+      clearInterval(iv); cntEl.style.display = 'none';
+      canvas.width = video.videoWidth || 480; canvas.height = video.videoHeight || 480;
+      const c = canvas.getContext('2d');
+      c.translate(canvas.width, 0); c.scale(-1, 1);
+      c.drawImage(video, 0, 0, canvas.width, canvas.height);
+      c.setTransform(1,0,0,1,0,0);
+      _applyFilterToCanvas(c, canvas, filterName);
+      kegiatanSelfieDataURL = canvas.toDataURL('image/jpeg', 0.6);
+      if (kegiatanSelfieStream) { kegiatanSelfieStream.getTracks().forEach(t => t.stop()); kegiatanSelfieStream = null; }
+      const preview = document.getElementById('kegiatan-selfie-preview');
+      preview.src = kegiatanSelfieDataURL; preview.style.display = 'block';
+      video.style.display = 'none'; video.style.filter = '';
+      document.getElementById('kegiatan-btn-ambil-foto').style.display = 'none';
+      document.getElementById('kegiatan-btn-ulang').style.display = 'inline-block';
+      document.getElementById('kegiatan-btn-lanjut').style.display = 'block';
+      document.getElementById('kegiatan-selfie-status').textContent = '✅ Foto berhasil!';
+      document.getElementById('kegiatan-selfie-status').style.color = 'var(--accent)';
+      hideFilterBar('kegiatan');
+    }
+  }, 1000);
+};
+
+// ── Override kioskAmbilFoto ──
+window.kioskAmbilFoto = function() {
+  const video = document.getElementById('kiosk-selfie-video');
+  const filterName = _selfieFilters['kiosk'] || 'none';
+  let count = 3;
+  const overlay = document.getElementById('kiosk-countdown-overlay');
+  overlay.style.display = 'flex'; overlay.textContent = count;
+  const iv = setInterval(() => {
+    count--;
+    if (count > 0) { overlay.textContent = count; }
+    else {
+      clearInterval(iv); overlay.style.display = 'none';
+      const canvas = document.getElementById('kiosk-selfie-canvas');
+      canvas.width = video.videoWidth || 480; canvas.height = video.videoHeight || 480;
+      const c = canvas.getContext('2d');
+      c.translate(canvas.width, 0); c.scale(-1, 1);
+      c.drawImage(video, 0, 0, canvas.width, canvas.height);
+      c.setTransform(1,0,0,1,0,0);
+      _applyFilterToCanvas(c, canvas, filterName);
+      kioskSelfieDataURL = canvas.toDataURL('image/jpeg', 0.75);
+      if (typeof stopKioskCam === 'function') stopKioskCam();
+      video.style.filter = '';
+      const preview = document.getElementById('kiosk-selfie-preview');
+      preview.src = kioskSelfieDataURL; preview.style.display = 'block';
+      document.getElementById('kiosk-selfie-placeholder').style.display = 'none';
+      document.getElementById('kiosk-btn-ambil').style.display = 'none';
+      document.getElementById('kiosk-btn-ulang').style.display = 'inline-block';
+      document.getElementById('kiosk-btn-lanjut-scan').style.display = 'inline-block';
+      document.getElementById('kiosk-selfie-status').textContent = '✅ Foto berhasil!';
+      document.getElementById('kiosk-selfie-status').style.color = 'var(--accent)';
+      document.getElementById('kiosk-cam-wrapper').style.borderColor = 'var(--accent)';
+      hideFilterBar('kiosk');
+    }
+  }, 1000);
+};
+
+// ── Patch buka kamera — tampilkan filter bar & reset filter ──
+const _origUjicobaBuka2 = window.ujicobaBukaKamera;
+window.ujicobaBukaKamera = async function() {
+  await _origUjicobaBuka2.call(this, ...arguments);
+  setSelfieFilter('ujicoba', 'none');
+  showFilterBar('ujicoba');
+};
+const _origKegiatanBuka2 = window.kegiatanBukaKamera;
+window.kegiatanBukaKamera = async function() {
+  await _origKegiatanBuka2.call(this, ...arguments);
+  setSelfieFilter('kegiatan', 'none');
+  showFilterBar('kegiatan');
+};
+const _origKioskBuka2 = window.kioskBukaKamera;
+window.kioskBukaKamera = async function() {
+  await _origKioskBuka2.call(this, ...arguments);
+  setSelfieFilter('kiosk', 'none');
+  showFilterBar('kiosk');
+};
+
+// ── Patch ulang foto — hide filter bar ──
+const _origUjicobaUlang2 = window.ujicobaUlangFoto;
+window.ujicobaUlangFoto = function() {
+  _origUjicobaUlang2 && _origUjicobaUlang2.call(this, ...arguments);
+  hideFilterBar('ujicoba'); setSelfieFilter('ujicoba','none');
+};
+const _origKegiatanUlang2 = window.kegiatanUlangFoto;
+window.kegiatanUlangFoto = function() {
+  if (kegiatanScannerActive && kegiatanHtml5Scanner){ kegiatanHtml5Scanner.stop().catch(()=>{}); kegiatanScannerActive=false; document.getElementById('kegiatan-btn-scan').innerHTML='▶ Mulai Scan'; }
+  if (typeof resetKegiatanSelfie === 'function') resetKegiatanSelfie();
+  hideFilterBar('kegiatan'); setSelfieFilter('kegiatan','none');
+};
+const _origKioskUlang2 = window.kioskUlangFoto;
+window.kioskUlangFoto = function() {
+  kioskSelfieDataURL = null;
+  if (typeof stopKioskCam === 'function') stopKioskCam();
+  document.getElementById('kiosk-selfie-preview').style.display = 'none';
+  document.getElementById('kiosk-selfie-placeholder').style.display = 'flex';
+  document.getElementById('kiosk-btn-ulang').style.display = 'none';
+  document.getElementById('kiosk-btn-lanjut-scan').style.display = 'none';
+  document.getElementById('kiosk-btn-buka').style.display = 'inline-block';
+  document.getElementById('kiosk-selfie-status').textContent = 'Kamera belum aktif';
+  document.getElementById('kiosk-selfie-status').style.color = 'var(--text3)';
+  document.getElementById('kiosk-cam-wrapper').style.borderColor = 'var(--border2)';
+  if(kioskScannerActive && kioskHtml5Scanner){ kioskHtml5Scanner.stop().catch(()=>{}); kioskScannerActive=false; }
+  document.getElementById('kiosk-selfie-section').style.display = 'block';
+  document.getElementById('kiosk-scan-section').style.display = 'none';
+  if(typeof updateKioskStepIndicator==='function') updateKioskStepIndicator(1);
+  hideFilterBar('kiosk'); setSelfieFilter('kiosk','none');
+};
+
+window.setSelfieFilter = setSelfieFilter;
+window.showFilterBar   = showFilterBar;
+window.hideFilterBar   = hideFilterBar;
+</script>
 
 </body>
 </html>
