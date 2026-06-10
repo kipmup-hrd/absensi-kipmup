@@ -12172,20 +12172,118 @@ window.hideFilterBar   = hideFilterBar;
 
 <!-- ══ FUN FILTER ENGINE v3 — Rebuilt draw functions + Fox/Devil/Skull/Ghost ══ -->
 <script>
-const _funFilters = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
-const _overlayCanvases = {};
+
+// ══════════════════════════════════════════════════════════════════════
+// FUN FILTER SYSTEM v4 — MediaPipe FaceDetection + Canvas 2D
+// Pendekatan: pakai window.FaceDetector (Chrome built-in) sebagai
+// primary, fallback ke face-api bounding box, fallback ke posisi tengah.
+// Loop berjalan di requestAnimationFrame → tracking real-time 30fps.
+// ══════════════════════════════════════════════════════════════════════
+
+const _funFilters   = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
+const _overlayCanvases  = {};
 const _overlayAnimFrames = {};
-const _faceDataCache = {};
-const _heartParticles = {};
+const _heartParticles   = {};
 const _sparkleParticles = {};
-const _ghostParticles = {};
-// Smooth lerp target for face box
-const _faceSmooth = {};
+const _ghostParticles   = {};
+const _faceSmooth       = {};  // lerped display box per ctx
 
 // ── Video ID map ──
 const _VID = { ujicoba:'ujicoba-video', kegiatan:'kegiatan-selfie-video', kiosk:'kiosk-selfie-video' };
 
-// ── Overlay canvas per ctx ──
+// ══════════════════════════════════════════════════════
+// FACE TRACKER — polling loop separate dari render loop
+// Menggunakan BarcodeDetector/FaceDetector API (Chrome),
+// fallback ke face-api jika tersedia.
+// ══════════════════════════════════════════════════════
+const _rawFaceBox = {}; // ctx → {x,y,w,h} dalam display coords (mirrored)
+const _faceDetectorReady = {};
+const _faceDetectors = {};
+
+async function _initFaceDetector(ctx) {
+  if (_faceDetectorReady[ctx]) return;
+  // Opsi 1: Chrome FaceDetector API (built-in, zero download)
+  if ('FaceDetector' in window) {
+    try {
+      _faceDetectors[ctx] = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+      _faceDetectorReady[ctx] = 'native';
+      return;
+    } catch(e) {}
+  }
+  // Opsi 2: face-api jika sudah loaded oleh sistem lain
+  if (typeof faceapi !== 'undefined' && faceapi.nets && faceapi.nets.tinyFaceDetector) {
+    if (!faceapi.nets.tinyFaceDetector.isLoaded) {
+      const URLS = [
+        'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
+        'https://unpkg.com/face-api.js@0.22.2/weights'
+      ];
+      for (const u of URLS) {
+        try { await faceapi.nets.tinyFaceDetector.loadFromUri(u); break; } catch(e) {}
+      }
+    }
+    if (faceapi.nets.tinyFaceDetector.isLoaded) {
+      _faceDetectorReady[ctx] = 'faceapi';
+      return;
+    }
+  }
+  // Opsi 3: tidak ada detector — gunakan posisi tengah (fallback)
+  _faceDetectorReady[ctx] = 'fallback';
+}
+
+async function _runFaceDetect(ctx) {
+  const vid = document.getElementById(_VID[ctx]);
+  if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
+  const W = vid.offsetWidth  || 260;
+  const H = vid.offsetHeight || 260;
+
+  if (!_faceDetectorReady[ctx]) {
+    await _initFaceDetector(ctx);
+  }
+
+  try {
+    if (_faceDetectorReady[ctx] === 'native') {
+      const faces = await _faceDetectors[ctx].detect(vid);
+      if (faces && faces.length > 0) {
+        const b = faces[0].boundingBox;
+        // Video punya CSS scaleX(-1), jadi mirror X
+        const mirroredX = W - b.left - b.width;
+        _rawFaceBox[ctx] = { x: mirroredX, y: b.top, w: b.width, h: b.height };
+      }
+    } else if (_faceDetectorReady[ctx] === 'faceapi') {
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }));
+      if (det) {
+        const box = det.detection ? det.detection.box : det.box;
+        const vw = vid.videoWidth, vh = vid.videoHeight;
+        const scaleX = W / vw, scaleY = H / vh;
+        const mirroredX = W - box.x * scaleX - box.width * scaleX;
+        _rawFaceBox[ctx] = { x: mirroredX, y: box.y * scaleY, w: box.width * scaleX, h: box.height * scaleY };
+      }
+    }
+  } catch(e) {}
+}
+
+// ── Smooth lerp face box → display coords ──
+function _getSmoothedBox(ctx, W, H) {
+  const raw = _rawFaceBox[ctx];
+  let target;
+  if (raw) {
+    target = { fx: raw.x, fy: raw.y, fw: raw.w, fh: raw.h };
+  } else {
+    // Fallback: posisi tengah proporsional
+    const fw = W * 0.50, fh = H * 0.55;
+    target = { fx: (W - fw) / 2, fy: H * 0.10, fw, fh };
+  }
+  if (!_faceSmooth[ctx]) { _faceSmooth[ctx] = { ...target }; return { ...target }; }
+  const s = _faceSmooth[ctx];
+  const a = raw ? 0.30 : 0.08;  // lebih lambat saat fallback agar tidak loncat
+  s.fx += (target.fx - s.fx) * a;
+  s.fy += (target.fy - s.fy) * a;
+  s.fw += (target.fw - s.fw) * a;
+  s.fh += (target.fh - s.fh) * a;
+  return { ...s };
+}
+
+// ── Overlay canvas ──
 function _getOrCreateOverlay(ctx) {
   if (_overlayCanvases[ctx]) return _overlayCanvases[ctx];
   const vid = document.getElementById(_VID[ctx]);
@@ -12203,505 +12301,235 @@ function _getOrCreateOverlay(ctx) {
 function _stopOverlay(ctx) {
   if (_overlayAnimFrames[ctx]) { cancelAnimationFrame(_overlayAnimFrames[ctx]); _overlayAnimFrames[ctx] = null; }
   const oc = _overlayCanvases[ctx];
-  if (oc) { oc.getContext('2d').clearRect(0,0,oc.width,oc.height); }
+  if (oc) oc.getContext('2d').clearRect(0, 0, oc.width, oc.height);
 }
 
-// ── Smooth lerp face box ──
-function _getLerpedFaceBox(ctx, W, H) {
-  const vid = document.getElementById(_VID[ctx]);
-  const fd = _faceDataCache[ctx];
-  let target;
-  if (fd && fd.box && vid && vid.videoWidth) {
-    const vw = vid.videoWidth, vh = vid.videoHeight;
-    const displayAspect = W / H, videoAspect = vw / vh;
-    let scaleX, scaleY, cropX = 0, cropY = 0;
-    if (videoAspect > displayAspect) {
-      scaleY = H / vh; scaleX = scaleY; cropX = (vw * scaleX - W) / 2;
-    } else {
-      scaleX = W / vw; scaleY = scaleX; cropY = (vh * scaleY - H) / 2;
-    }
-    const bx = W - (fd.box.x * scaleX - cropX) - fd.box.width * scaleX;
-    const by = fd.box.y * scaleY - cropY;
-    target = { fx: bx, fy: Math.max(0, by), fw: fd.box.width * scaleX, fh: fd.box.height * scaleY };
-  } else {
-    const fw = W * 0.44, fh = H * 0.50;
-    target = { fx: (W - fw) / 2, fy: H * 0.13, fw, fh };
-  }
-  // Init smooth if needed
-  if (!_faceSmooth[ctx]) { _faceSmooth[ctx] = { ...target }; return target; }
-  const s = _faceSmooth[ctx], a = 0.35; // lerp factor — faster tracking
-  s.fx += (target.fx - s.fx) * a;
-  s.fy += (target.fy - s.fy) * a;
-  s.fw += (target.fw - s.fw) * a;
-  s.fh += (target.fh - s.fh) * a;
-  return { ...s };
-}
-
-// ══ DRAWING FUNCTIONS v3 ══
-
-// Blush — soft radial gradient circles
+// ══════════════════════════════════════
+// DRAWING HELPERS
+// ══════════════════════════════════════
 function _drawBlush(c, fx, fy, fw, fh, color) {
   const br = fw * 0.12, by = fy + fh * 0.62;
-  const lx = fx + fw * 0.17, rx = fx + fw * 0.83;
-  [lx, rx].forEach(x => {
+  [fx + fw * 0.17, fx + fw * 0.83].forEach(x => {
     const g = c.createRadialGradient(x, by, 0, x, by, br * 1.4);
     g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
     c.save(); c.fillStyle = g;
-    c.beginPath(); c.ellipse(x, by, br * 1.4, br * 0.85, 0, 0, Math.PI*2); c.fill(); c.restore();
+    c.beginPath(); c.ellipse(x, by, br * 1.4, br * 0.85, 0, 0, Math.PI * 2); c.fill(); c.restore();
   });
 }
-
-// Nose — oval with highlight
 function _drawNose(c, fx, fy, fw, fh, color) {
-  const nx = fx + fw * 0.5, ny = fy + fh * 0.60;
-  const nw = fw * 0.075, nh = fw * 0.048;
+  const nx = fx + fw * 0.5, ny = fy + fh * 0.60, nw = fw * 0.075, nh = fw * 0.048;
   c.save(); c.fillStyle = color;
-  c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill();
-  // highlight
+  c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = 'rgba(255,255,255,0.4)';
-  c.beginPath(); c.ellipse(nx - nw*0.3, ny - nh*0.3, nw*0.35, nh*0.3, -0.4, 0, Math.PI*2); c.fill();
+  c.beginPath(); c.ellipse(nx - nw * 0.3, ny - nh * 0.3, nw * 0.35, nh * 0.3, -0.4, 0, Math.PI * 2); c.fill();
   c.restore();
 }
-
-// Whiskers — 3 per side, fanned out naturally
 function _drawWhiskers(c, fx, fy, fw, fh, color) {
-  const cx = fx + fw * 0.5, cy = fy + fh * 0.60;
-  const wLen = fw * 0.30;
+  const cx = fx + fw * 0.5, cy = fy + fh * 0.60, wLen = fw * 0.30;
   c.save(); c.strokeStyle = color; c.lineWidth = Math.max(1, fw * 0.013); c.globalAlpha = 0.72;
-  c.lineCap = 'round';
-  const angles = [[-0.15, 0, 0.15], [Math.PI + 0.15, Math.PI, Math.PI - 0.15]];
-  angles.forEach((side, si) => {
-    side.forEach(a => {
-      const gapX = si === 0 ? -fw*0.07 : fw*0.07;
-      c.beginPath();
-      c.moveTo(cx + gapX, cy);
-      c.lineTo(cx + gapX + Math.cos(a) * wLen, cy + Math.sin(a) * wLen * 0.35);
-      c.stroke();
-    });
+  [[-1, -0.12], [-1, 0.0], [-1, 0.12], [1, -0.12], [1, 0.0], [1, 0.12]].forEach(([dir, angle]) => {
+    const ex = cx + dir * (fw * 0.08), ey = cy;
+    c.save(); c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(ex, ey + fh * angle);
+    c.lineTo(ex + dir * wLen, ey + fh * (angle - 0.04));
+    c.stroke(); c.restore();
   });
   c.restore();
 }
 
-// ── CAT — pointy ears with fur detail, big round eyes hint, detailed nose+mouth ──
+// CAT
 function _drawCatEars(c, fx, fy, fw, fh) {
-  const earW = fw * 0.24, earH = fw * 0.30;
-  const lx = fx + fw * 0.21, rx = fx + fw * 0.79;
-  const baseY = fy + fw * 0.02;
-  const tipY = fy - earH * 0.82;
-  [[lx],[rx]].forEach(([ex]) => {
-    // shadow/depth
+  const earW = fw * 0.20, earH = fw * 0.26;
+  [[fx + fw * 0.18, 1], [fx + fw * 0.82, -1]].forEach(([ex, dir]) => {
     c.save(); c.shadowColor = 'rgba(0,0,0,0.25)'; c.shadowBlur = 6;
-    c.fillStyle = '#e8829c';
+    c.fillStyle = '#e88';
     c.beginPath();
-    c.moveTo(ex - earW/2, baseY);
-    c.quadraticCurveTo(ex - earW*0.55, tipY + earH*0.2, ex, tipY);
-    c.quadraticCurveTo(ex + earW*0.55, tipY + earH*0.2, ex + earW/2, baseY);
+    c.moveTo(ex - dir * earW * 0.5, fy + fh * 0.04);
+    c.lineTo(ex, fy - earH);
+    c.lineTo(ex + dir * earW * 0.5, fy + fh * 0.04);
     c.closePath(); c.fill(); c.restore();
-    // inner ear
-    c.save(); c.fillStyle = '#ff6fa0';
-    const iW = earW * 0.48, iH = earH * 0.60;
+    c.save(); c.fillStyle = '#ffaaaa'; c.globalAlpha = 0.7;
     c.beginPath();
-    c.moveTo(ex - iW/2, baseY - fw*0.01);
-    c.quadraticCurveTo(ex - iW*0.45, tipY + earH*0.32, ex, tipY + earH*0.14);
-    c.quadraticCurveTo(ex + iW*0.45, tipY + earH*0.32, ex + iW/2, baseY - fw*0.01);
+    c.moveTo(ex - dir * earW * 0.25, fy + fh * 0.04);
+    c.lineTo(ex, fy - earH * 0.72);
+    c.lineTo(ex + dir * earW * 0.25, fy + fh * 0.04);
     c.closePath(); c.fill(); c.restore();
-    // fur tufts at tip
-    c.save(); c.strokeStyle = '#c05070'; c.lineWidth = Math.max(1, fw*0.018); c.lineCap = 'round'; c.globalAlpha = 0.7;
-    c.beginPath(); c.moveTo(ex, tipY); c.lineTo(ex, tipY - fw*0.06); c.stroke();
-    c.beginPath(); c.moveTo(ex, tipY); c.lineTo(ex - fw*0.04, tipY - fw*0.05); c.stroke();
-    c.beginPath(); c.moveTo(ex, tipY); c.lineTo(ex + fw*0.04, tipY - fw*0.05); c.stroke();
-    c.restore();
   });
-  // Cat nose (heart-shaped)
-  const nx = fx + fw*0.5, ny = fy + fh*0.595;
-  const ns = fw * 0.045;
-  c.save(); c.fillStyle = '#d0305a';
-  c.beginPath();
-  c.moveTo(nx, ny + ns*0.5);
-  c.bezierCurveTo(nx - ns*1.1, ny - ns*0.6, nx - ns*2, ny + ns*0.4, nx, ny + ns*1.4);
-  c.bezierCurveTo(nx + ns*2, ny + ns*0.4, nx + ns*1.1, ny - ns*0.6, nx, ny + ns*0.5);
-  c.fill(); c.restore();
-  // Cat mouth
-  c.save(); c.strokeStyle = '#b02050'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round'; c.globalAlpha = 0.85;
-  c.beginPath(); c.moveTo(nx, ny + ns*1.4);
-  c.quadraticCurveTo(nx - fw*0.07, ny + fh*0.09, nx - fw*0.13, ny + fh*0.07); c.stroke();
-  c.beginPath(); c.moveTo(nx, ny + ns*1.4);
-  c.quadraticCurveTo(nx + fw*0.07, ny + fh*0.09, nx + fw*0.13, ny + fh*0.07); c.stroke();
-  c.restore();
 }
 
-// ── BUNNY — tall ears with vein detail, soft pink nose, cute blush ──
+// BUNNY
 function _drawBunnyEars(c, fx, fy, fw, fh) {
-  const earW = fw * 0.18, earH = fw * 0.60;
-  const lx = fx + fw * 0.27, rx = fx + fw * 0.73;
-  const tilt = 0.07;
-  [[lx, -tilt],[rx, tilt]].forEach(([ex, t]) => {
+  const earW = fw * 0.13, earH = fh * 0.68;
+  [[fx + fw * 0.30], [fx + fw * 0.70]].forEach(([ex]) => {
     c.save(); c.shadowColor = 'rgba(0,0,0,0.2)'; c.shadowBlur = 8;
-    // outer ear — slightly tilted
-    c.fillStyle = '#f0cce0';
-    c.beginPath();
-    c.ellipse(ex + t*fw, fy - earH*0.44, earW/2, earH/2, t*0.5, 0, Math.PI*2);
-    c.fill(); c.restore();
-    // inner ear gradient
-    const ig = c.createLinearGradient(ex, fy - earH, ex, fy);
-    ig.addColorStop(0, '#ff8abf'); ig.addColorStop(1, '#ffb8d8');
-    c.save(); c.fillStyle = ig;
-    c.beginPath();
-    c.ellipse(ex + t*fw, fy - earH*0.44, earW*0.30, earH*0.40, t*0.5, 0, Math.PI*2);
-    c.fill(); c.restore();
-    // vein line
-    c.save(); c.strokeStyle = 'rgba(200,80,130,0.3)'; c.lineWidth = Math.max(1, fw*0.01); c.lineCap = 'round';
-    c.beginPath(); c.moveTo(ex + t*fw, fy - earH*0.08); c.lineTo(ex + t*fw, fy - earH*0.80); c.stroke();
-    c.restore();
+    c.fillStyle = '#f0d8e8';
+    c.beginPath(); c.ellipse(ex, fy - earH * 0.42, earW, earH * 0.52, 0, 0, Math.PI * 2); c.fill(); c.restore();
+    c.save(); c.fillStyle = '#ffaacc'; c.globalAlpha = 0.65;
+    c.beginPath(); c.ellipse(ex, fy - earH * 0.42, earW * 0.48, earH * 0.42, 0, 0, Math.PI * 2); c.fill(); c.restore();
   });
-  // Bunny nose
-  _drawNose(c, fx, fy, fw, fh, '#e03880');
-  // Bunny mouth
-  const nx = fx + fw*0.5, ny = fy + fh*0.605;
-  c.save(); c.strokeStyle = '#b02060'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round'; c.globalAlpha = 0.8;
-  c.beginPath(); c.moveTo(nx, ny + fw*0.028);
-  c.quadraticCurveTo(nx - fw*0.06, ny + fh*0.075, nx - fw*0.11, ny + fh*0.06); c.stroke();
-  c.beginPath(); c.moveTo(nx, ny + fw*0.028);
-  c.quadraticCurveTo(nx + fw*0.06, ny + fh*0.075, nx + fw*0.11, ny + fh*0.06); c.stroke();
-  c.restore();
 }
 
-// ── BEAR — round ears with texture, snout muzzle, brown nose ──
+// BEAR
 function _drawBearEars(c, fx, fy, fw, fh) {
-  const er = fw * 0.145;
-  const lx = fx + fw * 0.14, rx = fx + fw * 0.86;
-  const ey = fy - er * 0.25;
-  [[lx],[rx]].forEach(([ex]) => {
-    c.save(); c.shadowColor = 'rgba(0,0,0,0.3)'; c.shadowBlur = 7;
-    c.fillStyle = '#a06030'; c.beginPath(); c.arc(ex, ey, er, 0, Math.PI*2); c.fill(); c.restore();
-    // inner circle gradient
-    const ig = c.createRadialGradient(ex - er*0.2, ey - er*0.2, 0, ex, ey, er*0.65);
-    ig.addColorStop(0, '#f0a060'); ig.addColorStop(1, '#d07840');
-    c.save(); c.fillStyle = ig; c.beginPath(); c.arc(ex, ey, er * 0.60, 0, Math.PI*2); c.fill(); c.restore();
+  const er = fw * 0.14;
+  [[fx + fw * 0.15], [fx + fw * 0.85]].forEach(([ex]) => {
+    c.save(); c.shadowColor = 'rgba(0,0,0,0.3)'; c.shadowBlur = 6;
+    const g = c.createRadialGradient(ex - er * 0.2, fy - er * 0.2, 0, ex, fy, er);
+    g.addColorStop(0, '#c88040'); g.addColorStop(1, '#7a4020');
+    c.fillStyle = g; c.beginPath(); c.arc(ex, fy, er, 0, Math.PI * 2); c.fill(); c.restore();
+    c.save(); c.fillStyle = '#e8a060'; c.globalAlpha = 0.7;
+    c.beginPath(); c.arc(ex, fy, er * 0.55, 0, Math.PI * 2); c.fill(); c.restore();
   });
-  // Bear muzzle — oval snout
-  const mx = fx + fw*0.5, my = fy + fh*0.585, mw = fw*0.28, mh = fw*0.17;
-  c.save(); c.shadowColor = 'rgba(0,0,0,0.15)'; c.shadowBlur = 5;
-  const mg = c.createRadialGradient(mx, my - mh*0.1, 0, mx, my, mw);
-  mg.addColorStop(0, '#f5c890'); mg.addColorStop(1, '#e0a060');
-  c.fillStyle = mg;
-  c.beginPath(); c.ellipse(mx, my, mw, mh, 0, 0, Math.PI*2); c.fill(); c.restore();
-  // Muzzle divider line
-  c.save(); c.strokeStyle = 'rgba(140,80,20,0.35)'; c.lineWidth = Math.max(1, fw*0.012); c.lineCap = 'round';
-  c.beginPath(); c.moveTo(mx, my - mh*0.3); c.lineTo(mx, my + mh*0.2); c.stroke(); c.restore();
-  // Bear nose
-  const nx = fx + fw*0.5, ny = fy + fh*0.568;
-  const nw = fw*0.085, nh = fw*0.052;
-  const ng = c.createRadialGradient(nx - nw*0.3, ny - nh*0.3, 0, nx, ny, nw);
-  ng.addColorStop(0, '#4a2010'); ng.addColorStop(1, '#1a0808');
-  c.save(); c.fillStyle = ng; c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill();
-  c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.ellipse(nx-nw*0.35, ny-nh*0.35, nw*0.3, nh*0.25, -0.3, 0, Math.PI*2); c.fill();
-  c.restore();
-  // Bear mouth
-  c.save(); c.strokeStyle = '#7a3010'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round'; c.globalAlpha = 0.75;
-  c.beginPath(); c.moveTo(nx, ny + nh);
-  c.quadraticCurveTo(nx - fw*0.065, my + mh*0.55, nx - fw*0.12, my + mh*0.40); c.stroke();
-  c.beginPath(); c.moveTo(nx, ny + nh);
-  c.quadraticCurveTo(nx + fw*0.065, my + mh*0.55, nx + fw*0.12, my + mh*0.40); c.stroke();
-  c.restore();
 }
 
-// ── DOG — floppy fur ears, snout, wet nose ──
+// DOG
 function _drawDogEars(c, fx, fy, fw, fh) {
   const earW = fw * 0.22, earH = fh * 0.50;
-  const lx = fx + fw * 0.04, rx = fx + fw * 0.96;
-  [[lx, 1],[rx, -1]].forEach(([ex, dir]) => {
+  [[fx + fw * 0.04, 1], [fx + fw * 0.96, -1]].forEach(([ex, dir]) => {
     c.save(); c.shadowColor = 'rgba(0,0,0,0.3)'; c.shadowBlur = 8;
-    // Ear gradient — fur-like
-    const eg = c.createLinearGradient(ex, fy, ex - dir*earW, fy + earH);
-    eg.addColorStop(0, '#b07030'); eg.addColorStop(0.5, '#c88040'); eg.addColorStop(1, '#a05820');
+    const eg = c.createLinearGradient(ex, fy, ex - dir * earW, fy + earH);
+    eg.addColorStop(0, '#b07030'); eg.addColorStop(1, '#a05820');
     c.fillStyle = eg;
     c.beginPath();
-    c.moveTo(ex + dir*fw*0.04, fy + fh * 0.06);
-    c.bezierCurveTo(ex + dir*earW*0.5, fy - fh*0.04, ex - dir*earW*1.1, fy + earH*0.3, ex - dir*earW*0.85, fy + earH*1.0);
-    c.bezierCurveTo(ex - dir*earW*0.55, fy + earH*1.12, ex + dir*earW*0.1, fy + fh*0.18, ex + dir*fw*0.04, fy + fh*0.06);
-    c.closePath(); c.fill(); c.restore();
-    // inner ear lighter
-    c.save(); c.globalAlpha = 0.5;
-    c.fillStyle = '#e8a860';
-    c.beginPath();
-    c.moveTo(ex + dir*fw*0.03, fy + fh * 0.10);
-    c.bezierCurveTo(ex + dir*earW*0.3, fy + fh*0.05, ex - dir*earW*0.7, fy + earH*0.4, ex - dir*earW*0.55, fy + earH*0.88);
-    c.bezierCurveTo(ex - dir*earW*0.35, fy + earH*0.95, ex + dir*earW*0.05, fy + fh*0.22, ex + dir*fw*0.03, fy + fh*0.10);
+    c.moveTo(ex + dir * fw * 0.04, fy + fh * 0.06);
+    c.bezierCurveTo(ex + dir * earW * 0.5, fy - fh * 0.04, ex - dir * earW * 1.1, fy + earH * 0.3, ex - dir * earW * 0.85, fy + earH);
+    c.bezierCurveTo(ex - dir * earW * 0.55, fy + earH * 1.12, ex + dir * earW * 0.1, fy + fh * 0.18, ex + dir * fw * 0.04, fy + fh * 0.06);
     c.closePath(); c.fill(); c.restore();
   });
-  // Dog snout muzzle
-  const mx = fx + fw*0.5, my = fy + fh*0.590, mw = fw*0.26, mh = fw*0.155;
-  c.save(); c.shadowColor = 'rgba(0,0,0,0.12)'; c.shadowBlur = 4;
-  c.fillStyle = '#f5dab0';
-  c.beginPath(); c.ellipse(mx, my, mw, mh, 0, 0, Math.PI*2); c.fill(); c.restore();
-  // Dog nose — big oval
-  const nx = fx + fw*0.5, ny = fy + fh*0.565;
-  const nw = fw*0.095, nh = fw*0.060;
-  const ng = c.createRadialGradient(nx - nw*0.3, ny - nh*0.3, 0, nx, ny, nw);
-  ng.addColorStop(0, '#302010'); ng.addColorStop(1, '#080404');
-  c.save(); c.fillStyle = ng; c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill();
-  // wet nose highlight
-  c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.ellipse(nx-nw*0.32, ny-nh*0.32, nw*0.32, nh*0.26, -0.3, 0, Math.PI*2); c.fill();
-  c.restore();
-  // Dog mouth
-  c.save(); c.strokeStyle = '#7a4010'; c.lineWidth = Math.max(1.5, fw*0.017); c.lineCap = 'round'; c.globalAlpha = 0.8;
-  c.beginPath(); c.moveTo(nx, ny + nh);
-  c.quadraticCurveTo(nx - fw*0.07, my + mh*0.6, nx - fw*0.13, my + mh*0.42); c.stroke();
-  c.beginPath(); c.moveTo(nx, ny + nh);
-  c.quadraticCurveTo(nx + fw*0.07, my + mh*0.6, nx + fw*0.13, my + mh*0.42); c.stroke();
-  c.restore();
 }
 
-// ── FOX — pointed ears with black tips, orange snout, sharp markings ──
+// FOX
 function _drawFox(c, fx, fy, fw, fh) {
   const earW = fw * 0.22, earH = fw * 0.33;
-  const lx = fx + fw * 0.20, rx = fx + fw * 0.80;
-  const baseY = fy + fw*0.02, tipY = fy - earH * 0.88;
-  [[lx],[rx]].forEach(([ex]) => {
-    // Orange ear
-    c.save(); c.shadowColor = 'rgba(0,0,0,0.25)'; c.shadowBlur = 6;
-    c.fillStyle = '#e06820';
+  [fx + fw * 0.20, fx + fw * 0.80].forEach(ex => {
+    const tipY = fy - earH * 0.88, baseY = fy + fw * 0.02;
+    c.save(); c.fillStyle = '#e06820';
     c.beginPath();
-    c.moveTo(ex - earW/2, baseY);
-    c.quadraticCurveTo(ex - earW*0.52, tipY + earH*0.18, ex, tipY);
-    c.quadraticCurveTo(ex + earW*0.52, tipY + earH*0.18, ex + earW/2, baseY);
+    c.moveTo(ex - earW / 2, baseY); c.quadraticCurveTo(ex - earW * 0.52, tipY + earH * 0.18, ex, tipY);
+    c.quadraticCurveTo(ex + earW * 0.52, tipY + earH * 0.18, ex + earW / 2, baseY);
     c.closePath(); c.fill(); c.restore();
-    // Black ear tip
     c.save(); c.fillStyle = '#1a1008';
     c.beginPath();
-    c.moveTo(ex - earW*0.28, tipY + earH*0.28);
-    c.quadraticCurveTo(ex - earW*0.18, tipY + earH*0.05, ex, tipY);
-    c.quadraticCurveTo(ex + earW*0.18, tipY + earH*0.05, ex + earW*0.28, tipY + earH*0.28);
+    c.moveTo(ex - earW * 0.28, tipY + earH * 0.28); c.quadraticCurveTo(ex, tipY - earH * 0.05, ex + earW * 0.28, tipY + earH * 0.28);
     c.closePath(); c.fill(); c.restore();
-    // White inner
     c.save(); c.fillStyle = '#f8ece0'; c.globalAlpha = 0.85;
     c.beginPath();
-    c.moveTo(ex - earW*0.18, baseY);
-    c.quadraticCurveTo(ex - earW*0.22, tipY + earH*0.42, ex, tipY + earH*0.28);
-    c.quadraticCurveTo(ex + earW*0.22, tipY + earH*0.42, ex + earW*0.18, baseY);
+    c.moveTo(ex - earW * 0.18, baseY); c.quadraticCurveTo(ex, tipY + earH * 0.35, ex + earW * 0.18, baseY);
     c.closePath(); c.fill(); c.restore();
   });
-  // White facial mask stripe
-  c.save(); c.globalAlpha = 0.55; c.fillStyle = '#f8ece8';
-  c.beginPath(); c.ellipse(fx + fw*0.5, fy + fh*0.44, fw*0.30, fh*0.22, 0, 0, Math.PI*2); c.fill(); c.restore();
-  // Fox snout
-  const mx = fx + fw*0.5, my = fy + fh*0.588, mw = fw*0.24, mh = fw*0.14;
-  c.save(); c.fillStyle = '#f5daba'; c.shadowColor='rgba(0,0,0,0.1)'; c.shadowBlur=4;
-  c.beginPath(); c.ellipse(mx, my, mw, mh, 0, 0, Math.PI*2); c.fill(); c.restore();
-  // Fox nose — small dark
-  const nx = fx + fw*0.5, ny = fy + fh*0.565, nw = fw*0.07, nh = fw*0.044;
-  c.save(); c.fillStyle = '#1a0808'; c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill();
-  c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.ellipse(nx-nw*0.35, ny-nh*0.35, nw*0.3, nh*0.25, -0.3, 0, Math.PI*2); c.fill();
-  c.restore();
-  // Fox mouth
-  c.save(); c.strokeStyle = '#8a3010'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round'; c.globalAlpha = 0.8;
-  c.beginPath(); c.moveTo(nx, ny + nh);
-  c.quadraticCurveTo(nx - fw*0.06, my + mh*0.55, nx - fw*0.11, my + mh*0.38); c.stroke();
-  c.beginPath(); c.moveTo(nx, ny + nh);
-  c.quadraticCurveTo(nx + fw*0.06, my + mh*0.55, nx + fw*0.11, my + mh*0.38); c.stroke();
-  c.restore();
-  // Whiskers
-  _drawWhiskers(c, fx, fy, fw, fh, '#8a4010');
 }
 
-// ── CROWN ── (kept, improved gems + glow)
+// CROWN
 function _drawCrown(c, fx, fy, fw) {
-  const cw = fw * 0.72, ch = fw * 0.30;
-  const cx = fx + fw * 0.5, cy = fy - ch * 0.25;
-  const x0 = cx - cw/2;
-  c.save();
-  c.shadowColor = 'rgba(255,200,0,0.5)'; c.shadowBlur = 18;
-  const grad = c.createLinearGradient(x0, cy-ch, x0, cy);
-  grad.addColorStop(0, '#fff176'); grad.addColorStop(0.4, '#ffd740'); grad.addColorStop(1, '#e65100');
-  c.fillStyle = grad;
+  const cx = fx + fw / 2, cy = fy - fw * 0.06, cw = fw * 0.7, ch = fw * 0.22;
+  c.save(); c.shadowColor = 'rgba(255,200,0,0.7)'; c.shadowBlur = 16;
+  const gg = c.createLinearGradient(cx - cw / 2, cy - ch, cx + cw / 2, cy);
+  gg.addColorStop(0, '#ffe033'); gg.addColorStop(0.5, '#fff176'); gg.addColorStop(1, '#ffb300');
+  c.fillStyle = gg;
   c.beginPath();
-  c.moveTo(x0, cy);
-  c.lineTo(x0, cy - ch*0.52);
-  c.lineTo(x0 + cw*0.18, cy - ch*0.22);
-  c.lineTo(x0 + cw*0.38, cy - ch);
-  c.lineTo(x0 + cw*0.50, cy - ch*0.28);
-  c.lineTo(x0 + cw*0.62, cy - ch);
-  c.lineTo(x0 + cw*0.82, cy - ch*0.22);
-  c.lineTo(x0 + cw, cy - ch*0.52);
-  c.lineTo(x0 + cw, cy);
-  c.closePath(); c.fill();
-  c.strokeStyle = '#bf6f00'; c.lineWidth = Math.max(1.5, fw*0.016); c.stroke();
-  c.restore();
-  // Gems with glow
-  [[0.18,'#ff3399'],[0.50,'#e040fb'],[0.82,'#29b6f6']].forEach(([t, col]) => {
-    const gx = x0 + cw*t, gy = cy - ch*0.22, gr2 = fw*0.032;
-    const gg = c.createRadialGradient(gx-gr2*0.3, gy-gr2*0.3, 0, gx, gy, gr2);
-    gg.addColorStop(0, '#fff'); gg.addColorStop(0.3, col); gg.addColorStop(1, col+'aa');
-    c.save(); c.shadowColor = col; c.shadowBlur = 10;
-    c.fillStyle = gg; c.beginPath(); c.arc(gx, gy, gr2, 0, Math.PI*2); c.fill(); c.restore();
+  c.moveTo(cx - cw / 2, cy); c.lineTo(cx - cw / 2, cy - ch * 0.6);
+  c.lineTo(cx - cw * 0.25, cy - ch); c.lineTo(cx, cy - ch * 0.55);
+  c.lineTo(cx + cw * 0.25, cy - ch); c.lineTo(cx + cw / 2, cy - ch * 0.6);
+  c.lineTo(cx + cw / 2, cy); c.closePath(); c.fill();
+  [['#e53935', cx - cw * 0.28, cy - ch * 0.3], ['#1e88e5', cx, cy - ch * 0.42], ['#43a047', cx + cw * 0.28, cy - ch * 0.3]].forEach(([col, gx, gy]) => {
+    c.fillStyle = col; c.save(); c.shadowColor = col; c.shadowBlur = 8;
+    c.beginPath(); c.arc(gx, gy, fw * 0.038, 0, Math.PI * 2); c.fill(); c.restore();
   });
+  c.restore();
 }
 
-// ── DEVIL — red horns, dark shadow under eyes, crimson blush ──
 function _drawDevil(c, fx, fy, fw, fh) {
-  const hW = fw * 0.14, hH = fw * 0.28;
-  const lx = fx + fw * 0.22, rx = fx + fw * 0.78;
-  [[lx],[rx]].forEach(([hx]) => {
-    c.save(); c.shadowColor = 'rgba(180,0,0,0.5)'; c.shadowBlur = 12;
-    const hg = c.createLinearGradient(hx, fy - hH, hx, fy);
-    hg.addColorStop(0, '#cc0000'); hg.addColorStop(1, '#8b0000');
-    c.fillStyle = hg;
-    c.beginPath();
-    c.moveTo(hx - hW/2, fy + fw*0.01);
-    c.quadraticCurveTo(hx - hW*0.6, fy - hH*0.3, hx, fy - hH);
-    c.quadraticCurveTo(hx + hW*0.6, fy - hH*0.3, hx + hW/2, fy + fw*0.01);
-    c.closePath(); c.fill(); c.restore();
-    // horn highlight
-    c.save(); c.globalAlpha = 0.4; c.fillStyle = '#ff6666';
-    c.beginPath();
-    c.moveTo(hx - hW*0.15, fy + fw*0.005);
-    c.quadraticCurveTo(hx - hW*0.22, fy - hH*0.38, hx + hW*0.05, fy - hH*0.82);
-    c.quadraticCurveTo(hx + hW*0.18, fy - hH*0.38, hx + hW*0.05, fy + fw*0.005);
+  const hornH = fw * 0.22;
+  [fx + fw * 0.25, fx + fw * 0.75].forEach(hx => {
+    c.save(); c.fillStyle = '#cc1111'; c.shadowColor = '#ff3333'; c.shadowBlur = 12;
+    c.beginPath(); c.moveTo(hx - fw * 0.10, fy + fh * 0.04);
+    c.quadraticCurveTo(hx - fw * 0.04, fy - hornH * 0.3, hx, fy - hornH);
+    c.quadraticCurveTo(hx + fw * 0.04, fy - hornH * 0.3, hx + fw * 0.10, fy + fh * 0.04);
     c.closePath(); c.fill(); c.restore();
   });
-  // Dark shadow under eyes
-  c.save(); c.globalAlpha = 0.38;
-  const lEye = fx + fw*0.33, rEye = fx + fw*0.67, eyeY = fy + fh*0.35, ew = fw*0.10, eh = fw*0.055;
-  [lEye, rEye].forEach(ex => {
-    const sg = c.createRadialGradient(ex, eyeY, 0, ex, eyeY, ew);
-    sg.addColorStop(0, '#550000'); sg.addColorStop(1, 'transparent');
-    c.fillStyle = sg; c.beginPath(); c.ellipse(ex, eyeY + eh, ew, eh, 0, 0, Math.PI*2); c.fill();
-  });
-  c.restore();
-  // Crimson blush
-  _drawBlush(c, fx, fy, fw, fh, 'rgba(160,0,30,0.45)');
+  _drawBlush(c, fx, fy, fw, fh, 'rgba(200,20,20,0.35)');
 }
 
-// ── SKULL — white skull overlay: eye sockets, nose hole, teeth ──
+// SKULL
 function _drawSkull(c, fx, fy, fw, fh) {
-  // Semi-transparent skull face wash
-  c.save(); c.globalAlpha = 0.22; c.fillStyle = '#e8e8e8';
-  c.beginPath(); c.ellipse(fx + fw*0.5, fy + fh*0.42, fw*0.44, fh*0.50, 0, 0, Math.PI*2); c.fill(); c.restore();
-  // Eye sockets — dark ovals
-  const lEye = fx + fw*0.33, rEye = fx + fw*0.67, eyeY = fy + fh*0.36, ew = fw*0.115, eh = fw*0.09;
-  [lEye, rEye].forEach(ex => {
-    const eg = c.createRadialGradient(ex, eyeY, 0, ex, eyeY, ew);
-    eg.addColorStop(0, 'rgba(0,0,0,0.92)'); eg.addColorStop(0.7, 'rgba(10,10,10,0.80)'); eg.addColorStop(1, 'transparent');
-    c.save(); c.fillStyle = eg; c.beginPath(); c.ellipse(ex, eyeY, ew, eh, 0, 0, Math.PI*2); c.fill(); c.restore();
+  c.save(); c.globalAlpha = 0.82; c.fillStyle = '#f0f0f0';
+  c.beginPath(); c.ellipse(fx + fw * 0.5, fy + fh * 0.42, fw * 0.44, fh * 0.50, 0, 0, Math.PI * 2); c.fill(); c.restore();
+  [fx + fw * 0.33, fx + fw * 0.67].forEach(ex => {
+    const eg = c.createRadialGradient(ex, fy + fh * 0.36, 0, ex, fy + fh * 0.36, fw * 0.115);
+    eg.addColorStop(0, 'rgba(0,0,0,0.92)'); eg.addColorStop(1, 'transparent');
+    c.save(); c.fillStyle = eg; c.beginPath(); c.ellipse(ex, fy + fh * 0.36, fw * 0.115, fw * 0.09, 0, 0, Math.PI * 2); c.fill(); c.restore();
   });
-  // Nose cavity
-  const nx = fx + fw*0.5, ny = fy + fh*0.575, nw = fw*0.07, nh = fw*0.065;
-  c.save();
-  const ng = c.createRadialGradient(nx, ny, 0, nx, ny, nw);
-  ng.addColorStop(0, 'rgba(0,0,0,0.88)'); ng.addColorStop(1, 'transparent');
-  c.fillStyle = ng; c.beginPath(); c.ellipse(nx, ny, nw, nh, 0, 0, Math.PI*2); c.fill(); c.restore();
-  // Teeth
-  const teethY = fy + fh*0.72, teethW = fw*0.36, toothW = teethW/5, toothH = fw*0.065;
-  c.save(); c.shadowColor = 'rgba(0,0,0,0.4)'; c.shadowBlur = 4;
   for (let i = 0; i < 5; i++) {
-    const tx = fx + fw*0.5 - teethW/2 + i*toothW;
-    c.fillStyle = i%2===0 ? '#f0f0f0' : '#d8d8d8';
-    c.beginPath();
-    c.roundRect ? c.roundRect(tx + 1, teethY, toothW - 2, toothH, [2,2,5,5]) :
-      (() => { c.rect(tx+1, teethY, toothW-2, toothH); })();
-    c.fill();
+    const tx = fx + fw * 0.5 - fw * 0.18 + i * (fw * 0.072);
+    c.fillStyle = i % 2 === 0 ? '#f0f0f0' : '#d8d8d8';
+    c.fillRect(tx + 1, fy + fh * 0.72, fw * 0.065, fw * 0.065);
   }
-  c.restore();
-  // Crack line on forehead
-  c.save(); c.strokeStyle = 'rgba(50,50,50,0.55)'; c.lineWidth = Math.max(1, fw*0.012); c.lineCap = 'round';
-  c.beginPath();
-  c.moveTo(fx + fw*0.50, fy + fh*0.08);
-  c.lineTo(fx + fw*0.52, fy + fh*0.18);
-  c.lineTo(fx + fw*0.48, fy + fh*0.26);
-  c.stroke(); c.restore();
 }
 
-// ── GHOST — floating wispy ghost above head + face overlay ──
+// GHOST
 function _initGhost(ctx) {
-  _ghostParticles[ctx] = Array.from({length: 6}, (_, i) => ({
-    phase: (i / 6) * Math.PI * 2, speed: 0.6 + Math.random()*0.5,
-    ox: -0.18 + i*0.07, size: 0.08 + Math.random()*0.05
+  _ghostParticles[ctx] = Array.from({ length: 6 }, (_, i) => ({
+    phase: (i / 6) * Math.PI * 2, speed: 0.6 + Math.random() * 0.5, size: 0.08 + Math.random() * 0.05
   }));
 }
 function _drawGhost(c, fx, fy, fw, fh, ctx) {
   const t = Date.now() / 1000;
-  // Ghostly face wash — cold blue-white
-  c.save(); c.globalAlpha = 0.18; c.fillStyle = '#b0e0ff';
-  c.beginPath(); c.ellipse(fx + fw*0.5, fy + fh*0.42, fw*0.44, fh*0.50, 0, 0, Math.PI*2); c.fill(); c.restore();
-  // Ghost floating above head
-  const gx = fx + fw*0.5, gy = fy - fw*0.30 + Math.sin(t*1.2)*fw*0.04;
+  const gx = fx + fw * 0.5, gy = fy - fw * 0.30 + Math.sin(t * 1.2) * fw * 0.04;
   const gw = fw * 0.36, gh = fw * 0.44;
   c.save(); c.shadowColor = 'rgba(140,220,255,0.6)'; c.shadowBlur = 20;
-  const gg = c.createRadialGradient(gx, gy - gh*0.1, 0, gx, gy + gh*0.1, gw);
-  gg.addColorStop(0, 'rgba(220,240,255,0.96)'); gg.addColorStop(0.7, 'rgba(180,220,255,0.80)'); gg.addColorStop(1, 'rgba(140,200,255,0.0)');
+  const gg = c.createRadialGradient(gx, gy, 0, gx, gy + gh * 0.1, gw);
+  gg.addColorStop(0, 'rgba(220,240,255,0.96)'); gg.addColorStop(1, 'rgba(140,200,255,0.0)');
   c.fillStyle = gg;
-  // Ghost body shape
-  c.beginPath();
-  c.arc(gx, gy - gh*0.18, gw*0.5, Math.PI, 0);
-  c.lineTo(gx + gw*0.5, gy + gh*0.42);
-  // wavy bottom
+  c.beginPath(); c.arc(gx, gy - gh * 0.18, gw * 0.5, Math.PI, 0); c.lineTo(gx + gw * 0.5, gy + gh * 0.42);
   const segs = 4;
   for (let i = 0; i < segs; i++) {
-    const bx1 = gx + gw*0.5 - (gw/segs)*(i + 0.5);
-    const bx2 = gx + gw*0.5 - (gw/segs)*(i + 1);
-    const byMid = gy + gh*0.42 + (i%2===0 ? gw*0.12 : -gw*0.04);
-    c.quadraticCurveTo(bx1, byMid, bx2, gy + gh*0.42);
+    c.quadraticCurveTo(gx + gw * 0.5 - (gw / segs) * (i + 0.5), gy + gh * 0.42 + (i % 2 === 0 ? gw * 0.12 : -gw * 0.04),
+      gx + gw * 0.5 - (gw / segs) * (i + 1), gy + gh * 0.42);
   }
   c.closePath(); c.fill(); c.restore();
-  // Ghost eyes
-  const eyeY = gy - gh*0.10;
-  [gx - gw*0.20, gx + gw*0.20].forEach(ex => {
+  [gx - gw * 0.20, gx + gw * 0.20].forEach(ex => {
     c.save(); c.fillStyle = 'rgba(30,60,120,0.85)';
-    c.beginPath(); c.ellipse(ex, eyeY, gw*0.09, gw*0.10, 0, 0, Math.PI*2); c.fill();
-    c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.arc(ex-gw*0.025, eyeY-gw*0.025, gw*0.03, 0, Math.PI*2); c.fill();
-    c.restore();
+    c.beginPath(); c.ellipse(ex, gy - gh * 0.10, gw * 0.09, gw * 0.10, 0, 0, Math.PI * 2); c.fill(); c.restore();
   });
-  // Ghost mouth — wiggly
-  c.save(); c.strokeStyle = 'rgba(30,60,120,0.70)'; c.lineWidth = Math.max(1.5, fw*0.016); c.lineCap = 'round';
-  c.beginPath(); c.moveTo(gx - gw*0.18, eyeY + gw*0.18);
-  c.quadraticCurveTo(gx - gw*0.06, eyeY + gw*0.26, gx, eyeY + gw*0.18);
-  c.quadraticCurveTo(gx + gw*0.06, eyeY + gw*0.10, gx + gw*0.18, eyeY + gw*0.18);
-  c.stroke(); c.restore();
-  // Floating orbs around head
   if (!_ghostParticles[ctx]) _initGhost(ctx);
   _ghostParticles[ctx].forEach(p => {
     const ox = Math.cos(t * p.speed + p.phase) * fw * 0.38;
     const oy = Math.sin(t * p.speed * 0.7 + p.phase) * fh * 0.22 - fh * 0.12;
-    const alpha = 0.3 + 0.3 * Math.abs(Math.sin(t + p.phase));
-    c.save(); c.globalAlpha = alpha; c.shadowColor = '#80d0ff'; c.shadowBlur = 10;
-    const og = c.createRadialGradient(fx+fw*0.5+ox, fy+fh*0.4+oy, 0, fx+fw*0.5+ox, fy+fh*0.4+oy, fw*p.size);
+    c.save(); c.globalAlpha = 0.3 + 0.3 * Math.abs(Math.sin(t + p.phase));
+    const og = c.createRadialGradient(fx + fw * 0.5 + ox, fy + fh * 0.4 + oy, 0, fx + fw * 0.5 + ox, fy + fh * 0.4 + oy, fw * p.size);
     og.addColorStop(0, 'rgba(200,235,255,0.9)'); og.addColorStop(1, 'rgba(140,200,255,0)');
-    c.fillStyle = og;
-    c.beginPath(); c.arc(fx+fw*0.5+ox, fy+fh*0.4+oy, fw*p.size, 0, Math.PI*2); c.fill(); c.restore();
+    c.fillStyle = og; c.beginPath(); c.arc(fx + fw * 0.5 + ox, fy + fh * 0.4 + oy, fw * p.size, 0, Math.PI * 2); c.fill(); c.restore();
   });
 }
 
-// Floating hearts
+// HEARTS
 function _initHearts(ctx) {
-  _heartParticles[ctx] = Array.from({length:10}, () => ({
-    x: Math.random(), y: 0.75 + Math.random()*0.3,
-    vy: 0.003 + Math.random()*0.004,
-    size: 10 + Math.random()*12,
-    alpha: 0.6 + Math.random()*0.4,
-    color: ['#ff6699','#ff99bb','#ff4488','#ffaacc'][Math.floor(Math.random()*4)]
+  _heartParticles[ctx] = Array.from({ length: 10 }, () => ({
+    x: Math.random(), y: 0.75 + Math.random() * 0.3,
+    vy: 0.003 + Math.random() * 0.004, size: 10 + Math.random() * 12,
+    alpha: 0.6 + Math.random() * 0.4,
+    color: ['#ff6699', '#ff99bb', '#ff4488', '#ffaacc'][Math.floor(Math.random() * 4)]
   }));
 }
 function _updateDrawHearts(c, ctx, W, H) {
   if (!_heartParticles[ctx]) _initHearts(ctx);
   _heartParticles[ctx].forEach(p => {
-    p.y -= p.vy;
-    if (p.y < -0.05) { p.y = 1.05; p.x = 0.05 + Math.random()*0.9; }
+    p.y -= p.vy; if (p.y < -0.05) { p.y = 1.05; p.x = 0.05 + Math.random() * 0.9; }
     const hx = p.x * W, hy = p.y * H, s = p.size;
     c.save(); c.globalAlpha = p.alpha; c.fillStyle = p.color;
-    c.beginPath();
-    c.moveTo(hx, hy + s*0.3);
-    c.bezierCurveTo(hx - s*0.6, hy - s*0.2, hx - s, hy + s*0.4, hx, hy + s);
-    c.bezierCurveTo(hx + s, hy + s*0.4, hx + s*0.6, hy - s*0.2, hx, hy + s*0.3);
+    c.beginPath(); c.moveTo(hx, hy + s * 0.3);
+    c.bezierCurveTo(hx - s * 0.6, hy - s * 0.2, hx - s, hy + s * 0.4, hx, hy + s);
+    c.bezierCurveTo(hx + s, hy + s * 0.4, hx + s * 0.6, hy - s * 0.2, hx, hy + s * 0.3);
     c.fill(); c.restore();
   });
 }
 
-// Sparkles
+// SPARKLES
 function _initSparkles(ctx) {
-  _sparkleParticles[ctx] = Array.from({length:8}, () => ({
-    x: 0.05 + Math.random()*0.9, y: 0.05 + Math.random()*0.45,
-    phase: Math.random()*Math.PI*2, size: 8 + Math.random()*10
+  _sparkleParticles[ctx] = Array.from({ length: 8 }, () => ({
+    x: 0.05 + Math.random() * 0.9, y: 0.05 + Math.random() * 0.45,
+    phase: Math.random() * Math.PI * 2, size: 8 + Math.random() * 10
   }));
 }
 function _drawSparkles(c, ctx, W, H) {
@@ -12713,13 +12541,15 @@ function _drawSparkles(c, ctx, W, H) {
     const x = sp.x * W, y = sp.y * H;
     c.save(); c.globalAlpha = alpha; c.fillStyle = '#ffe44d';
     c.beginPath();
-    c.moveTo(x, y - s); c.lineTo(x + s*0.25, y - s*0.25); c.lineTo(x + s, y);
-    c.lineTo(x + s*0.25, y + s*0.25); c.lineTo(x, y + s); c.lineTo(x - s*0.25, y + s*0.25);
-    c.lineTo(x - s, y); c.lineTo(x - s*0.25, y - s*0.25); c.closePath(); c.fill(); c.restore();
+    c.moveTo(x, y - s); c.lineTo(x + s * 0.25, y - s * 0.25); c.lineTo(x + s, y);
+    c.lineTo(x + s * 0.25, y + s * 0.25); c.lineTo(x, y + s); c.lineTo(x - s * 0.25, y + s * 0.25);
+    c.lineTo(x - s, y); c.lineTo(x - s * 0.25, y - s * 0.25); c.closePath(); c.fill(); c.restore();
   });
 }
 
-// ── Main draw frame ──
+// ══════════════════════════════════════
+// MAIN RENDER FRAME
+// ══════════════════════════════════════
 function _drawFunFrame(ctx) {
   const fname = _funFilters[ctx];
   if (!fname || fname === 'none') return;
@@ -12727,406 +12557,184 @@ function _drawFunFrame(ctx) {
   if (!oc) return;
   const vid = document.getElementById(_VID[ctx]);
   if (!vid) return;
-  const rect = vid.getBoundingClientRect();
-  const W = Math.round(rect.width) || vid.offsetWidth || 260;
-  const H = Math.round(rect.height) || vid.offsetHeight || 260;
+  const W = vid.offsetWidth  || 260;
+  const H = vid.offsetHeight || 260;
   if (!W || !H) return;
   if (oc.width !== W || oc.height !== H) { oc.width = W; oc.height = H; }
   const c = oc.getContext('2d');
   c.clearRect(0, 0, W, H);
-  const { fx, fy, fw, fh } = _getLerpedFaceBox(ctx, W, H);
-  if (fname === 'cat') {
-    _drawCatEars(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.55)');
-    _drawWhiskers(c, fx, fy, fw, fh, '#664444');
-  } else if (fname === 'bunny') {
-    _drawBunnyEars(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.52)');
-  } else if (fname === 'bear') {
-    _drawBearEars(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.52)');
-  } else if (fname === 'dog') {
-    _drawDogEars(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.50)');
-    _drawWhiskers(c, fx, fy, fw, fh, '#806030');
-  } else if (fname === 'fox') {
-    _drawFox(c, fx, fy, fw, fh);
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(200,80,20,0.40)');
-  } else if (fname === 'crown') {
-    _drawCrown(c, fx, fy, fw);
-    _drawSparkles(c, ctx, W, H);
-  } else if (fname === 'heart') {
-    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,60,120,0.60)');
-    _updateDrawHearts(c, ctx, W, H);
-  } else if (fname === 'devil') {
-    _drawDevil(c, fx, fy, fw, fh);
-  } else if (fname === 'skull') {
-    _drawSkull(c, fx, fy, fw, fh);
-  } else if (fname === 'ghost') {
-    _drawGhost(c, fx, fy, fw, fh, ctx);
+
+  const { fx, fy, fw, fh } = _getSmoothedBox(ctx, W, H);
+
+  switch (fname) {
+    case 'cat':
+      _drawCatEars(c, fx, fy, fw, fh);
+      _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.55)');
+      _drawWhiskers(c, fx, fy, fw, fh, '#664444');
+      _drawNose(c, fx, fy, fw, fh, '#cc6688');
+      break;
+    case 'bunny':
+      _drawBunnyEars(c, fx, fy, fw, fh);
+      _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.52)');
+      _drawNose(c, fx, fy, fw, fh, '#ffaacc');
+      break;
+    case 'bear':
+      _drawBearEars(c, fx, fy, fw, fh);
+      _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.52)');
+      _drawNose(c, fx, fy, fw, fh, '#6a3010');
+      break;
+    case 'dog':
+      _drawDogEars(c, fx, fy, fw, fh);
+      _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.50)');
+      _drawWhiskers(c, fx, fy, fw, fh, '#806030');
+      _drawNose(c, fx, fy, fw, fh, '#302010');
+      break;
+    case 'fox':
+      _drawFox(c, fx, fy, fw, fh);
+      _drawBlush(c, fx, fy, fw, fh, 'rgba(200,80,20,0.40)');
+      _drawNose(c, fx, fy, fw, fh, '#c04010');
+      break;
+    case 'crown':
+      _drawCrown(c, fx, fy, fw);
+      _drawSparkles(c, ctx, W, H);
+      break;
+    case 'heart':
+      _drawBlush(c, fx, fy, fw, fh, 'rgba(255,60,120,0.60)');
+      _updateDrawHearts(c, ctx, W, H);
+      break;
+    case 'devil':
+      _drawDevil(c, fx, fy, fw, fh);
+      break;
+    case 'skull':
+      _drawSkull(c, fx, fy, fw, fh);
+      break;
+    case 'ghost':
+      _drawGhost(c, fx, fy, fw, fh, ctx);
+      break;
+    case 'beauty':
+      _drawBeautyFilter(c, fx, fy, fw, fh, W, H);
+      break;
+    case 'cute':
+      _drawCuteFilter(c, fx, fy, fw, fh);
+      break;
+    case 'alien':
+      _drawAlienFilter(c, fx, fy, fw, fh, W, H);
+      break;
+    case 'wobble':
+      _drawWobbleFilter(c, fx, fy, fw, fh, W, H);
+      break;
   }
 }
 
-// Face detection — dengan landmark support untuk beauty/distort filters
-const _landmarkCache = {}; // ctx → [{x,y}] array of 68 points
-
-function _faceModelsReady() {
-  return typeof faceapi !== 'undefined' && faceapi.nets.tinyFaceDetector.isLoaded;
+// Beauty/Cute/Alien/Wobble — canvas overlay decoration (no pixel warp, compatible everywhere)
+function _drawBeautyFilter(c, fx, fy, fw, fh, W, H) {
+  // Soft glow overlay
+  const gr = c.createRadialGradient(fx + fw * 0.5, fy + fh * 0.45, fw * 0.1, fx + fw * 0.5, fy + fh * 0.45, fw * 0.65);
+  gr.addColorStop(0, 'rgba(255,220,240,0.0)'); gr.addColorStop(0.7, 'rgba(255,200,230,0.12)'); gr.addColorStop(1, 'rgba(255,180,220,0.25)');
+  c.save(); c.fillStyle = gr; c.beginPath(); c.ellipse(fx + fw * 0.5, fy + fh * 0.45, fw * 0.65, fh * 0.65, 0, 0, Math.PI * 2); c.fill(); c.restore();
+  // Blush
+  _drawBlush(c, fx, fy, fw, fh, 'rgba(255,160,160,0.35)');
+  // Eye sparkles
+  [[fx + fw * 0.30, fy + fh * 0.37], [fx + fw * 0.70, fy + fh * 0.37]].forEach(([ex, ey]) => {
+    c.save(); c.fillStyle = 'rgba(255,255,255,0.90)'; c.shadowColor = 'white'; c.shadowBlur = 6;
+    c.beginPath(); c.arc(ex, ey, fw * 0.022, 0, Math.PI * 2); c.fill(); c.restore();
+  });
+  // Beauty sparkles floating
+  _drawSparkles(c, 'beauty_static', W, H);
 }
-function _landmarkModelsReady() {
-  return typeof faceapi !== 'undefined' && faceapi.nets.faceLandmark68TinyNet.isLoaded;
+function _drawCuteFilter(c, fx, fy, fw, fh) {
+  _drawBlush(c, fx, fy, fw, fh, 'rgba(255,120,180,0.50)');
+  // Big heart pupils
+  [[fx + fw * 0.30, fy + fh * 0.38], [fx + fw * 0.70, fy + fh * 0.38]].forEach(([px, py]) => {
+    const s = fw * 0.045;
+    c.save(); c.fillStyle = 'rgba(255,40,120,0.90)'; c.shadowColor = '#ff60a0'; c.shadowBlur = 8;
+    c.beginPath(); c.moveTo(px, py + s * 0.35);
+    c.bezierCurveTo(px - s * 0.6, py - s * 0.2, px - s, py + s * 0.4, px, py + s);
+    c.bezierCurveTo(px + s, py + s * 0.4, px + s * 0.6, py - s * 0.2, px, py + s * 0.35);
+    c.fill(); c.restore();
+  });
+  // Cute star above head
+  const sx = fx + fw * 0.5, sy = fy - fw * 0.06, ss = fw * 0.09;
+  c.save(); c.fillStyle = '#ffdd00'; c.shadowColor = '#ffdd00'; c.shadowBlur = 10;
+  c.beginPath(); c.moveTo(sx, sy - ss);
+  for (let i = 0; i < 5; i++) {
+    const a1 = (i * 4 - 1) * Math.PI / 5, a2 = (i * 4 + 1) * Math.PI / 5;
+    c.lineTo(sx + Math.cos(a1) * ss, sy + Math.sin(a1) * ss);
+    c.lineTo(sx + Math.cos(a2) * ss * 0.4, sy + Math.sin(a2) * ss * 0.4);
+  }
+  c.closePath(); c.fill(); c.restore();
 }
-
-let _modelLoadPromise = null;
-async function _ensureFaceModels() {
-  if (_faceModelsReady()) return;
-  if (typeof faceapi === 'undefined') return;
-  if (_modelLoadPromise) return _modelLoadPromise;
-  _modelLoadPromise = (async () => {
-    const URLS = [
-      'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
-      'https://unpkg.com/face-api.js@0.22.2/weights'
-    ];
-    for (const url of URLS) {
-      try {
-        const tasks = [];
-        if (!faceapi.nets.tinyFaceDetector.isLoaded) tasks.push(faceapi.nets.tinyFaceDetector.loadFromUri(url));
-        if (!faceapi.nets.faceLandmark68TinyNet.isLoaded) tasks.push(faceapi.nets.faceLandmark68TinyNet.loadFromUri(url));
-        if (tasks.length > 0) await Promise.all(tasks);
-        break;
-      } catch(e) { _modelLoadPromise = null; }
-    }
-  })();
-  return _modelLoadPromise;
+function _drawAlienFilter(c, fx, fy, fw, fh, W, H) {
+  // Green tinted glow around face
+  const gr = c.createRadialGradient(fx + fw * 0.5, fy + fh * 0.4, 0, fx + fw * 0.5, fy + fh * 0.4, fw * 0.8);
+  gr.addColorStop(0, 'rgba(50,200,80,0.0)'); gr.addColorStop(0.6, 'rgba(30,180,60,0.18)'); gr.addColorStop(1, 'rgba(20,150,40,0.35)');
+  c.save(); c.fillStyle = gr; c.fillRect(0, 0, W, H); c.restore();
+  // Glow eyes
+  [[fx + fw * 0.30, fy + fh * 0.37], [fx + fw * 0.70, fy + fh * 0.37]].forEach(([ex, ey]) => {
+    const eg = c.createRadialGradient(ex, ey, 0, ex, ey, fw * 0.10);
+    eg.addColorStop(0, 'rgba(80,255,120,0.95)'); eg.addColorStop(1, 'rgba(80,255,120,0)');
+    c.save(); c.fillStyle = eg; c.beginPath(); c.arc(ex, ey, fw * 0.10, 0, Math.PI * 2); c.fill(); c.restore();
+  });
+  // Antennae
+  [fx + fw * 0.30, fx + fw * 0.70].forEach((ax, i) => {
+    const ay = fy - fw * 0.08;
+    c.save(); c.strokeStyle = '#40ff80'; c.lineWidth = fw * 0.018; c.lineCap = 'round'; c.shadowColor = '#40ff80'; c.shadowBlur = 8;
+    c.beginPath(); c.moveTo(ax, fy); c.quadraticCurveTo(ax + (i === 0 ? -fw * 0.05 : fw * 0.05), fy - fw * 0.22, ax + (i === 0 ? -fw * 0.08 : fw * 0.08), ay);
+    c.stroke(); c.restore();
+    c.save(); c.fillStyle = '#80ffaa'; c.shadowColor = '#40ff80'; c.shadowBlur = 12;
+    c.beginPath(); c.arc(ax + (i === 0 ? -fw * 0.08 : fw * 0.08), ay, fw * 0.04, 0, Math.PI * 2); c.fill(); c.restore();
+  });
 }
-
-async function _detectFace(ctx) {
-  const vid = document.getElementById(_VID[ctx]);
-  if (!vid || vid.readyState < 2) return;
-  // Jika model belum loaded, coba load dulu (non-blocking)
-  if (!_faceModelsReady()) { _ensureFaceModels(); return; }
-  try {
-    const needsLandmarks = ['beauty','cute','alien','wobble'].includes(_funFilters[ctx]);
-    if (needsLandmarks && _landmarkModelsReady()) {
-      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.25 }))
-        .withFaceLandmarks(true);
-      if (det) {
-        _faceDataCache[ctx] = { box: det.detection.box };
-        _landmarkCache[ctx] = det.landmarks.positions; // [{x,y}×68]
-      }
-    } else {
-      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.25 }));
-      if (det) { _faceDataCache[ctx] = { box: det.detection ? det.detection.box : det.box }; _landmarkCache[ctx] = null; }
-    }
-  } catch(e) {}
-}
-
-// ══ WARP ENGINE ══
-// Semua filter beauty/distort bekerja dengan cara:
-// 1. Sample video frame ke offscreen canvas
-// 2. Warp pixel regions berdasarkan landmark positions
-// 3. Render ke overlay canvas
-
-// Convert landmark positions (raw video space) → warp canvas space.
-// Since warp canvas now uses native video resolution (W = videoWidth, H = videoHeight),
-// landmarks from face-api are already in that coordinate space — no scaling needed.
-// NO manual X-mirror — pixels are captured raw (no flip), so landmarks must also be raw.
-// The display mirror is handled by transform:scaleX(-1) on the warp canvas element itself.
-function _landmarkToDisplay(pts, vid, W, H) {
-  if (!pts || !vid || !vid.videoWidth) return null;
-  // Landmarks are in native video pixel space — direct passthrough
-  return pts.map(p => ({ x: p.x, y: p.y }));
-}
-
-// Warp a circular region: pull/push pixels around center point
-// strength > 0 = bulge out, < 0 = pinch in
-function _warpRegion(srcData, dstData, W, H, cx, cy, radius, strength) {
-  const r2 = radius * radius;
-  const x0 = Math.max(0, Math.floor(cx - radius));
-  const x1 = Math.min(W - 1, Math.ceil(cx + radius));
-  const y0 = Math.max(0, Math.floor(cy - radius));
-  const y1 = Math.min(H - 1, Math.ceil(cy + radius));
-  for (let py = y0; py <= y1; py++) {
-    for (let px = x0; px <= x1; px++) {
-      const dx = px - cx, dy = py - cy;
-      const dist2 = dx*dx + dy*dy;
-      if (dist2 >= r2) continue;
-      const dist = Math.sqrt(dist2);
-      const norm = dist / radius; // 0..1
-      // smooth falloff using cosine curve
-      const falloff = Math.cos(norm * Math.PI * 0.5);
-      const warpAmt = strength * falloff * (1 - norm);
-      // source pixel offset (inverse warp)
-      const sx = Math.round(px - dx * warpAmt);
-      const sy = Math.round(py - dy * warpAmt);
-      const srcX = Math.max(0, Math.min(W-1, sx));
-      const srcY = Math.max(0, Math.min(H-1, sy));
-      const di = (py * W + px) * 4;
-      const si = (srcY * W + srcX) * 4;
-      dstData[di]   = srcData[si];
-      dstData[di+1] = srcData[si+1];
-      dstData[di+2] = srcData[si+2];
-      dstData[di+3] = srcData[si+3];
-    }
+function _drawWobbleFilter(c, fx, fy, fw, fh, W, H) {
+  const t = Date.now() / 600;
+  // Wavy color wash
+  const r = Math.floor(180 + 40 * Math.sin(t));
+  const g = Math.floor(200 + 30 * Math.sin(t + 2));
+  const b = Math.floor(100 + 50 * Math.sin(t + 4));
+  c.save(); c.globalAlpha = 0.20; c.fillStyle = `rgb(${r},${g},${b})`;
+  c.fillRect(0, 0, W, H); c.restore();
+  // Wobbly circles around face
+  for (let i = 0; i < 6; i++) {
+    const angle = t + i * Math.PI / 3;
+    const ox = Math.cos(angle) * fw * 0.55, oy = Math.sin(angle) * fh * 0.45;
+    const cr = c.createRadialGradient(fx + fw * 0.5 + ox, fy + fh * 0.45 + oy, 0, fx + fw * 0.5 + ox, fy + fh * 0.45 + oy, fw * 0.12);
+    cr.addColorStop(0, `rgba(${r},${g},${b},0.6)`); cr.addColorStop(1, 'transparent');
+    c.save(); c.fillStyle = cr; c.beginPath(); c.arc(fx + fw * 0.5 + ox, fy + fh * 0.45 + oy, fw * 0.12, 0, Math.PI * 2); c.fill(); c.restore();
+  }
+  // Dizzy stars around head
+  for (let i = 0; i < 4; i++) {
+    const sa = t * 1.2 + i * Math.PI / 2;
+    const sx2 = fx + fw * 0.5 + Math.cos(sa) * fw * 0.58;
+    const sy2 = fy + fh * 0.3 + Math.sin(sa) * fh * 0.38;
+    c.save(); c.fillStyle = '#ffff44'; c.globalAlpha = 0.85; c.shadowColor = '#ffff44'; c.shadowBlur = 6;
+    c.font = `${Math.floor(fw * 0.10)}px serif`; c.fillText('⭐', sx2 - fw * 0.05, sy2); c.restore();
   }
 }
 
-// Draw video frame onto a canvas, return ImageData
-// IMPORTANT: drawImage always reads RAW (pre-CSS-transform) pixels — CSS scaleX(-1) on
-// the video element does NOT affect drawImage output. We capture raw/non-mirrored pixels
-// so that landmark coordinates (also raw) stay perfectly aligned with pixel data.
-// W and H must match the video's native resolution (videoWidth/videoHeight) to avoid
-// gepeng (squashed) artifacts — the CSS warp canvas stretches to fill the display box.
-function _captureVideoFrame(vid, W, H) {
-  const tmp = document.createElement('canvas');
-  // W and H are already native video dimensions (caller passes vid.videoWidth/Height)
-  tmp.width = W; tmp.height = H;
-  const tc = tmp.getContext('2d');
-  tc.drawImage(vid, 0, 0, W, H);
-  return tc.getImageData(0, 0, W, H);
-}
+// ══════════════════════════════════════
+// RENDER + DETECT LOOP
+// ══════════════════════════════════════
+let _detectRunning = {};
 
-// ── WARP-BASED DRAW FRAME (beauty/distort) ──
-// These filters work on a SEPARATE warp canvas layered below overlay
-const _warpCanvases = {};
-function _getOrCreateWarpCanvas(ctx) {
-  if (_warpCanvases[ctx]) return _warpCanvases[ctx];
-  const vid = document.getElementById(_VID[ctx]);
-  if (!vid) return null;
-  const wrapper = vid.parentElement;
-  if (getComputedStyle(wrapper).position === 'static') wrapper.style.position = 'relative';
-  const wc = document.createElement('canvas');
-  // z-index:12 ensures warp canvas sits ABOVE the video element (which has no explicit z-index).
-  // transform:scaleX(-1) mirrors the raw pixel output to match the CSS-mirrored video display.
-  wc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:12;transform:scaleX(-1);';
-  wc.id = ctx + '-warp-canvas';
-  wrapper.appendChild(wc);
-  _warpCanvases[ctx] = wc;
-  return wc;
-}
-function _stopWarpCanvas(ctx) {
-  const wc = _warpCanvases[ctx];
-  if (wc) { wc.getContext('2d').clearRect(0,0,wc.width,wc.height); }
-}
-
-// Landmark index reference (face-api 68-point):
-// Jaw: 0-16 | Eyebrows: 17-26 | Nose: 27-35 | Eyes: 36-47 | Mouth: 48-67
-
-function _drawBeautyFrame(ctx, lmDisplay, W, H, fname) {
-  const vid = document.getElementById(_VID[ctx]);
-  if (!vid || !lmDisplay) return;
-  const wc = _getOrCreateWarpCanvas(ctx);
-  if (!wc) return;
-  // W/H are native video dimensions — warp canvas resolution matches
-  if (wc.width !== W || wc.height !== H) { wc.width = W; wc.height = H; }
-  const c = wc.getContext('2d');
-
-  // Capture raw video frame at native resolution — pixel coords match landmark coords exactly
-  const frame = _captureVideoFrame(vid, W, H);
-  const src = frame.data;
-  const dst = new Uint8ClampedArray(src);
-
-  if (fname === 'beauty') {
-    // ── BEAUTY: slim jaw, enlarge eyes, lift nose, smooth skin ──
-    const lEye = lmDisplay[39]; // outer left eye corner
-    const rEye = lmDisplay[42]; // outer right eye corner
-    const eyeR = W * 0.10;
-    // Slim jaw: pinch both sides of jaw inward
-    for (let j = 1; j <= 7; j++) {
-      const p = lmDisplay[j];
-      if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, -0.28);
-    }
-    for (let j = 9; j <= 15; j++) {
-      const p = lmDisplay[j];
-      if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, -0.28);
-    }
-    // Enlarge eyes: bulge out each eye center
-    const lEyeC = { x: (lmDisplay[36].x + lmDisplay[39].x)/2, y: (lmDisplay[36].y + lmDisplay[39].y)/2 };
-    const rEyeC = { x: (lmDisplay[42].x + lmDisplay[45].x)/2, y: (lmDisplay[42].y + lmDisplay[45].y)/2 };
-    _warpRegion(src, dst, W, H, lEyeC.x, lEyeC.y, eyeR, 0.30);
-    _warpRegion(src, dst, W, H, rEyeC.x, rEyeC.y, eyeR, 0.30);
-    // Slim nose: pinch nose bridge
-    const noseTip = lmDisplay[33];
-    if (noseTip) _warpRegion(src, dst, W, H, noseTip.x, noseTip.y, W*0.08, -0.20);
-    // Write warped frame
-    const warpedImg = new ImageData(dst, W, H);
-    c.putImageData(warpedImg, 0, 0);
-    // Beauty overlay: soft skin-smoothing glow + brightness
-    c.save();
-    c.filter = 'blur(1.5px) brightness(108%) saturate(108%) contrast(96%)';
-    c.globalAlpha = 0.38;
-    c.drawImage(wc, 0, 0);
-    c.restore(); c.filter = 'none';
-    // Soft pink blush via landmark cheek positions
-    const lCheek = lmDisplay[3], rCheek = lmDisplay[13];
-    if (lCheek && rCheek) {
-      [lCheek, rCheek].forEach(p => {
-        const bg = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, W*0.10);
-        bg.addColorStop(0, 'rgba(255,160,160,0.30)'); bg.addColorStop(1, 'rgba(255,160,160,0)');
-        c.save(); c.fillStyle = bg; c.beginPath(); c.arc(p.x, p.y, W*0.10, 0, Math.PI*2); c.fill(); c.restore();
-      });
-    }
-    // Eye sparkle dots
-    [lmDisplay[37], lmDisplay[44]].forEach(p => {
-      if (!p) return;
-      c.save(); c.fillStyle = 'rgba(255,255,255,0.75)'; c.shadowColor='white'; c.shadowBlur=4;
-      c.beginPath(); c.arc(p.x - W*0.005, p.y - W*0.005, W*0.007, 0, Math.PI*2); c.fill(); c.restore();
-    });
-
-  } else if (fname === 'cute') {
-    // ── CUTE: huge eyes, tiny nose, chubby cheeks, upturned mouth ──
-    const lEyeC = { x: (lmDisplay[36].x + lmDisplay[39].x)/2, y: (lmDisplay[36].y + lmDisplay[39].y)/2 };
-    const rEyeC = { x: (lmDisplay[42].x + lmDisplay[45].x)/2, y: (lmDisplay[42].y + lmDisplay[45].y)/2 };
-    // Big big eyes
-    _warpRegion(src, dst, W, H, lEyeC.x, lEyeC.y, W*0.13, 0.45);
-    _warpRegion(src, dst, W, H, rEyeC.x, rEyeC.y, W*0.13, 0.45);
-    // Chubby cheeks: bulge cheek area
-    const lCheek = lmDisplay[4], rCheek = lmDisplay[12];
-    if (lCheek) _warpRegion(src, dst, W, H, lCheek.x, lCheek.y, W*0.14, 0.22);
-    if (rCheek) _warpRegion(src, dst, W, H, rCheek.x, rCheek.y, W*0.14, 0.22);
-    // Tiny nose: pinch
-    const noseTip = lmDisplay[33];
-    if (noseTip) _warpRegion(src, dst, W, H, noseTip.x, noseTip.y, W*0.09, -0.32);
-    // Small chin: pinch jaw tip
-    const chin = lmDisplay[8];
-    if (chin) _warpRegion(src, dst, W, H, chin.x, chin.y, W*0.12, -0.25);
-    const warpedImg = new ImageData(dst, W, H);
-    c.putImageData(warpedImg, 0, 0);
-    // Cute pastel overlay + soft warm glow
-    c.save(); c.filter = 'brightness(112%) saturate(120%) contrast(95%)';
-    c.globalAlpha = 0.30; c.drawImage(wc, 0, 0); c.restore(); c.filter = 'none';
-    // Big sparkly blush
-    [lmDisplay[3], lmDisplay[13]].forEach(p => {
-      if (!p) return;
-      const bg = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, W*0.13);
-      bg.addColorStop(0, 'rgba(255,130,180,0.45)'); bg.addColorStop(1, 'rgba(255,130,180,0)');
-      c.save(); c.fillStyle = bg; c.beginPath(); c.arc(p.x, p.y, W*0.13, 0, Math.PI*2); c.fill(); c.restore();
-    });
-    // Heart pupils
-    [lEyeC, rEyeC].forEach(p => {
-      const s = W * 0.025;
-      c.save(); c.fillStyle = 'rgba(255,60,120,0.85)'; c.shadowColor='#ff60a0'; c.shadowBlur=6;
-      c.beginPath();
-      c.moveTo(p.x, p.y + s*0.35);
-      c.bezierCurveTo(p.x - s*0.6, p.y - s*0.2, p.x - s, p.y + s*0.4, p.x, p.y + s);
-      c.bezierCurveTo(p.x + s, p.y + s*0.4, p.x + s*0.6, p.y - s*0.2, p.x, p.y + s*0.35);
-      c.fill(); c.restore();
-    });
-
-  } else if (fname === 'alien') {
-    // ── ALIEN: huge forehead, tiny mouth, enormous eyes, no nose ──
-    // Stretch forehead: push top of face up
-    for (let j = 17; j <= 26; j++) {
-      const p = lmDisplay[j];
-      if (p) _warpRegion(src, dst, W, H, p.x, p.y - W*0.04, W*0.12, -0.55);
-    }
-    // Enormous eyes
-    const lEyeC = { x: (lmDisplay[36].x + lmDisplay[39].x)/2, y: (lmDisplay[36].y + lmDisplay[39].y)/2 };
-    const rEyeC = { x: (lmDisplay[42].x + lmDisplay[45].x)/2, y: (lmDisplay[42].y + lmDisplay[45].y)/2 };
-    _warpRegion(src, dst, W, H, lEyeC.x, lEyeC.y, W*0.16, 0.65);
-    _warpRegion(src, dst, W, H, rEyeC.x, rEyeC.y, W*0.16, 0.65);
-    // Shrink mouth area
-    const mouthC = lmDisplay[62];
-    if (mouthC) _warpRegion(src, dst, W, H, mouthC.x, mouthC.y, W*0.09, -0.50);
-    // Shrink nose
-    const noseTip = lmDisplay[33];
-    if (noseTip) _warpRegion(src, dst, W, H, noseTip.x, noseTip.y, W*0.10, -0.55);
-    // Pointy chin: stretch jaw tip down
-    const chin = lmDisplay[8];
-    if (chin) _warpRegion(src, dst, W, H, chin.x, chin.y + W*0.03, W*0.10, 0.35);
-    const warpedImg = new ImageData(dst, W, H);
-    c.putImageData(warpedImg, 0, 0);
-    // Green skin tint overlay
-    c.save(); c.globalAlpha = 0.28; c.fillStyle = '#30c060';
-    c.fillRect(0, 0, W, H); c.restore();
-    // Glow eyes
-    [lEyeC, rEyeC].forEach(p => {
-      const gr = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, W*0.09);
-      gr.addColorStop(0, 'rgba(80,255,120,0.90)'); gr.addColorStop(1, 'rgba(80,255,120,0)');
-      c.save(); c.fillStyle = gr; c.beginPath(); c.arc(p.x, p.y, W*0.09, 0, Math.PI*2); c.fill(); c.restore();
-    });
-
-  } else if (fname === 'wobble') {
-    // ── MELT/WOBBLE: everything droops/melts downward, nose huge, mouth stretched ──
-    const t = Date.now() / 800;
-    // Droop cheeks
-    [lmDisplay[2], lmDisplay[14]].forEach((p, i) => {
-      if (!p) return;
-      const drift = Math.sin(t + i) * W * 0.008;
-      _warpRegion(src, dst, W, H, p.x + drift, p.y, W*0.13, 0.40);
-    });
-    // Inflate nose hugely
-    const noseTip = lmDisplay[33];
-    if (noseTip) _warpRegion(src, dst, W, H, noseTip.x, noseTip.y, W*0.12, 0.60);
-    // Stretch mouth wide
-    [lmDisplay[48], lmDisplay[54]].forEach(p => {
-      if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, 0.38);
-    });
-    // Droop eyebrows
-    [lmDisplay[19], lmDisplay[24]].forEach((p, i) => {
-      if (!p) return;
-      const wobble = Math.sin(t * 1.3 + i * 1.5) * W * 0.01;
-      _warpRegion(src, dst, W, H, p.x, p.y + wobble, W*0.09, 0.28);
-    });
-    // Squash chin
-    const chin = lmDisplay[8];
-    if (chin) _warpRegion(src, dst, W, H, chin.x, chin.y, W*0.12, 0.35);
-    const warpedImg = new ImageData(dst, W, H);
-    c.putImageData(warpedImg, 0, 0);
-    // Sickly yellowish tint
-    c.save(); c.globalAlpha = 0.15; c.fillStyle = '#c0d020';
-    c.fillRect(0, 0, W, H); c.restore();
-  }
-}
-
-// Animation loop
 function _startLoop(ctx) {
   _stopOverlay(ctx);
-  // Ensure models loaded — then kick off first detection once ready
-  _ensureFaceModels().then(() => { _detectFace(ctx); }).catch(() => {});
-  const isWarpFilter = () => ['beauty','cute','alien','wobble'].includes(_funFilters[ctx]);
-  let lastDet = 0;
-  function loop() {
-    if (!_funFilters[ctx] || _funFilters[ctx] === 'none') { _stopWarpCanvas(ctx); return; }
-    const now = Date.now();
-    // Detect every 80ms for tight face tracking; also re-trigger if models just became ready
-    if (now - lastDet > 80) { lastDet = now; _detectFace(ctx); }
+  _faceSmooth[ctx] = null;
+  _detectRunning[ctx] = true;
+  // Init detector async, non-blocking
+  _initFaceDetector(ctx).catch(() => {});
 
-    if (isWarpFilter()) {
-      // Warp filters: render to warpCanvas, clear overlay
-      const vid = document.getElementById(_VID[ctx]);
-      if (vid && vid.readyState >= 2) {
-        const vw = vid.videoWidth || 480;
-        const vh = vid.videoHeight || 480;
-        // Use native video resolution for warp canvas to avoid gepeng/squash artifact
-        const W = vw, H = vh;
-        if (W > 0 && H > 0) {
-          const wc2 = _getOrCreateWarpCanvas(ctx);
-          if (wc2) {
-            // Always sync canvas resolution to native video size
-            if (wc2.width !== W || wc2.height !== H) { wc2.width = W; wc2.height = H; }
-            const lmRaw = _landmarkCache[ctx];
-            const lmDisplay = lmRaw ? _landmarkToDisplay(lmRaw, vid, W, H) : null;
-            if (lmDisplay) {
-              // Landmarks ready — draw warped frame
-              _drawBeautyFrame(ctx, lmDisplay, W, H, _funFilters[ctx]);
-            } else {
-              // No landmarks yet — render plain video (raw, no flip) so filter slot is visible.
-              // The warp canvas has transform:scaleX(-1) so display will be correctly mirrored.
-              const c2 = wc2.getContext('2d');
-              c2.drawImage(vid, 0, 0, W, H);
-            }
-          }
-        }
-      }
-      // Clear decorative overlay
-      const oc = _overlayCanvases[ctx];
-      if (oc) oc.getContext('2d').clearRect(0,0,oc.width,oc.height);
-    } else {
-      // Accessory filters — hide warp canvas, draw decorations
-      _stopWarpCanvas(ctx);
-      _drawFunFrame(ctx);
+  let lastDetect = 0;
+  function loop() {
+    if (!_funFilters[ctx] || _funFilters[ctx] === 'none') {
+      _detectRunning[ctx] = false; return;
     }
+    const now = Date.now();
+    // Face detection every 100ms (async, non-blocking)
+    if (now - lastDetect > 100) {
+      lastDetect = now;
+      _runFaceDetect(ctx); // async, don't await — loop continues
+    }
+    _drawFunFrame(ctx);
     _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
   }
   _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
@@ -13141,15 +12749,16 @@ window.setFunFilter = function(ctx, name) {
     const el = document.getElementById(`${ctx}-fun-${f}`);
     if (el) el.classList.toggle('active-pill', f === next);
   });
-  if (next === 'none') { _stopOverlay(ctx); _stopWarpCanvas(ctx); }
-  else {
+  if (next === 'none') {
+    _stopOverlay(ctx);
+  } else {
     if (next === 'heart') _initHearts(ctx);
     if (next === 'crown') _initSparkles(ctx);
     if (next === 'ghost') _initGhost(ctx);
-    _faceSmooth[ctx] = null;
     _startLoop(ctx);
   }
 };
+
 
 // ── Photo Frame System ──
 const _photoFrames = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
@@ -13414,132 +13023,43 @@ function _bakeFun(ctx, canvas) {
   const W = canvas.width, H = canvas.height;
   const c = canvas.getContext('2d');
 
-  // ── Warp-based filters (beauty/cute/alien/wobble) ──
-  if (['beauty','cute','alien','wobble'].includes(fname)) {
-    const lmRaw = _landmarkCache[ctx];
-    const vid = document.getElementById(_VID[ctx]);
-    if (lmRaw && vid && vid.videoWidth) {
-      // Scale landmarks to canvas space using same letterbox mapping as _landmarkToDisplay
-      // Canvas photo is square (side×side cropped), so map accordingly
-      const vw = vid.videoWidth, vh = vid.videoHeight;
-      const displayAspect = W / H, videoAspect = vw / vh;
-      let scaleXL, scaleYL, cropXL = 0, cropYL = 0;
-      if (videoAspect > displayAspect) {
-        scaleYL = H / vh; scaleXL = scaleYL; cropXL = (vw * scaleXL - W) / 2;
-      } else {
-        scaleXL = W / vw; scaleYL = scaleXL; cropYL = (vh * scaleYL - H) / 2;
-      }
-      const lmCanvas = lmRaw.map(p => ({
-        x: W - (p.x * scaleXL - cropXL),  // mirror X to match mirrored canvas photo
-        y: p.y * scaleYL - cropYL
-      }));
-      // Snapshot current canvas content (already has video frame from caller)
-      const snap = c.getImageData(0, 0, W, H);
-      const src = snap.data;
-      const dst = new Uint8ClampedArray(src);
-
-      if (fname === 'beauty') {
-        for (let j = 1; j <= 7; j++) { const p = lmCanvas[j]; if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, -0.28); }
-        for (let j = 9; j <= 15; j++) { const p = lmCanvas[j]; if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, -0.28); }
-        const lEC = { x: (lmCanvas[36].x + lmCanvas[39].x)/2, y: (lmCanvas[36].y + lmCanvas[39].y)/2 };
-        const rEC = { x: (lmCanvas[42].x + lmCanvas[45].x)/2, y: (lmCanvas[42].y + lmCanvas[45].y)/2 };
-        _warpRegion(src, dst, W, H, lEC.x, lEC.y, W*0.10, 0.30);
-        _warpRegion(src, dst, W, H, rEC.x, rEC.y, W*0.10, 0.30);
-        const nt = lmCanvas[33]; if (nt) _warpRegion(src, dst, W, H, nt.x, nt.y, W*0.08, -0.20);
-        c.putImageData(new ImageData(dst, W, H), 0, 0);
-        // Soft beauty glow
-        const glow = document.createElement('canvas'); glow.width=W; glow.height=H;
-        const gc = glow.getContext('2d'); gc.filter='blur(2px) brightness(108%) saturate(108%)'; gc.drawImage(canvas, 0, 0); gc.filter='none';
-        c.save(); c.globalAlpha = 0.32; c.drawImage(glow, 0, 0); c.restore();
-        [lmCanvas[3], lmCanvas[13]].forEach(p => {
-          if (!p) return; const bg = c.createRadialGradient(p.x,p.y,0,p.x,p.y,W*0.10);
-          bg.addColorStop(0,'rgba(255,160,160,0.28)'); bg.addColorStop(1,'rgba(255,160,160,0)');
-          c.save(); c.fillStyle=bg; c.beginPath(); c.arc(p.x,p.y,W*0.10,0,Math.PI*2); c.fill(); c.restore();
-        });
-      } else if (fname === 'cute') {
-        const lEC = { x: (lmCanvas[36].x + lmCanvas[39].x)/2, y: (lmCanvas[36].y + lmCanvas[39].y)/2 };
-        const rEC = { x: (lmCanvas[42].x + lmCanvas[45].x)/2, y: (lmCanvas[42].y + lmCanvas[45].y)/2 };
-        _warpRegion(src, dst, W, H, lEC.x, lEC.y, W*0.13, 0.45);
-        _warpRegion(src, dst, W, H, rEC.x, rEC.y, W*0.13, 0.45);
-        const lC = lmCanvas[4], rC = lmCanvas[12];
-        if (lC) _warpRegion(src, dst, W, H, lC.x, lC.y, W*0.14, 0.22);
-        if (rC) _warpRegion(src, dst, W, H, rC.x, rC.y, W*0.14, 0.22);
-        const nt = lmCanvas[33]; if (nt) _warpRegion(src, dst, W, H, nt.x, nt.y, W*0.09, -0.32);
-        const ch = lmCanvas[8]; if (ch) _warpRegion(src, dst, W, H, ch.x, ch.y, W*0.12, -0.25);
-        c.putImageData(new ImageData(dst, W, H), 0, 0);
-        [lmCanvas[3], lmCanvas[13]].forEach(p => {
-          if (!p) return; const bg = c.createRadialGradient(p.x,p.y,0,p.x,p.y,W*0.13);
-          bg.addColorStop(0,'rgba(255,130,180,0.42)'); bg.addColorStop(1,'rgba(255,130,180,0)');
-          c.save(); c.fillStyle=bg; c.beginPath(); c.arc(p.x,p.y,W*0.13,0,Math.PI*2); c.fill(); c.restore();
-        });
-      } else if (fname === 'alien') {
-        for (let j = 17; j <= 26; j++) { const p = lmCanvas[j]; if (p) _warpRegion(src, dst, W, H, p.x, p.y - W*0.04, W*0.12, -0.55); }
-        const lEC = { x: (lmCanvas[36].x + lmCanvas[39].x)/2, y: (lmCanvas[36].y + lmCanvas[39].y)/2 };
-        const rEC = { x: (lmCanvas[42].x + lmCanvas[45].x)/2, y: (lmCanvas[42].y + lmCanvas[45].y)/2 };
-        _warpRegion(src, dst, W, H, lEC.x, lEC.y, W*0.16, 0.65);
-        _warpRegion(src, dst, W, H, rEC.x, rEC.y, W*0.16, 0.65);
-        const mc = lmCanvas[62]; if (mc) _warpRegion(src, dst, W, H, mc.x, mc.y, W*0.09, -0.50);
-        const nt = lmCanvas[33]; if (nt) _warpRegion(src, dst, W, H, nt.x, nt.y, W*0.10, -0.55);
-        const ch = lmCanvas[8]; if (ch) _warpRegion(src, dst, W, H, ch.x, ch.y + W*0.03, W*0.10, 0.35);
-        c.putImageData(new ImageData(dst, W, H), 0, 0);
-        c.save(); c.globalAlpha = 0.25; c.fillStyle = '#30c060'; c.fillRect(0,0,W,H); c.restore();
-        [lEC, rEC].forEach(p => {
-          const gr = c.createRadialGradient(p.x,p.y,0,p.x,p.y,W*0.09);
-          gr.addColorStop(0,'rgba(80,255,120,0.88)'); gr.addColorStop(1,'rgba(80,255,120,0)');
-          c.save(); c.fillStyle=gr; c.beginPath(); c.arc(p.x,p.y,W*0.09,0,Math.PI*2); c.fill(); c.restore();
-        });
-      } else if (fname === 'wobble') {
-        [lmCanvas[2], lmCanvas[14]].forEach(p => { if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.13, 0.40); });
-        const nt = lmCanvas[33]; if (nt) _warpRegion(src, dst, W, H, nt.x, nt.y, W*0.12, 0.60);
-        [lmCanvas[48], lmCanvas[54]].forEach(p => { if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.10, 0.38); });
-        [lmCanvas[19], lmCanvas[24]].forEach(p => { if (p) _warpRegion(src, dst, W, H, p.x, p.y, W*0.09, 0.28); });
-        const ch = lmCanvas[8]; if (ch) _warpRegion(src, dst, W, H, ch.x, ch.y, W*0.12, 0.35);
-        c.putImageData(new ImageData(dst, W, H), 0, 0);
-        c.save(); c.globalAlpha = 0.12; c.fillStyle = '#c0d020'; c.fillRect(0,0,W,H); c.restore();
-      }
-    }
-    return; // done for warp filters
-  }
-
-  // ── Accessory filters (original logic) ──
+  // Gunakan _rawFaceBox (dari sistem baru) untuk posisi filter di foto
+  const raw = _rawFaceBox[ctx];
   let fx, fy, fw, fh;
-  const fd = _faceDataCache[ctx];
-  const vid = document.getElementById(_VID[ctx]);
-  if (fd && fd.box && vid && vid.videoWidth) {
-    // Use same letterbox mapping as _getLerpedFaceBox for consistent positioning
-    const vw = vid.videoWidth, vh = vid.videoHeight;
-    const displayAspect = W / H, videoAspect = vw / vh;
-    let scaleX, scaleY, cropX = 0, cropY = 0;
-    if (videoAspect > displayAspect) {
-      scaleY = H / vh; scaleX = scaleY; cropX = (vw * scaleX - W) / 2;
-    } else {
-      scaleX = W / vw; scaleY = scaleX; cropY = (vh * scaleY - H) / 2;
-    }
-    const bx = W - (fd.box.x * scaleX - cropX) - fd.box.width * scaleX;
-    const by = fd.box.y * scaleY - cropY;
-    fw = fd.box.width * scaleX; fh = fd.box.height * scaleY;
-    fx = bx; fy = Math.max(0, by);
+  if (raw) {
+    // raw box dalam display coords — scale ke canvas foto
+    const vid = document.getElementById(_VID[ctx]);
+    const dispW = (vid && vid.offsetWidth)  || 260;
+    const dispH = (vid && vid.offsetHeight) || 260;
+    const scaleX = W / dispW, scaleY = H / dispH;
+    fx = raw.x * scaleX; fy = raw.y * scaleY;
+    fw = raw.w * scaleX; fh = raw.h * scaleY;
   } else {
-    fw = W * 0.44; fh = H * 0.52; fx = (W - fw) / 2; fy = H * 0.10;
+    fw = W * 0.50; fh = H * 0.55; fx = (W - fw) / 2; fy = H * 0.10;
   }
 
   if (fname === 'cat') {
     _drawCatEars(c, fx, fy, fw, fh);
     _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.55)');
     _drawWhiskers(c, fx, fy, fw, fh, '#664444');
+    _drawNose(c, fx, fy, fw, fh, '#cc6688');
   } else if (fname === 'bunny') {
     _drawBunnyEars(c, fx, fy, fw, fh);
     _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.52)');
+    _drawNose(c, fx, fy, fw, fh, '#ffaacc');
   } else if (fname === 'bear') {
     _drawBearEars(c, fx, fy, fw, fh);
     _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.52)');
+    _drawNose(c, fx, fy, fw, fh, '#6a3010');
   } else if (fname === 'dog') {
     _drawDogEars(c, fx, fy, fw, fh);
     _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.50)');
     _drawWhiskers(c, fx, fy, fw, fh, '#806030');
+    _drawNose(c, fx, fy, fw, fh, '#302010');
   } else if (fname === 'fox') {
     _drawFox(c, fx, fy, fw, fh);
     _drawBlush(c, fx, fy, fw, fh, 'rgba(200,80,20,0.40)');
+    _drawNose(c, fx, fy, fw, fh, '#c04010');
   } else if (fname === 'crown') {
     _drawCrown(c, fx, fy, fw);
     _drawSparkles(c, ctx, W, H);
@@ -13547,11 +13067,11 @@ function _bakeFun(ctx, canvas) {
     _drawBlush(c, fx, fy, fw, fh, 'rgba(255,60,120,0.60)');
     if (_heartParticles[ctx]) {
       _heartParticles[ctx].forEach(p => {
-        const hx=p.x*W, hy=p.y*H, s=p.size;
-        c.save(); c.globalAlpha=p.alpha; c.fillStyle=p.color;
-        c.beginPath(); c.moveTo(hx,hy+s*0.3);
-        c.bezierCurveTo(hx-s*0.6,hy-s*0.2,hx-s,hy+s*0.4,hx,hy+s);
-        c.bezierCurveTo(hx+s,hy+s*0.4,hx+s*0.6,hy-s*0.2,hx,hy+s*0.3);
+        const hx = p.x * W, hy = p.y * H, s = p.size;
+        c.save(); c.globalAlpha = p.alpha; c.fillStyle = p.color;
+        c.beginPath(); c.moveTo(hx, hy + s * 0.3);
+        c.bezierCurveTo(hx - s * 0.6, hy - s * 0.2, hx - s, hy + s * 0.4, hx, hy + s);
+        c.bezierCurveTo(hx + s, hy + s * 0.4, hx + s * 0.6, hy - s * 0.2, hx, hy + s * 0.3);
         c.fill(); c.restore();
       });
     }
@@ -13561,6 +13081,14 @@ function _bakeFun(ctx, canvas) {
     _drawSkull(c, fx, fy, fw, fh);
   } else if (fname === 'ghost') {
     _drawGhost(c, fx, fy, fw, fh, ctx);
+  } else if (fname === 'beauty') {
+    _drawBeautyFilter(c, fx, fy, fw, fh, W, H);
+  } else if (fname === 'cute') {
+    _drawCuteFilter(c, fx, fy, fw, fh);
+  } else if (fname === 'alien') {
+    _drawAlienFilter(c, fx, fy, fw, fh, W, H);
+  } else if (fname === 'wobble') {
+    _drawWobbleFilter(c, fx, fy, fw, fh, W, H);
   }
 }
 
@@ -13670,7 +13198,7 @@ const _origSetSelfieFilter2 = window.setSelfieFilter;
 window.setSelfieFilter = function(ctx, f) {
   _origSetSelfieFilter2(ctx, f);
   _funFilters[ctx] = 'none';
-  _stopOverlay(ctx); _stopWarpCanvas(ctx);
+  _stopOverlay(ctx);
   _ALL_FUN.forEach(fn => {
     const el = document.getElementById(`${ctx}-fun-${fn}`);
     if (el) el.classList.remove('active-pill');
@@ -13681,7 +13209,7 @@ window.setSelfieFilter = function(ctx, f) {
 const _origHideFilterBar2 = window.hideFilterBar;
 window.hideFilterBar = function(ctx) {
   _origHideFilterBar2(ctx);
-  _stopOverlay(ctx); _stopWarpCanvas(ctx);
+  _stopOverlay(ctx);
   _funFilters[ctx] = 'none';
   _ALL_FUN.forEach(f => {
     const el = document.getElementById(`${ctx}-fun-${f}`);
