@@ -12233,11 +12233,33 @@ async function _initFaceDetector(ctx) {
 async function _runFaceDetect(ctx) {
   const vid = document.getElementById(_VID[ctx]);
   if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
-  const W = vid.offsetWidth  || 260;
-  const H = vid.offsetHeight || 260;
 
   if (!_faceDetectorReady[ctx]) {
     await _initFaceDetector(ctx);
+  }
+
+  // Ukuran display canvas overlay (bukan video native)
+  const oc = _overlayCanvases[ctx];
+  const dispW = (oc && oc.width > 0) ? oc.width : (vid.offsetWidth || 260);
+  const dispH = (oc && oc.height > 0) ? oc.height : (vid.offsetHeight || 260);
+  const vw = vid.videoWidth, vh = vid.videoHeight;
+
+  // Helper: scale koordinat dari native video space → display space,
+  // lalu mirror X karena video ditampilkan dengan CSS scaleX(-1).
+  // Video pakai object-fit:cover (fill wrapper, crop sisi yang lebih panjang).
+  function toDisplay(bx, by, bw, bh) {
+    // object-fit:cover: scale sampai sisi pendek mengisi display, crop sisi panjang
+    const scaleToFill = Math.max(dispW / vw, dispH / vh);
+    const scaledW = vw * scaleToFill, scaledH = vh * scaleToFill;
+    const offX = (scaledW - dispW) / 2;  // berapa pixel dikrop kiri/kanan
+    const offY = (scaledH - dispH) / 2;  // berapa pixel dikrop atas/bawah
+    const dx = bx * scaleToFill - offX;
+    const dy = by * scaleToFill - offY;
+    const dw = bw * scaleToFill;
+    const dh = bh * scaleToFill;
+    // Mirror X (karena CSS scaleX(-1) pada video element)
+    const mirroredX = dispW - dx - dw;
+    return { x: mirroredX, y: dy, w: dw, h: dh };
   }
 
   try {
@@ -12245,18 +12267,13 @@ async function _runFaceDetect(ctx) {
       const faces = await _faceDetectors[ctx].detect(vid);
       if (faces && faces.length > 0) {
         const b = faces[0].boundingBox;
-        // Video punya CSS scaleX(-1), jadi mirror X
-        const mirroredX = W - b.left - b.width;
-        _rawFaceBox[ctx] = { x: mirroredX, y: b.top, w: b.width, h: b.height };
+        _rawFaceBox[ctx] = toDisplay(b.left, b.top, b.width, b.height);
       }
     } else if (_faceDetectorReady[ctx] === 'faceapi') {
       const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }));
       if (det) {
         const box = det.detection ? det.detection.box : det.box;
-        const vw = vid.videoWidth, vh = vid.videoHeight;
-        const scaleX = W / vw, scaleY = H / vh;
-        const mirroredX = W - box.x * scaleX - box.width * scaleX;
-        _rawFaceBox[ctx] = { x: mirroredX, y: box.y * scaleY, w: box.width * scaleX, h: box.height * scaleY };
+        _rawFaceBox[ctx] = toDisplay(box.x, box.y, box.width, box.height);
       }
     }
   } catch(e) {}
@@ -12275,7 +12292,7 @@ function _getSmoothedBox(ctx, W, H) {
   }
   if (!_faceSmooth[ctx]) { _faceSmooth[ctx] = { ...target }; return { ...target }; }
   const s = _faceSmooth[ctx];
-  const a = raw ? 0.30 : 0.08;  // lebih lambat saat fallback agar tidak loncat
+  const a = raw ? 0.55 : 0.08;  // responsif saat ada wajah, smooth saat fallback
   s.fx += (target.fx - s.fx) * a;
   s.fy += (target.fy - s.fy) * a;
   s.fw += (target.fw - s.fw) * a;
@@ -12730,7 +12747,7 @@ function _startLoop(ctx) {
     }
     const now = Date.now();
     // Face detection every 100ms (async, non-blocking)
-    if (now - lastDetect > 100) {
+    if (now - lastDetect > 60) {
       lastDetect = now;
       _runFaceDetect(ctx); // async, don't await — loop continues
     }
