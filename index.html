@@ -12229,7 +12229,7 @@ function _getLerpedFaceBox(ctx, W, H) {
   }
   // Init smooth if needed
   if (!_faceSmooth[ctx]) { _faceSmooth[ctx] = { ...target }; return target; }
-  const s = _faceSmooth[ctx], a = 0.18; // lerp factor — smooth but responsive
+  const s = _faceSmooth[ctx], a = 0.35; // lerp factor — faster tracking
   s.fx += (target.fx - s.fx) * a;
   s.fy += (target.fy - s.fy) * a;
   s.fw += (target.fw - s.fw) * a;
@@ -12801,14 +12801,14 @@ async function _detectFace(ctx) {
     if (!faceapi.nets.tinyFaceDetector.isLoaded) return;
     const needsLandmarks = ['beauty','cute','alien','wobble'].includes(_funFilters[ctx]);
     if (needsLandmarks && faceapi.nets.faceLandmark68TinyNet.isLoaded) {
-      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:224, scoreThreshold:0.3 }))
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.3 }))
         .withFaceLandmarks(true);
       if (det) {
         _faceDataCache[ctx] = { box: det.detection.box };
         _landmarkCache[ctx] = det.landmarks.positions; // [{x,y}×68]
       }
     } else {
-      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:224, scoreThreshold:0.3 }));
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.3 }));
       if (det) { _faceDataCache[ctx] = { box: det.detection ? det.detection.box : det.box }; _landmarkCache[ctx] = null; }
     }
   } catch(e) {}
@@ -12821,22 +12821,14 @@ async function _detectFace(ctx) {
 // 3. Render ke overlay canvas
 
 // Convert landmark positions (raw video space) → warp canvas space.
+// Since warp canvas now uses native video resolution (W = videoWidth, H = videoHeight),
+// landmarks from face-api are already in that coordinate space — no scaling needed.
 // NO manual X-mirror — pixels are captured raw (no flip), so landmarks must also be raw.
 // The display mirror is handled by transform:scaleX(-1) on the warp canvas element itself.
 function _landmarkToDisplay(pts, vid, W, H) {
   if (!pts || !vid || !vid.videoWidth) return null;
-  const vw = vid.videoWidth, vh = vid.videoHeight;
-  const displayAspect = W / H, videoAspect = vw / vh;
-  let scaleX, scaleY, cropX = 0, cropY = 0;
-  if (videoAspect > displayAspect) {
-    scaleY = H / vh; scaleX = scaleY; cropX = (vw * scaleX - W) / 2;
-  } else {
-    scaleX = W / vw; scaleY = scaleX; cropY = (vh * scaleY - H) / 2;
-  }
-  return pts.map(p => ({
-    x: p.x * scaleX - cropX, // raw X — no mirror (warp canvas handles visual flip)
-    y: p.y * scaleY - cropY
-  }));
+  // Landmarks are in native video pixel space — direct passthrough
+  return pts.map(p => ({ x: p.x, y: p.y }));
 }
 
 // Warp a circular region: pull/push pixels around center point
@@ -12876,21 +12868,14 @@ function _warpRegion(srcData, dstData, W, H, cx, cy, radius, strength) {
 // IMPORTANT: drawImage always reads RAW (pre-CSS-transform) pixels — CSS scaleX(-1) on
 // the video element does NOT affect drawImage output. We capture raw/non-mirrored pixels
 // so that landmark coordinates (also raw) stay perfectly aligned with pixel data.
-// The warp canvas carries its own transform:scaleX(-1) to mirror the final display output.
+// W and H must match the video's native resolution (videoWidth/videoHeight) to avoid
+// gepeng (squashed) artifacts — the CSS warp canvas stretches to fill the display box.
 function _captureVideoFrame(vid, W, H) {
   const tmp = document.createElement('canvas');
+  // W and H are already native video dimensions (caller passes vid.videoWidth/Height)
   tmp.width = W; tmp.height = H;
   const tc = tmp.getContext('2d');
-  // Use same letterbox logic as _landmarkToDisplay so pixel coords match landmark coords
-  const vw = vid.videoWidth || W, vh = vid.videoHeight || H;
-  const displayAspect = W / H, videoAspect = vw / vh;
-  let scaleX2, scaleY2, cropX2 = 0, cropY2 = 0;
-  if (videoAspect > displayAspect) {
-    scaleY2 = H / vh; scaleX2 = scaleY2; cropX2 = (vw * scaleX2 - W) / 2;
-  } else {
-    scaleX2 = W / vw; scaleY2 = scaleX2; cropY2 = (vh * scaleY2 - H) / 2;
-  }
-  tc.drawImage(vid, 0, 0, vw, vh, -cropX2, -cropY2, vw * scaleX2, vh * scaleY2);
+  tc.drawImage(vid, 0, 0, W, H);
   return tc.getImageData(0, 0, W, H);
 }
 
@@ -12925,9 +12910,11 @@ function _drawBeautyFrame(ctx, lmDisplay, W, H, fname) {
   if (!vid || !lmDisplay) return;
   const wc = _getOrCreateWarpCanvas(ctx);
   if (!wc) return;
+  // W/H are native video dimensions — warp canvas resolution matches
   if (wc.width !== W || wc.height !== H) { wc.width = W; wc.height = H; }
   const c = wc.getContext('2d');
 
+  // Capture raw video frame at native resolution — pixel coords match landmark coords exactly
   const frame = _captureVideoFrame(vid, W, H);
   const src = frame.data;
   const dst = new Uint8ClampedArray(src);
@@ -13096,19 +13083,21 @@ function _startLoop(ctx) {
   function loop() {
     if (!_funFilters[ctx] || _funFilters[ctx] === 'none') { _stopWarpCanvas(ctx); return; }
     const now = Date.now();
-    // Aggressively detect: every 200ms (was 350ms) so filter tracks face movement faster
-    if (now - lastDet > 200) { lastDet = now; _detectFace(ctx); }
+    // Detect every 80ms for tight face tracking
+    if (now - lastDet > 80) { lastDet = now; _detectFace(ctx); }
 
     if (isWarpFilter()) {
       // Warp filters: render to warpCanvas, clear overlay
       const vid = document.getElementById(_VID[ctx]);
       if (vid && vid.readyState >= 2) {
-        const rect = vid.getBoundingClientRect();
-        const W = Math.round(rect.width), H = Math.round(rect.height);
+        const vw = vid.videoWidth || 480;
+        const vh = vid.videoHeight || 480;
+        // Use native video resolution for warp canvas to avoid gepeng/squash artifact
+        const W = vw, H = vh;
         if (W > 0 && H > 0) {
           const wc2 = _getOrCreateWarpCanvas(ctx);
           if (wc2) {
-            // Always sync canvas size to video display size
+            // Always sync canvas resolution to native video size
             if (wc2.width !== W || wc2.height !== H) { wc2.width = W; wc2.height = H; }
             const lmRaw = _landmarkCache[ctx];
             const lmDisplay = lmRaw ? _landmarkToDisplay(lmRaw, vid, W, H) : null;
