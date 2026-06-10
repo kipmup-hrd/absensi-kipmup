@@ -12809,7 +12809,7 @@ async function _detectFace(ctx) {
       }
     } else {
       const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:224, scoreThreshold:0.3 }));
-      if (det) { _faceDataCache[ctx] = { box: det.box }; _landmarkCache[ctx] = null; }
+      if (det) { _faceDataCache[ctx] = { box: det.detection ? det.detection.box : det.box }; _landmarkCache[ctx] = null; }
     }
   } catch(e) {}
 }
@@ -12881,7 +12881,16 @@ function _captureVideoFrame(vid, W, H) {
   const tmp = document.createElement('canvas');
   tmp.width = W; tmp.height = H;
   const tc = tmp.getContext('2d');
-  tc.drawImage(vid, 0, 0, W, H); // raw, no manual flip
+  // Use same letterbox logic as _landmarkToDisplay so pixel coords match landmark coords
+  const vw = vid.videoWidth || W, vh = vid.videoHeight || H;
+  const displayAspect = W / H, videoAspect = vw / vh;
+  let scaleX2, scaleY2, cropX2 = 0, cropY2 = 0;
+  if (videoAspect > displayAspect) {
+    scaleY2 = H / vh; scaleX2 = scaleY2; cropX2 = (vw * scaleX2 - W) / 2;
+  } else {
+    scaleX2 = W / vw; scaleY2 = scaleX2; cropY2 = (vh * scaleY2 - H) / 2;
+  }
+  tc.drawImage(vid, 0, 0, vw, vh, -cropX2, -cropY2, vw * scaleX2, vh * scaleY2);
   return tc.getImageData(0, 0, W, H);
 }
 
@@ -12915,7 +12924,8 @@ function _drawBeautyFrame(ctx, lmDisplay, W, H, fname) {
   const vid = document.getElementById(_VID[ctx]);
   if (!vid || !lmDisplay) return;
   const wc = _getOrCreateWarpCanvas(ctx);
-  if (!wc || !wc.width) return;
+  if (!wc) return;
+  if (wc.width !== W || wc.height !== H) { wc.width = W; wc.height = H; }
   const c = wc.getContext('2d');
 
   const frame = _captureVideoFrame(vid, W, H);
@@ -13414,14 +13424,19 @@ function _bakeFun(ctx, canvas) {
     const lmRaw = _landmarkCache[ctx];
     const vid = document.getElementById(_VID[ctx]);
     if (lmRaw && vid && vid.videoWidth) {
-      // Scale landmarks to canvas space (canvas is square = min(vw,vh))
+      // Scale landmarks to canvas space using same letterbox mapping as _landmarkToDisplay
+      // Canvas photo is square (side×side cropped), so map accordingly
       const vw = vid.videoWidth, vh = vid.videoHeight;
-      const side = Math.min(vw, vh);
-      const offX = (vw - side) / 2, offY = (vh - side) / 2;
-      const sx = W / side, sy = H / side;
+      const displayAspect = W / H, videoAspect = vw / vh;
+      let scaleXL, scaleYL, cropXL = 0, cropYL = 0;
+      if (videoAspect > displayAspect) {
+        scaleYL = H / vh; scaleXL = scaleYL; cropXL = (vw * scaleXL - W) / 2;
+      } else {
+        scaleXL = W / vw; scaleYL = scaleXL; cropYL = (vh * scaleYL - H) / 2;
+      }
       const lmCanvas = lmRaw.map(p => ({
-        x: W - ((p.x - offX) * sx),  // mirror X
-        y: (p.y - offY) * sy
+        x: W - (p.x * scaleXL - cropXL),  // mirror X to match mirrored canvas photo
+        y: p.y * scaleYL - cropYL
       }));
       // Snapshot current canvas content (already has video frame from caller)
       const snap = c.getImageData(0, 0, W, H);
@@ -13496,16 +13511,19 @@ function _bakeFun(ctx, canvas) {
   const fd = _faceDataCache[ctx];
   const vid = document.getElementById(_VID[ctx]);
   if (fd && fd.box && vid && vid.videoWidth) {
+    // Use same letterbox mapping as _getLerpedFaceBox for consistent positioning
     const vw = vid.videoWidth, vh = vid.videoHeight;
-    const side = Math.min(vw, vh);
-    const offX = (vw - side) / 2, offY = (vh - side) / 2;
-    const sx = W / side, sy = H / side;
-    const bx_full = fd.box.x - offX;
-    const by_full = fd.box.y - offY;
-    const bw = fd.box.width * sx, bh = fd.box.height * sy;
-    fx = W - (bx_full * sx) - bw;
-    fy = Math.max(0, by_full * sy);
-    fw = bw; fh = bh;
+    const displayAspect = W / H, videoAspect = vw / vh;
+    let scaleX, scaleY, cropX = 0, cropY = 0;
+    if (videoAspect > displayAspect) {
+      scaleY = H / vh; scaleX = scaleY; cropX = (vw * scaleX - W) / 2;
+    } else {
+      scaleX = W / vw; scaleY = scaleX; cropY = (vh * scaleY - H) / 2;
+    }
+    const bx = W - (fd.box.x * scaleX - cropX) - fd.box.width * scaleX;
+    const by = fd.box.y * scaleY - cropY;
+    fw = fd.box.width * scaleX; fh = fd.box.height * scaleY;
+    fx = bx; fy = Math.max(0, by);
   } else {
     fw = W * 0.44; fh = H * 0.52; fx = (W - fw) / 2; fy = H * 0.10;
   }
