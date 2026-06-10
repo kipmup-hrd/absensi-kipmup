@@ -12820,7 +12820,9 @@ async function _detectFace(ctx) {
 // 2. Warp pixel regions berdasarkan landmark positions
 // 3. Render ke overlay canvas
 
-// Convert landmark positions (video space) → display canvas space (mirrored)
+// Convert landmark positions (raw video space) → warp canvas space.
+// NO manual X-mirror — pixels are captured raw (no flip), so landmarks must also be raw.
+// The display mirror is handled by transform:scaleX(-1) on the warp canvas element itself.
 function _landmarkToDisplay(pts, vid, W, H) {
   if (!pts || !vid || !vid.videoWidth) return null;
   const vw = vid.videoWidth, vh = vid.videoHeight;
@@ -12832,7 +12834,7 @@ function _landmarkToDisplay(pts, vid, W, H) {
     scaleX = W / vw; scaleY = scaleX; cropY = (vh * scaleY - H) / 2;
   }
   return pts.map(p => ({
-    x: W - (p.x * scaleX - cropX), // mirror X
+    x: p.x * scaleX - cropX, // raw X — no mirror (warp canvas handles visual flip)
     y: p.y * scaleY - cropY
   }));
 }
@@ -12871,13 +12873,15 @@ function _warpRegion(srcData, dstData, W, H, cx, cy, radius, strength) {
 }
 
 // Draw video frame onto a canvas, return ImageData
+// IMPORTANT: drawImage always reads RAW (pre-CSS-transform) pixels — CSS scaleX(-1) on
+// the video element does NOT affect drawImage output. We capture raw/non-mirrored pixels
+// so that landmark coordinates (also raw) stay perfectly aligned with pixel data.
+// The warp canvas carries its own transform:scaleX(-1) to mirror the final display output.
 function _captureVideoFrame(vid, W, H) {
   const tmp = document.createElement('canvas');
   tmp.width = W; tmp.height = H;
   const tc = tmp.getContext('2d');
-  // Mirror like video display
-  tc.save(); tc.translate(W, 0); tc.scale(-1, 1);
-  tc.drawImage(vid, 0, 0, W, H); tc.restore();
+  tc.drawImage(vid, 0, 0, W, H); // raw, no manual flip
   return tc.getImageData(0, 0, W, H);
 }
 
@@ -12891,9 +12895,11 @@ function _getOrCreateWarpCanvas(ctx) {
   const wrapper = vid.parentElement;
   if (getComputedStyle(wrapper).position === 'static') wrapper.style.position = 'relative';
   const wc = document.createElement('canvas');
-  wc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9;';
+  // z-index:12 ensures warp canvas sits ABOVE the video element (which has no explicit z-index).
+  // transform:scaleX(-1) mirrors the raw pixel output to match the CSS-mirrored video display.
+  wc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:12;transform:scaleX(-1);';
   wc.id = ctx + '-warp-canvas';
-  wrapper.insertBefore(wc, wrapper.firstChild);
+  wrapper.appendChild(wc);
   _warpCanvases[ctx] = wc;
   return wc;
 }
@@ -13100,12 +13106,10 @@ function _startLoop(ctx) {
               // Landmarks ready — draw warped frame
               _drawBeautyFrame(ctx, lmDisplay, W, H, _funFilters[ctx]);
             } else {
-              // No landmarks yet — render plain mirrored video so filter slot is visible
+              // No landmarks yet — render plain video (raw, no flip) so filter slot is visible.
+              // The warp canvas has transform:scaleX(-1) so display will be correctly mirrored.
               const c2 = wc2.getContext('2d');
-              c2.save();
-              c2.translate(W, 0); c2.scale(-1, 1);
               c2.drawImage(vid, 0, 0, W, H);
-              c2.restore();
             }
           }
         }
