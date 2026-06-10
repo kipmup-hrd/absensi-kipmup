@@ -13073,30 +13073,40 @@ function _drawBeautyFrame(ctx, lmDisplay, W, H, fname) {
 function _startLoop(ctx) {
   _stopOverlay(ctx);
   _ensureFaceModels();
+  // Force immediate detection so filter appears without waiting 350ms
+  _detectFace(ctx);
   const isWarpFilter = () => ['beauty','cute','alien','wobble'].includes(_funFilters[ctx]);
   let lastDet = 0;
   function loop() {
     if (!_funFilters[ctx] || _funFilters[ctx] === 'none') { _stopWarpCanvas(ctx); return; }
     const now = Date.now();
-    if (now - lastDet > 350) { lastDet = now; _detectFace(ctx); }
+    // Aggressively detect: every 200ms (was 350ms) so filter tracks face movement faster
+    if (now - lastDet > 200) { lastDet = now; _detectFace(ctx); }
 
-    const wc = _warpCanvases[ctx];
     if (isWarpFilter()) {
       // Warp filters: render to warpCanvas, clear overlay
       const vid = document.getElementById(_VID[ctx]);
-      if (vid) {
+      if (vid && vid.readyState >= 2) {
         const rect = vid.getBoundingClientRect();
         const W = Math.round(rect.width), H = Math.round(rect.height);
-        if (W && H) {
+        if (W > 0 && H > 0) {
           const wc2 = _getOrCreateWarpCanvas(ctx);
-          if (wc2 && (wc2.width !== W || wc2.height !== H)) { wc2.width = W; wc2.height = H; }
-          const lmRaw = _landmarkCache[ctx];
-          const lmDisplay = lmRaw ? _landmarkToDisplay(lmRaw, vid, W, H) : null;
-          if (lmDisplay) {
-            _drawBeautyFrame(ctx, lmDisplay, W, H, _funFilters[ctx]);
-          } else {
-            // No landmarks yet — just show plain video (warp canvas blank)
-            _stopWarpCanvas(ctx);
+          if (wc2) {
+            // Always sync canvas size to video display size
+            if (wc2.width !== W || wc2.height !== H) { wc2.width = W; wc2.height = H; }
+            const lmRaw = _landmarkCache[ctx];
+            const lmDisplay = lmRaw ? _landmarkToDisplay(lmRaw, vid, W, H) : null;
+            if (lmDisplay) {
+              // Landmarks ready — draw warped frame
+              _drawBeautyFrame(ctx, lmDisplay, W, H, _funFilters[ctx]);
+            } else {
+              // No landmarks yet — render plain mirrored video so filter slot is visible
+              const c2 = wc2.getContext('2d');
+              c2.save();
+              c2.translate(W, 0); c2.scale(-1, 1);
+              c2.drawImage(vid, 0, 0, W, H);
+              c2.restore();
+            }
           }
         }
       }
