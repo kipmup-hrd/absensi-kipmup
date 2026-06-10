@@ -12728,7 +12728,8 @@ function _drawFunFrame(ctx) {
   const vid = document.getElementById(_VID[ctx]);
   if (!vid) return;
   const rect = vid.getBoundingClientRect();
-  const W = Math.round(rect.width), H = Math.round(rect.height);
+  const W = Math.round(rect.width) || vid.offsetWidth || 260;
+  const H = Math.round(rect.height) || vid.offsetHeight || 260;
   if (!W || !H) return;
   if (oc.width !== W || oc.height !== H) { oc.width = W; oc.height = H; }
   const c = oc.getContext('2d');
@@ -12767,48 +12768,54 @@ function _drawFunFrame(ctx) {
 }
 
 // Face detection — dengan landmark support untuk beauty/distort filters
-let _faceModelsLoaded = false;
-let _landmarkModelsLoaded = false;
 const _landmarkCache = {}; // ctx → [{x,y}] array of 68 points
 
+function _faceModelsReady() {
+  return typeof faceapi !== 'undefined' && faceapi.nets.tinyFaceDetector.isLoaded;
+}
+function _landmarkModelsReady() {
+  return typeof faceapi !== 'undefined' && faceapi.nets.faceLandmark68TinyNet.isLoaded;
+}
+
+let _modelLoadPromise = null;
 async function _ensureFaceModels() {
-  if (_faceModelsLoaded) return;
+  if (_faceModelsReady()) return;
   if (typeof faceapi === 'undefined') return;
-  try {
+  if (_modelLoadPromise) return _modelLoadPromise;
+  _modelLoadPromise = (async () => {
     const URLS = [
       'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
       'https://unpkg.com/face-api.js@0.22.2/weights'
     ];
     for (const url of URLS) {
       try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(url),
-          faceapi.nets.faceLandmark68TinyNet.isLoaded ? Promise.resolve() : faceapi.nets.faceLandmark68TinyNet.loadFromUri(url),
-        ]);
-        _faceModelsLoaded = true;
-        _landmarkModelsLoaded = true;
+        const tasks = [];
+        if (!faceapi.nets.tinyFaceDetector.isLoaded) tasks.push(faceapi.nets.tinyFaceDetector.loadFromUri(url));
+        if (!faceapi.nets.faceLandmark68TinyNet.isLoaded) tasks.push(faceapi.nets.faceLandmark68TinyNet.loadFromUri(url));
+        if (tasks.length > 0) await Promise.all(tasks);
         break;
-      } catch(e) {}
+      } catch(e) { _modelLoadPromise = null; }
     }
-  } catch(e) {}
+  })();
+  return _modelLoadPromise;
 }
 
 async function _detectFace(ctx) {
   const vid = document.getElementById(_VID[ctx]);
   if (!vid || vid.readyState < 2) return;
+  // Jika model belum loaded, coba load dulu (non-blocking)
+  if (!_faceModelsReady()) { _ensureFaceModels(); return; }
   try {
-    if (typeof faceapi === 'undefined') return;
-    if (!faceapi.nets.tinyFaceDetector.isLoaded) return;
     const needsLandmarks = ['beauty','cute','alien','wobble'].includes(_funFilters[ctx]);
-    if (needsLandmarks && faceapi.nets.faceLandmark68TinyNet.isLoaded) {
-      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.3 }))
+    if (needsLandmarks && _landmarkModelsReady()) {
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.25 }))
         .withFaceLandmarks(true);
       if (det) {
         _faceDataCache[ctx] = { box: det.detection.box };
         _landmarkCache[ctx] = det.landmarks.positions; // [{x,y}×68]
       }
     } else {
-      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.3 }));
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.25 }));
       if (det) { _faceDataCache[ctx] = { box: det.detection ? det.detection.box : det.box }; _landmarkCache[ctx] = null; }
     }
   } catch(e) {}
@@ -13075,15 +13082,14 @@ function _drawBeautyFrame(ctx, lmDisplay, W, H, fname) {
 // Animation loop
 function _startLoop(ctx) {
   _stopOverlay(ctx);
-  _ensureFaceModels();
-  // Force immediate detection so filter appears without waiting 350ms
-  _detectFace(ctx);
+  // Ensure models loaded — then kick off first detection once ready
+  _ensureFaceModels().then(() => { _detectFace(ctx); }).catch(() => {});
   const isWarpFilter = () => ['beauty','cute','alien','wobble'].includes(_funFilters[ctx]);
   let lastDet = 0;
   function loop() {
     if (!_funFilters[ctx] || _funFilters[ctx] === 'none') { _stopWarpCanvas(ctx); return; }
     const now = Date.now();
-    // Detect every 80ms for tight face tracking
+    // Detect every 80ms for tight face tracking; also re-trigger if models just became ready
     if (now - lastDet > 80) { lastDet = now; _detectFace(ctx); }
 
     if (isWarpFilter()) {
