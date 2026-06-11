@@ -12202,136 +12202,170 @@ let   _detectRunning    = {};  // flag per ctx
 const _VID = { ujicoba:'ujicoba-video', kegiatan:'kegiatan-selfie-video', kiosk:'kiosk-selfie-video' };
 
 // ══════════════════════════════════════════════════════════════════════
-// FACE TRACKER v5 — Multi-strategy, sama seperti filter Instagram/TikTok
-// Strategy 1: MediaPipe FaceDetection (paling akurat, CDN loaded)
-// Strategy 2: Chrome FaceDetector API built-in
-// Strategy 3: face-api.js tinyFaceDetector
-// Strategy 4: Brightness-centroid heuristic (offline fallback)
-// Strategy 5: Center box (always works, filter tetap muncul di tengah)
+// FACE TRACKER v6 — Canvas skin-tone sampling (always works, no CDN needed)
+// + MediaPipe/native/face-api sebagai bonus precision upgrade bila tersedia
+// Cara kerja utama:
+//   Setiap frame, sample pixel video ke canvas kecil (32x32)
+//   Cari region skin-tone → bounding box → update _rawFaceBox (normalized 0-1)
+//   Karena video CSS-mirrored (scaleX(-1)), kita sample dari canvas yang TIDAK mirror
+//   lalu flip X koordinat → koordinat match dengan tampilan overlay
 // ══════════════════════════════════════════════════════════════════════
 
-const _rawFaceBox = {};        // ctx → normalized {nx,ny,nw,nh} (0-1 coords)
-const _faceDetectorReady = {}; // ctx → strategy string
-const _faceDetectors = {};     // ctx → detector instance
-const _mpFaceDetectors = {};   // MediaPipe FaceDetection instances per ctx
-const _detectLock = {};        // prevent concurrent detection per ctx
-const _mpReady = {};           // MediaPipe ready flag per ctx
+const _rawFaceBox = {};        // ctx → {nx,ny,nw,nh} normalized 0-1 di display space
+const _faceDetectorReady = {}; // ctx → strategy string (info only)
+const _faceDetectors = {};
+const _mpFaceDetectors = {};
+const _detectLock = {};
+const _mpReady = {};
 
-// ── Normalization helper ──
-// Konversi dari video-native coords → mirrored normalized (0-1)
-// Account untuk object-fit:cover crop
-function _toNormalized(bx, by, bw, bh, dispW, dispH, vw, vh) {
-  const scale = Math.max(dispW / vw, dispH / vh);
-  const offX = (vw * scale - dispW) / 2;
-  const offY = (vh * scale - dispH) / 2;
-  const dx = bx * scale - offX;
-  const dy = by * scale - offY;
-  const dw = bw * scale;
-  const dh = bh * scale;
-  // Mirror X: video CSS scaleX(-1), coords native = non-mirrored
-  const mirroredX = dispW - dx - dw;
-  return {
-    nx: Math.max(0, mirroredX / dispW),
-    ny: Math.max(0, dy / dispH),
-    nw: Math.min(1, dw / dispW),
-    nh: Math.min(1, dh / dispH)
+// Sample canvas reusable per ctx (hindari buat baru tiap frame)
+const _sampleCanvas = {};
+const _sampleCtx = {};
+const SAMPLE_W = 32, SAMPLE_H = 32; // resolusi sampling — cukup untuk tracking
+
+function _getSampleCanvas(ctx) {
+  if (!_sampleCanvas[ctx]) {
+    const c = document.createElement('canvas');
+    c.width = SAMPLE_W; c.height = SAMPLE_H;
+    _sampleCanvas[ctx] = c;
+    _sampleCtx[ctx] = c.getContext('2d', { willReadFrequently: true });
+  }
+  return { c: _sampleCanvas[ctx], ctx2d: _sampleCtx[ctx] };
+}
+
+// ── CORE: Skin-tone face detect dari raw video frame ──
+// Video pixel TIDAK di-mirror (native camera), tapi tampilan video CSS scaleX(-1)
+// Kita sample native → cari skin region → flip X agar match tampilan mirror
+function _detectFaceSkin(ctx) {
+  const vid = document.getElementById(_VID[ctx]);
+  if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
+
+  const vw = vid.videoWidth, vh = vid.videoHeight;
+  const { c, ctx2d } = _getSampleCanvas(ctx);
+
+  // Gambar video ke canvas sample (native, belum mirror)
+  try {
+    ctx2d.drawImage(vid, 0, 0, SAMPLE_W, SAMPLE_H);
+  } catch(e) { return; }
+
+  const d = ctx2d.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data;
+
+  // Cari semua pixel skin
+  let minX = SAMPLE_W, maxX = 0, minY = SAMPLE_H, maxY = 0;
+  let skinCount = 0;
+  let sumX = 0, sumY = 0;
+
+  for (let py = 0; py < SAMPLE_H; py++) {
+    for (let px = 0; px < SAMPLE_W; px++) {
+      const i = (py * SAMPLE_W + px) * 4;
+      const r = d[i], g = d[i+1], b = d[i+2];
+      // Skin heuristic (works for various skin tones):
+      // YCbCr-inspired: r>95, g>40, b>20, r>b, r>g-15, |r-g|>15
+      const isSkin = (
+        r > 90 && g > 40 && b > 20 &&
+        r > b &&
+        Math.abs(r - g) > 12 &&
+        r - b > 15 &&
+        r < 250  // exclude overexposed/white
+      );
+      if (isSkin) {
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+        if (py > maxY) maxY = py;
+        sumX += px; sumY += py;
+        skinCount++;
+      }
+    }
+  }
+
+  if (skinCount < 8 || (maxX - minX) < 3 || (maxY - minY) < 3) {
+    // Tidak ada cukup skin pixel — set null agar pakai center fallback
+    _rawFaceBox[ctx] = null;
+    return;
+  }
+
+  // Expand bbox sedikit (padding 15%)
+  const padX = (maxX - minX) * 0.15;
+  const padY = (maxY - minY) * 0.15;
+  const nx_raw = Math.max(0, (minX - padX) / SAMPLE_W);  // di native video space
+  const ny_raw = Math.max(0, (minY - padY) / SAMPLE_H);
+  const nw_raw = Math.min(1 - nx_raw, (maxX - minX + padX * 2) / SAMPLE_W);
+  const nh_raw = Math.min(1 - ny_raw, (maxY - minY + padY * 2) / SAMPLE_H);
+
+  // VIDEO ditampilkan dengan CSS scaleX(-1) — flip X agar match visual
+  const nx_flipped = 1 - nx_raw - nw_raw;
+
+  _rawFaceBox[ctx] = {
+    nx: Math.max(0, nx_flipped),
+    ny: Math.max(0, ny_raw),
+    nw: Math.min(1, nw_raw),
+    nh: Math.min(1, nh_raw)
   };
 }
 
-// ── MediaPipe FaceDetection — proper async loop ──
-// Cara kerja MediaPipe: send(frame) → onResults(cb) dipanggil async
-// Kita pakai per-ctx instance dengan callback yang update _rawFaceBox
+// Init detector tambahan (MediaPipe/native/faceapi) sebagai precision upgrade
 async function _initMediaPipe(ctx) {
   if (_mpReady[ctx]) return true;
   const FD = window.FaceDetection;
   if (!FD) return false;
   try {
-    const fd = new FD({
-      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${f}`
-    });
+    const fd = new FD({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${f}` });
     fd.setOptions({ model: 'short', minDetectionConfidence: 0.45 });
-    fd.onResults = (results) => {
+    const onRes = (results) => {
       const vid = document.getElementById(_VID[ctx]);
       if (!vid) return;
-      const _r0 = vid.getBoundingClientRect();
-      const dispW = Math.round(_r0.width)  || vid.offsetWidth  || 260;
-      const dispH = Math.round(_r0.height) || vid.offsetHeight || 260;
-      const vw = vid.videoWidth, vh = vid.videoHeight;
-      if (results.detections && results.detections.length > 0) {
-        // MediaPipe returns normalized bbox relative to image size
-        const bb = results.detections[0].boundingBox;
-        // bb.xCenter, yCenter, width, height — semua 0-1 relatif video
-        const bx = (bb.xCenter - bb.width  / 2) * vw;
-        const by = (bb.yCenter - bb.height / 2) * vh;
-        _rawFaceBox[ctx] = _toNormalized(bx, by, bb.width * vw, bb.height * vh, dispW, dispH, vw, vh);
-      } else {
-        _rawFaceBox[ctx] = null;
-      }
-      _detectLock[ctx] = false; // release lock setelah callback
-    };
-    // Warm-up dengan blank image
-    await new Promise(resolve => {
-      const tmp = document.createElement('canvas');
-      tmp.width = 64; tmp.height = 64;
-      const origCb = fd.onResults;
-      fd.onResults = (r) => { origCb(r); resolve(); };
-      fd.send({ image: tmp }).catch(() => resolve());
-      setTimeout(resolve, 3000);
-    });
-    fd.onResults = (results) => {
-      const vid = document.getElementById(_VID[ctx]);
-      if (!vid) return;
-      const _r1 = vid.getBoundingClientRect();
-      const dispW = Math.round(_r1.width)  || vid.offsetWidth  || 260;
-      const dispH = Math.round(_r1.height) || vid.offsetHeight || 260;
-      const vw = vid.videoWidth, vh = vid.videoHeight;
       if (results.detections && results.detections.length > 0) {
         const bb = results.detections[0].boundingBox;
-        const bx = (bb.xCenter - bb.width  / 2) * vw;
-        const by = (bb.yCenter - bb.height / 2) * vh;
-        _rawFaceBox[ctx] = _toNormalized(bx, by, bb.width * vw, bb.height * vh, dispW, dispH, vw, vh);
-      } else {
-        _rawFaceBox[ctx] = null;
+        // MediaPipe coords sudah normalized 0-1 relatif ke video size, tanpa mirror
+        const nx_raw = bb.xCenter - bb.width / 2;
+        const nx_flipped = 1 - nx_raw - bb.width;
+        _rawFaceBox[ctx] = {
+          nx: Math.max(0, nx_flipped),
+          ny: Math.max(0, bb.yCenter - bb.height / 2),
+          nw: Math.min(1, bb.width),
+          nh: Math.min(1, bb.height)
+        };
       }
       _detectLock[ctx] = false;
     };
+    fd.onResults = onRes;
+    await new Promise(resolve => {
+      const tmp = document.createElement('canvas'); tmp.width = 64; tmp.height = 64;
+      const orig = fd.onResults;
+      fd.onResults = (r) => { orig(r); resolve(); };
+      fd.send({ image: tmp }).catch(() => resolve());
+      setTimeout(resolve, 3000);
+    });
+    fd.onResults = onRes;
     _mpFaceDetectors[ctx] = fd;
     _mpReady[ctx] = true;
     return true;
   } catch(e) { return false; }
 }
 
-// Strategy: Chrome built-in FaceDetector
 function _tryInitNative(ctx) {
   if (!('FaceDetector' in window)) return false;
-  try {
-    _faceDetectors[ctx] = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-    return true;
-  } catch(e) { return false; }
+  try { _faceDetectors[ctx] = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 }); return true; }
+  catch(e) { return false; }
 }
 
-// Strategy: face-api.js
 async function _tryInitFaceApi(ctx) {
   if (typeof faceapi === 'undefined') return false;
-  if (!faceapi.nets || !faceapi.nets.tinyFaceDetector) return false;
-  if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-    for (const u of ['https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights', 'https://unpkg.com/face-api.js@0.22.2/weights']) {
+  if (!faceapi.nets?.tinyFaceDetector?.isLoaded) {
+    for (const u of ['https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights','https://unpkg.com/face-api.js@0.22.2/weights']) {
       try { await faceapi.nets.tinyFaceDetector.loadFromUri(u); break; } catch(e) {}
     }
   }
-  return faceapi.nets.tinyFaceDetector.isLoaded;
+  return faceapi.nets?.tinyFaceDetector?.isLoaded;
 }
 
 async function _initFaceDetector(ctx) {
   if (_faceDetectorReady[ctx]) return;
-  // Priority 1: MediaPipe (paling reliable di Chrome)
   if (await _initMediaPipe(ctx)) { _faceDetectorReady[ctx] = 'mediapipe'; return; }
-  // Priority 2: Chrome native FaceDetector
   if (_tryInitNative(ctx)) { _faceDetectorReady[ctx] = 'native'; return; }
-  // Priority 3: face-api
   if (await _tryInitFaceApi(ctx)) { _faceDetectorReady[ctx] = 'faceapi'; return; }
-  // Fallback: center box
-  _faceDetectorReady[ctx] = 'center';
+  _faceDetectorReady[ctx] = 'skin'; // gunakan skin sampling saja
 }
 
 let _heuristicBusy = {};
@@ -12340,33 +12374,42 @@ async function _runFaceDetect(ctx) {
   if (_detectLock[ctx]) return;
   const vid = document.getElementById(_VID[ctx]);
   if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
+
+  // Skin sampling selalu jalan sebagai baseline — cepat & reliable
+  _detectFaceSkin(ctx);
+
+  // Kalau ada precision detector, upgrade di background
   if (!_faceDetectorReady[ctx]) {
-    await _initFaceDetector(ctx);
+    _initFaceDetector(ctx).catch(() => {});
     return;
   }
 
   const strategy = _faceDetectorReady[ctx];
-  const _rect = vid.getBoundingClientRect();
-  const dispW = Math.round(_rect.width)  || vid.offsetWidth  || 260;
-  const dispH = Math.round(_rect.height) || vid.offsetHeight || 260;
+  if (strategy === 'skin') return; // sudah ditangani _detectFaceSkin
+
   const vw = vid.videoWidth, vh = vid.videoHeight;
 
   if (strategy === 'mediapipe') {
     const fd = _mpFaceDetectors[ctx];
     if (!fd) return;
-    _detectLock[ctx] = true; // lock direlease di onResults callback
-    try {
-      await fd.send({ image: vid });
-    } catch(e) {
-      _detectLock[ctx] = false;
-    }
+    _detectLock[ctx] = true;
+    try { await fd.send({ image: vid }); } catch(e) { _detectLock[ctx] = false; }
   } else if (strategy === 'native') {
     _detectLock[ctx] = true;
     try {
       const faces = await _faceDetectors[ctx].detect(vid);
-      _rawFaceBox[ctx] = (faces && faces.length > 0)
-        ? _toNormalized(faces[0].boundingBox.left, faces[0].boundingBox.top, faces[0].boundingBox.width, faces[0].boundingBox.height, dispW, dispH, vw, vh)
-        : null;
+      if (faces && faces.length > 0) {
+        const bb = faces[0].boundingBox;
+        // native coords: relatif ke video native (tidak mirror)
+        const nx_raw = bb.left / vw;
+        const nx_flipped = 1 - nx_raw - bb.width / vw;
+        _rawFaceBox[ctx] = {
+          nx: Math.max(0, nx_flipped),
+          ny: Math.max(0, bb.top / vh),
+          nw: Math.min(1, bb.width / vw),
+          nh: Math.min(1, bb.height / vh)
+        };
+      }
     } catch(e) {}
     _detectLock[ctx] = false;
   } else if (strategy === 'faceapi') {
@@ -12375,79 +12418,37 @@ async function _runFaceDetect(ctx) {
       const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.28 }));
       if (det) {
         const box = det.detection ? det.detection.box : det.box;
-        _rawFaceBox[ctx] = _toNormalized(box.x, box.y, box.width, box.height, dispW, dispH, vw, vh);
-      } else {
-        _rawFaceBox[ctx] = null;
+        const nx_raw = box.x / vw;
+        const nx_flipped = 1 - nx_raw - box.width / vw;
+        _rawFaceBox[ctx] = {
+          nx: Math.max(0, nx_flipped),
+          ny: Math.max(0, box.y / vh),
+          nw: Math.min(1, box.width / vw),
+          nh: Math.min(1, box.height / vh)
+        };
       }
     } catch(e) {}
     _detectLock[ctx] = false;
   }
-  // ── Brightness/skin-tone centroid heuristic (fallback saat semua detector gagal) ──
-  if (strategy === 'center') {
-    if (_heuristicBusy[ctx]) return;
-    _heuristicBusy[ctx] = true;
-    try {
-      const _rh = vid.getBoundingClientRect();
-      const dispW2 = Math.round(_rh.width)  || vid.offsetWidth  || 260;
-      const dispH2 = Math.round(_rh.height) || vid.offsetHeight || 260;
-      const vw2 = vid.videoWidth, vh2 = vid.videoHeight;
-      if (vw2 && vh2) {
-        const tmpC = document.createElement('canvas');
-        tmpC.width = Math.floor(vw2 / 20);
-        tmpC.height = Math.floor(vh2 / 20);
-        const tc = tmpC.getContext('2d', { willReadFrequently: true });
-        tc.drawImage(vid, 0, 0, tmpC.width, tmpC.height);
-        const imgData = tc.getImageData(0, 0, tmpC.width, tmpC.height).data;
-        let sumX = 0, sumY = 0, total = 0;
-        let minX = tmpC.width, maxX = 0, minY = tmpC.height, maxY = 0;
-        for (let py = 0; py < tmpC.height; py++) {
-          for (let px = 0; px < tmpC.width; px++) {
-            const i = (py * tmpC.width + px) * 4;
-            const r = imgData[i], g = imgData[i+1], b = imgData[i+2];
-            // Skin tone: r > g > b, r-b > 15, r > 60
-            if (r > 60 && r > g && g >= b && (r - b) > 15) {
-              const w = r + g;
-              sumX += px * w; sumY += py * w; total += w;
-              if (px < minX) minX = px; if (px > maxX) maxX = px;
-              if (py < minY) minY = py; if (py > maxY) maxY = py;
-            }
-          }
-        }
-        if (total > 0 && (maxX - minX) > 2 && (maxY - minY) > 2) {
-          const bx_v = ((minX - 1) / tmpC.width) * vw2;
-          const by_v = ((minY - 1) / tmpC.height) * vh2;
-          const bw_v = ((maxX - minX + 2) / tmpC.width) * vw2;
-          const bh_v = ((maxY - minY + 2) / tmpC.height) * vh2;
-          _rawFaceBox[ctx] = _toNormalized(bx_v, by_v, bw_v, bh_v, dispW2, dispH2, vw2, vh2);
-        } else {
-          _rawFaceBox[ctx] = null;
-        }
-      }
-    } catch(e) {}
-    _heuristicBusy[ctx] = false;
-  }
-  // else: tidak ada deteksi → null → center fallback di _getSmoothedBox
 }
 
 // ── Smooth lerp face box → pixel coords (scaled to W,H saat render) ──
-// Lerp factor: 0.20 = smooth, 0.40 = responsive, sesuai selera
 function _getSmoothedBox(ctx, W, H) {
   const raw = _rawFaceBox[ctx];
   let target;
   if (raw && raw.nw > 0.05 && raw.nh > 0.05) {
     target = { fx: raw.nx * W, fy: raw.ny * H, fw: raw.nw * W, fh: raw.nh * H };
   } else {
-    // Center fallback — wajah selfie close-up, posisi vertikal tengah-atas frame
-    const fw = W * 0.60, fh = H * 0.65;
-    target = { fx: (W - fw) / 2, fy: H * 0.12, fw, fh };
+    // Center fallback — wajah selfie close-up, posisi tengah frame
+    const fw = W * 0.55, fh = H * 0.60;
+    target = { fx: (W - fw) / 2, fy: H * 0.18, fw, fh };
   }
   if (!_faceSmooth[ctx]) {
     _faceSmooth[ctx] = { ...target };
     return { ...target };
   }
   const s = _faceSmooth[ctx];
-  // Lebih responsif saat wajah terdeteksi, lebih smooth saat hilang
-  const alpha = (raw && raw.nw > 0.05) ? 0.35 : 0.08;
+  const alpha = (raw && raw.nw > 0.05) ? 0.45 : 0.06;
   s.fx += (target.fx - s.fx) * alpha;
   s.fy += (target.fy - s.fy) * alpha;
   s.fw += (target.fw - s.fw) * alpha;
@@ -12829,14 +12830,15 @@ function _drawFunFrame(ctx) {
       break;
   }
 
-  // DEBUG MODE — aktifkan dengan window._filterDebug = true di console
-  if (window._filterDebug) {
+  // DEBUG — selalu tampil (bisa dimatikan dengan window._filterDebug = false)
+  if (window._filterDebug !== false) {
     c.save();
-    c.strokeStyle = '#00ff00'; c.lineWidth = 2; c.setLineDash([4, 4]);
+    c.strokeStyle = 'rgba(0,255,0,0.7)'; c.lineWidth = 2; c.setLineDash([4, 4]);
     c.strokeRect(fx, fy, fw, fh); c.setLineDash([]);
-    c.fillStyle = '#00ff00'; c.font = '10px monospace';
+    c.fillStyle = '#00ff00'; c.font = `${Math.max(9, W*0.035)}px monospace`;
     const raw2 = _rawFaceBox[ctx];
-    c.fillText(`[${_faceDetectorReady[ctx]||'?'}] ${raw2 ? 'FACE' : 'CENTER'} nx=${raw2?raw2.nx.toFixed(2):'?'}`, fx+2, fy+12);
+    const strat = _faceDetectorReady[ctx] || 'init';
+    c.fillText(`[${strat}] ${raw2 ? '👤TRACKED' : '📍CENTER'}`, fx+2, fy+14);
     c.restore();
   }
 }
@@ -12951,8 +12953,8 @@ function _startLoop(ctx) {
     const now = Date.now();
     frameCount++;
 
-    // Deteksi wajah setiap 100ms — cukup responsif, ringan untuk heuristic
-    if (now - lastDetect > 100) {
+    // Deteksi wajah setiap 80ms — cukup responsif untuk tracking realtime
+    if (now - lastDetect > 80) {
       lastDetect = now;
       _runFaceDetect(ctx); // async, non-blocking — loop render tidak terganggu
     }
