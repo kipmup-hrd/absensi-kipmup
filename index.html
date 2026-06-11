@@ -12301,10 +12301,11 @@ async function _initFaceDetector(ctx) {
 
 // ── Brightness centroid heuristic ──
 // Sample video ke canvas kecil (WITH mirror agar coords match display),
-// cari area skin-tone, estimasi bounding box wajah.
+// cari centroid skin-tone, gunakan ukuran FIXED untuk bounding box.
+// Ukuran tidak dari span pixel — terlalu tidak stabil.
 function _detectByHeuristic(vid, dispW, dispH) {
   try {
-    const S = 80;
+    const S = 64;
     const oc = (typeof OffscreenCanvas !== 'undefined')
       ? new OffscreenCanvas(S, S)
       : (() => { const c = document.createElement('canvas'); c.width = S; c.height = S; return c; })();
@@ -12318,44 +12319,31 @@ function _detectByHeuristic(vid, dispW, dispH) {
     octx.restore();
 
     const data = octx.getImageData(0, 0, S, S).data;
-
     let sumX = 0, sumY = 0, totalW = 0;
-    let minX = S, maxX = 0, minY = S, maxY = 0;
 
     for (let py = 0; py < S; py++) {
       for (let px = 0; px < S; px++) {
         const i = (py * S + px) * 4;
         const r = data[i], g = data[i+1], b = data[i+2];
-        // Skin tone detection: warm, mid-brightness pixels
-        const isSkin = (r > 95 && g > 55 && b > 30 &&
-                        r > b && (r - b) > 15 &&
-                        Math.abs(r - g) < 50 &&
-                        r > 100 && r < 250);
-        if (isSkin) {
-          const w = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
-          sumX += px * w; sumY += py * w; totalW += w;
-          if (px < minX) minX = px;
-          if (px > maxX) maxX = px;
-          if (py < minY) minY = py;
-          if (py > maxY) maxY = py;
-        }
+        const skinScore = (r > 100 && g > 60 && b > 40 && r > g && r > b && (r - b) > 10) ? 1 : 0;
+        const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+        const w = skinScore * brightness;
+        sumX += px * w; sumY += py * w; totalW += w;
       }
     }
 
-    if (totalW < 30) return null;
+    if (totalW < 50) return null;
 
     const cx = sumX / totalW / S;
     const cy = sumY / totalW / S;
 
-    // Estimasi bounding box dari span skin pixels, dengan padding
-    const estFW = Math.max(0.30, (maxX - minX + 20) / S);
-    const estFH = Math.max(0.35, (maxY - minY + 24) / S);
-
+    // Ukuran FIXED — disesuaikan untuk selfie close-up (wajah isi ~65-75% frame)
+    const estFW = 0.68, estFH = 0.75;
     return {
       nx: Math.max(0, Math.min(1 - estFW, cx - estFW / 2)),
-      ny: Math.max(0, Math.min(1 - estFH, cy - estFH * 0.55)),
-      nw: Math.min(0.85, estFW),
-      nh: Math.min(0.85, estFH)
+      ny: Math.max(0, Math.min(1 - estFH, cy - estFH * 0.50)),
+      nw: estFW,
+      nh: estFH
     };
   } catch(e) { return null; }
 }
@@ -12423,9 +12411,9 @@ function _getSmoothedBox(ctx, W, H) {
   if (raw && raw.nw > 0.05 && raw.nh > 0.05) {
     target = { fx: raw.nx * W, fy: raw.ny * H, fw: raw.nw * W, fh: raw.nh * H };
   } else {
-    // Center fallback — filter tetap kelihatan meski wajah tidak terdeteksi
-    const fw = W * 0.52, fh = H * 0.58;
-    target = { fx: (W - fw) / 2, fy: H * 0.08, fw, fh };
+    // Center fallback — ukuran disesuaikan untuk selfie close-up
+    const fw = W * 0.68, fh = H * 0.75;
+    target = { fx: (W - fw) / 2, fy: H * 0.04, fw, fh };
   }
   if (!_faceSmooth[ctx]) {
     _faceSmooth[ctx] = { ...target };
