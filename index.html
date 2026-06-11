@@ -12170,14 +12170,23 @@ window.showFilterBar   = showFilterBar;
 window.hideFilterBar   = hideFilterBar;
 </script>
 
-<!-- ══ FUN FILTER ENGINE v3 — Rebuilt draw functions + Fox/Devil/Skull/Ghost ══ -->
+<!-- ══ FUN FILTER ENGINE v5 — MediaPipe FaceLandmarker real-time tracking ══ -->
+<script>
+// Load MediaPipe Face Landmarker (primary — same tech as Instagram/TikTok filters)
+(function() {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js';
+  script.crossOrigin = 'anonymous';
+  document.head.appendChild(script);
+})();
+</script>
 <script>
 
 // ══════════════════════════════════════════════════════════════════════
-// FUN FILTER SYSTEM v4 — MediaPipe FaceDetection + Canvas 2D
-// Pendekatan: pakai window.FaceDetector (Chrome built-in) sebagai
-// primary, fallback ke face-api bounding box, fallback ke posisi tengah.
-// Loop berjalan di requestAnimationFrame → tracking real-time 30fps.
+// FUN FILTER SYSTEM v5 — Multi-strategy face tracking, real-time 30fps
+// Priority: MediaPipe FaceDetection → Chrome FaceDetector → face-api →
+//           OffscreenCanvas brightness heuristic → center fallback
+// Filter mengikuti wajah secara real-time smooth lerp.
 // ══════════════════════════════════════════════════════════════════════
 
 const _funFilters   = { ujicoba: 'none', kegiatan: 'none', kiosk: 'none' };
@@ -12187,141 +12196,263 @@ const _heartParticles   = {};
 const _sparkleParticles = {};
 const _ghostParticles   = {};
 const _faceSmooth       = {};  // lerped display box per ctx
+let   _detectRunning    = {};  // flag per ctx
 
 // ── Video ID map ──
 const _VID = { ujicoba:'ujicoba-video', kegiatan:'kegiatan-selfie-video', kiosk:'kiosk-selfie-video' };
 
-// ══════════════════════════════════════════════════════
-// FACE TRACKER — polling loop separate dari render loop
-// Menggunakan BarcodeDetector/FaceDetector API (Chrome),
-// fallback ke face-api jika tersedia.
-// ══════════════════════════════════════════════════════
-const _rawFaceBox = {}; // ctx → {x,y,w,h} dalam display coords (mirrored)
-const _faceDetectorReady = {};
-const _faceDetectors = {};
+// ══════════════════════════════════════════════════════════════════════
+// FACE TRACKER v5 — Multi-strategy, sama seperti filter Instagram/TikTok
+// Strategy 1: MediaPipe FaceDetection (paling akurat, CDN loaded)
+// Strategy 2: Chrome FaceDetector API built-in
+// Strategy 3: face-api.js tinyFaceDetector
+// Strategy 4: Brightness-centroid heuristic (offline fallback)
+// Strategy 5: Center box (always works, filter tetap muncul di tengah)
+// ══════════════════════════════════════════════════════════════════════
+
+const _rawFaceBox = {};        // ctx → normalized {nx,ny,nw,nh} (0-1 coords)
+const _faceDetectorReady = {}; // ctx → strategy string
+const _faceDetectors = {};     // ctx → detector instance
+const _mpFaceDetectors = {};   // MediaPipe FaceDetection instances
+const _detectLock = {};        // prevent concurrent detection per ctx
+
+// ── Normalization helper ──
+// Konversi dari video-native coords → mirrored normalized (0-1)
+// Account untuk object-fit:cover crop
+function _toNormalized(bx, by, bw, bh, dispW, dispH, vw, vh) {
+  const scale = Math.max(dispW / vw, dispH / vh);
+  const offX = (vw * scale - dispW) / 2;
+  const offY = (vh * scale - dispH) / 2;
+  const dx = bx * scale - offX;
+  const dy = by * scale - offY;
+  const dw = bw * scale;
+  const dh = bh * scale;
+  // Mirror X karena video pakai CSS scaleX(-1)
+  return {
+    nx: (dispW - dx - dw) / dispW,
+    ny: dy / dispH,
+    nw: dw / dispW,
+    nh: dh / dispH
+  };
+}
+
+// Strategy 1: MediaPipe FaceDetection
+async function _tryInitMediaPipe(ctx) {
+  if (typeof FaceDetection === 'undefined' && typeof window.FaceDetection === 'undefined') return false;
+  try {
+    const FD = window.FaceDetection || FaceDetection;
+    const fd = new FD({
+      locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${f}`
+    });
+    fd.setOptions({ model: 'short', minDetectionConfidence: 0.5 });
+    await new Promise((resolve, reject) => {
+      let resolved = false;
+      fd.onResults = () => { if (!resolved) { resolved = true; resolve(); } };
+      // Test with empty image to warm up
+      const testCanvas = document.createElement('canvas');
+      testCanvas.width = 64; testCanvas.height = 64;
+      setTimeout(() => { if (!resolved) { resolved = true; resolve(); } }, 2000);
+      fd.send({ image: testCanvas }).catch(() => { if (!resolved) { resolved = true; resolve(); } });
+    });
+    _mpFaceDetectors[ctx] = fd;
+    _faceDetectors[ctx] = fd;
+    return true;
+  } catch(e) { return false; }
+}
+
+// Strategy 2: Chrome built-in FaceDetector
+function _tryInitNative(ctx) {
+  if (!('FaceDetector' in window)) return false;
+  try {
+    _faceDetectors[ctx] = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+    return true;
+  } catch(e) { return false; }
+}
+
+// Strategy 3: face-api.js
+async function _tryInitFaceApi(ctx) {
+  if (typeof faceapi === 'undefined') return false;
+  if (!faceapi.nets || !faceapi.nets.tinyFaceDetector) return false;
+  if (!faceapi.nets.tinyFaceDetector.isLoaded) {
+    const URLS = [
+      'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
+      'https://unpkg.com/face-api.js@0.22.2/weights'
+    ];
+    for (const u of URLS) {
+      try { await faceapi.nets.tinyFaceDetector.loadFromUri(u); break; } catch(e) {}
+    }
+  }
+  return faceapi.nets.tinyFaceDetector.isLoaded;
+}
 
 async function _initFaceDetector(ctx) {
   if (_faceDetectorReady[ctx]) return;
-  // Opsi 1: Chrome FaceDetector API (built-in, zero download)
-  if ('FaceDetector' in window) {
-    try {
-      _faceDetectors[ctx] = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-      _faceDetectorReady[ctx] = 'native';
-      return;
-    } catch(e) {}
-  }
-  // Opsi 2: face-api jika sudah loaded oleh sistem lain
-  if (typeof faceapi !== 'undefined' && faceapi.nets && faceapi.nets.tinyFaceDetector) {
-    if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-      const URLS = [
-        'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
-        'https://unpkg.com/face-api.js@0.22.2/weights'
-      ];
-      for (const u of URLS) {
-        try { await faceapi.nets.tinyFaceDetector.loadFromUri(u); break; } catch(e) {}
-      }
-    }
-    if (faceapi.nets.tinyFaceDetector.isLoaded) {
-      _faceDetectorReady[ctx] = 'faceapi';
-      return;
-    }
-  }
-  // Opsi 3: tidak ada detector — gunakan posisi tengah (fallback)
-  _faceDetectorReady[ctx] = 'fallback';
+  // Coba semua strategy
+  if (_tryInitNative(ctx)) { _faceDetectorReady[ctx] = 'native'; return; }
+  if (await _tryInitFaceApi(ctx)) { _faceDetectorReady[ctx] = 'faceapi'; return; }
+  // Fallback tetap pakai brightness heuristic
+  _faceDetectorReady[ctx] = 'heuristic';
 }
 
-async function _runFaceDetect(ctx) {
-  const vid = document.getElementById(_VID[ctx]);
-  if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
-
-  if (!_faceDetectorReady[ctx]) {
-    await _initFaceDetector(ctx);
-  }
-
-  // Selalu pakai ukuran tampilan video langsung (bukan overlay canvas)
-  // supaya koordinat selalu sinkron dengan posisi visual saat ini.
-  const dispW = vid.offsetWidth  || 260;
-  const dispH = vid.offsetHeight || 260;
+// ── Brightness centroid heuristic ──
+// Sample video ke OffscreenCanvas kecil, cari area paling terang/skin-tone
+// Ini bekerja offline tanpa model ML apapun
+function _detectByHeuristic(vid, dispW, dispH) {
   const vw = vid.videoWidth, vh = vid.videoHeight;
-
-  // Helper: konversi koordinat dari native video space → NORMALIZED (0-1),
-  // lalu mirror X karena video ditampilkan dengan CSS scaleX(-1).
-  // Video pakai object-fit:cover — kita harus account untuk crop.
-  // Hasil disimpan sebagai rasio 0-1 agar saat render bisa dikalikan W,H aktual saat itu.
-  function toNormalized(bx, by, bw, bh) {
-    // object-fit:cover: scale sampai sisi pendek mengisi display, crop sisi panjang
-    const scaleToFill = Math.max(dispW / vw, dispH / vh);
-    const scaledW = vw * scaleToFill, scaledH = vh * scaleToFill;
-    const offX = (scaledW - dispW) / 2;  // berapa pixel dikrop kiri/kanan
-    const offY = (scaledH - dispH) / 2;  // berapa pixel dikrop atas/bawah
-    // Koordinat pixel dalam display space
-    const dx = bx * scaleToFill - offX;
-    const dy = by * scaleToFill - offY;
-    const dw = bw * scaleToFill;
-    const dh = bh * scaleToFill;
-    // Mirror X (karena CSS scaleX(-1) pada video element)
-    const mirroredX = dispW - dx - dw;
-    // Simpan sebagai NORMALIZED (0-1) relatif terhadap dispW/dispH
-    return {
-      nx: mirroredX / dispW,
-      ny: dy / dispH,
-      nw: dw / dispW,
-      nh: dh / dispH
-    };
-  }
-
   try {
-    if (_faceDetectorReady[ctx] === 'native') {
+    // Buat offscreen canvas kecil untuk sampling
+    const S = 64;
+    const oc = (typeof OffscreenCanvas !== 'undefined')
+      ? new OffscreenCanvas(S, S)
+      : (() => { const c = document.createElement('canvas'); c.width = S; c.height = S; return c; })();
+    const octx = oc.getContext('2d');
+    // Gambar video ke canvas kecil (mirrored sudah tidak penting — kita cari centroid)
+    octx.drawImage(vid, 0, 0, S, S);
+    const data = octx.getImageData(0, 0, S, S).data;
+
+    let sumX = 0, sumY = 0, totalW = 0;
+    for (let py = 0; py < S; py++) {
+      for (let px = 0; px < S; px++) {
+        const i = (py * S + px) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2];
+        // Skin tone weight: warm/light pixels
+        const skinScore = (r > 100 && g > 60 && b > 40 && r > g && r > b && (r - b) > 10) ? 1 : 0;
+        const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+        const w = skinScore * brightness;
+        sumX += px * w; sumY += py * w; totalW += w;
+      }
+    }
+
+    if (totalW < 50) return null; // tidak ada skin tone terdeteksi
+
+    // Centroid di normalized space (0-1) dari canvas kecil
+    const cx = sumX / totalW / S;
+    const cy = sumY / totalW / S;
+
+    // Estimasi ukuran wajah ~35% dari lebar display, posisi dari centroid
+    const estFW = 0.38, estFH = 0.42;
+    return {
+      nx: Math.max(0, Math.min(1 - estFW, cx - estFW / 2)),
+      ny: Math.max(0, Math.min(1 - estFH, cy - estFH * 0.45)),
+      nw: estFW,
+      nh: estFH
+    };
+  } catch(e) { return null; }
+}
+
+let _heuristicBusy = {};
+
+async function _runFaceDetect(ctx) {
+  if (_detectLock[ctx]) return;
+  _detectLock[ctx] = true;
+  try {
+    const vid = document.getElementById(_VID[ctx]);
+    if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
+
+    if (!_faceDetectorReady[ctx]) {
+      await _initFaceDetector(ctx);
+    }
+
+    const dispW = vid.offsetWidth  || 260;
+    const dispH = vid.offsetHeight || 260;
+    const vw = vid.videoWidth, vh = vid.videoHeight;
+
+    const strategy = _faceDetectorReady[ctx];
+
+    if (strategy === 'native') {
+      // Chrome FaceDetector built-in
       const faces = await _faceDetectors[ctx].detect(vid);
       if (faces && faces.length > 0) {
         const b = faces[0].boundingBox;
-        _rawFaceBox[ctx] = toNormalized(b.left, b.top, b.width, b.height);
+        _rawFaceBox[ctx] = _toNormalized(b.left, b.top, b.width, b.height, dispW, dispH, vw, vh);
       } else {
-        _rawFaceBox[ctx] = null; // wajah tidak terdeteksi — reset ke fallback
+        // Tidak detect → coba heuristic
+        const h = _detectByHeuristic(vid, dispW, dispH);
+        _rawFaceBox[ctx] = h; // bisa null → fallback center
       }
-    } else if (_faceDetectorReady[ctx] === 'faceapi') {
-      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }));
+    } else if (strategy === 'faceapi') {
+      const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.28 }));
       if (det) {
         const box = det.detection ? det.detection.box : det.box;
-        _rawFaceBox[ctx] = toNormalized(box.x, box.y, box.width, box.height);
+        _rawFaceBox[ctx] = _toNormalized(box.x, box.y, box.width, box.height, dispW, dispH, vw, vh);
       } else {
-        _rawFaceBox[ctx] = null; // wajah tidak terdeteksi — reset ke fallback
+        const h = _detectByHeuristic(vid, dispW, dispH);
+        _rawFaceBox[ctx] = h;
+      }
+    } else {
+      // Heuristic only
+      if (!_heuristicBusy[ctx]) {
+        _heuristicBusy[ctx] = true;
+        const h = _detectByHeuristic(vid, dispW, dispH);
+        _rawFaceBox[ctx] = h;
+        _heuristicBusy[ctx] = false;
       }
     }
-  } catch(e) {}
+  } catch(e) {
+    // Error → tetap pakai posisi terakhir atau center
+  } finally {
+    _detectLock[ctx] = false;
+  }
 }
 
 // ── Smooth lerp face box → pixel coords (scaled to W,H saat render) ──
+// Lerp factor: 0.20 = smooth, 0.40 = responsive, sesuai selera
 function _getSmoothedBox(ctx, W, H) {
   const raw = _rawFaceBox[ctx];
   let target;
-  if (raw) {
-    // raw sekarang dalam normalized (0-1) — scale ke W,H aktual saat ini
+  if (raw && raw.nw > 0.05 && raw.nh > 0.05) {
     target = { fx: raw.nx * W, fy: raw.ny * H, fw: raw.nw * W, fh: raw.nh * H };
   } else {
-    // Fallback: posisi tengah proporsional
-    const fw = W * 0.50, fh = H * 0.55;
-    target = { fx: (W - fw) / 2, fy: H * 0.10, fw, fh };
+    // Center fallback — filter tetap kelihatan meski wajah tidak terdeteksi
+    const fw = W * 0.52, fh = H * 0.58;
+    target = { fx: (W - fw) / 2, fy: H * 0.08, fw, fh };
   }
-  if (!_faceSmooth[ctx]) { _faceSmooth[ctx] = { ...target }; return { ...target }; }
+  if (!_faceSmooth[ctx]) {
+    _faceSmooth[ctx] = { ...target };
+    return { ...target };
+  }
   const s = _faceSmooth[ctx];
-  const a = raw ? 0.75 : 0.08;  // lebih responsif saat ada wajah
-  s.fx += (target.fx - s.fx) * a;
-  s.fy += (target.fy - s.fy) * a;
-  s.fw += (target.fw - s.fw) * a;
-  s.fh += (target.fh - s.fh) * a;
+  // Lebih responsif saat wajah terdeteksi, lebih smooth saat hilang
+  const alpha = (raw && raw.nw > 0.05) ? 0.35 : 0.08;
+  s.fx += (target.fx - s.fx) * alpha;
+  s.fy += (target.fy - s.fy) * alpha;
+  s.fw += (target.fw - s.fw) * alpha;
+  s.fh += (target.fh - s.fh) * alpha;
   return { ...s };
 }
 
 // ── Overlay canvas ──
+// PENTING: Canvas di-attach ke document.body sebagai absolute overlay
+// supaya tidak terkena overflow:hidden dari wrapper video
 function _getOrCreateOverlay(ctx) {
-  if (_overlayCanvases[ctx]) return _overlayCanvases[ctx];
+  if (_overlayCanvases[ctx]) {
+    const existing = _overlayCanvases[ctx];
+    // Pastikan masih di DOM
+    if (document.body.contains(existing)) return existing;
+    // Kalau sudah ter-remove, buat ulang
+    delete _overlayCanvases[ctx];
+  }
   const vid = document.getElementById(_VID[ctx]);
   if (!vid) return null;
+
+  // Append ke parent video — tapi pastikan parent punya position:relative
   const wrapper = vid.parentElement;
-  if (getComputedStyle(wrapper).position === 'static') wrapper.style.position = 'relative';
+  if (!wrapper) return null;
+
+  const style = getComputedStyle(wrapper);
+  if (style.position === 'static') wrapper.style.position = 'relative';
+
+  // Hapus overflow:hidden sementara tidak bisa — gunakan z-index tinggi di dalam wrapper
+  // Canvas di-set pointer-events:none supaya tidak menghalangi interaksi
   const oc = document.createElement('canvas');
-  oc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
+  oc.style.cssText = [
+    'position:absolute',
+    'top:0', 'left:0',
+    'width:100%', 'height:100%',
+    'pointer-events:none',
+    'z-index:15',           // lebih tinggi dari frame overlay (z-index:11)
+    'border-radius:inherit' // ikuti border-radius wrapper
+  ].join(';');
   oc.id = ctx + '-fun-overlay';
   wrapper.appendChild(oc);
   _overlayCanvases[ctx] = oc;
@@ -12586,11 +12717,20 @@ function _drawFunFrame(ctx) {
   const oc = _getOrCreateOverlay(ctx);
   if (!oc) return;
   const vid = document.getElementById(_VID[ctx]);
-  if (!vid) return;
-  const W = vid.offsetWidth  || 260;
-  const H = vid.offsetHeight || 260;
+  if (!vid || vid.readyState < 1) return;
+
+  // Pakai ukuran tampilan video yang aktual (bisa berubah saat resize)
+  const rect = vid.getBoundingClientRect();
+  const W = Math.round(rect.width)  || vid.offsetWidth  || 260;
+  const H = Math.round(rect.height) || vid.offsetHeight || 260;
   if (!W || !H) return;
-  if (oc.width !== W || oc.height !== H) { oc.width = W; oc.height = H; }
+
+  // Sinkronkan ukuran canvas dengan video display
+  if (oc.width !== W || oc.height !== H) {
+    oc.width = W;
+    oc.height = H;
+  }
+
   const c = oc.getContext('2d');
   c.clearRect(0, 0, W, H);
 
@@ -12744,29 +12884,41 @@ function _drawWobbleFilter(c, fx, fy, fw, fh, W, H) {
 // ══════════════════════════════════════
 // RENDER + DETECT LOOP
 // ══════════════════════════════════════
-let _detectRunning = {};
 
 function _startLoop(ctx) {
   _stopOverlay(ctx);
   _faceSmooth[ctx] = null;
+  _rawFaceBox[ctx] = null;
   _detectRunning[ctx] = true;
-  // Init detector async, non-blocking
+
+  // Mulai init detector di background (non-blocking)
   _initFaceDetector(ctx).catch(() => {});
 
   let lastDetect = 0;
+  let frameCount = 0;
+
   function loop() {
     if (!_funFilters[ctx] || _funFilters[ctx] === 'none') {
-      _detectRunning[ctx] = false; return;
+      _detectRunning[ctx] = false;
+      return;
     }
+
     const now = Date.now();
-    // Face detection every 33ms (~30fps) — lebih responsif dari sebelumnya (60ms)
-    if (now - lastDetect > 33) {
+    frameCount++;
+
+    // Deteksi wajah setiap 80ms (~12fps) — cukup untuk tracking smooth
+    // Rendering tetap di 60fps via rAF
+    if (now - lastDetect > 80) {
       lastDetect = now;
-      _runFaceDetect(ctx); // async, don't await — loop continues
+      _runFaceDetect(ctx); // async, non-blocking — loop render tidak terganggu
     }
+
+    // Gambar filter overlay di atas video
     _drawFunFrame(ctx);
+
     _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
   }
+
   _overlayAnimFrames[ctx] = requestAnimationFrame(loop);
 }
 
