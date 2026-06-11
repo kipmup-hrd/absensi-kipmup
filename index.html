@@ -12213,59 +12213,93 @@ const _VID = { ujicoba:'ujicoba-video', kegiatan:'kegiatan-selfie-video', kiosk:
 const _rawFaceBox = {};        // ctx → normalized {nx,ny,nw,nh} (0-1 coords)
 const _faceDetectorReady = {}; // ctx → strategy string
 const _faceDetectors = {};     // ctx → detector instance
-const _mpFaceDetectors = {};   // MediaPipe FaceDetection instances
+const _mpFaceDetectors = {};   // MediaPipe FaceDetection instances per ctx
 const _detectLock = {};        // prevent concurrent detection per ctx
+const _mpReady = {};           // MediaPipe ready flag per ctx
 
 // ── Normalization helper ──
 // Konversi dari video-native coords → mirrored normalized (0-1)
 // Account untuk object-fit:cover crop
-// CATATAN: Chrome FaceDetector detect() pada video element yang punya CSS scaleX(-1)
-// tetap mengembalikan koordinat dalam VIDEO NATIVE space (tidak terpengaruh CSS).
-// Jadi kita HARUS mirror X di sini agar posisi sinkron dengan tampilan.
 function _toNormalized(bx, by, bw, bh, dispW, dispH, vw, vh) {
   const scale = Math.max(dispW / vw, dispH / vh);
   const offX = (vw * scale - dispW) / 2;
   const offY = (vh * scale - dispH) / 2;
-  // Konversi ke display pixels
   const dx = bx * scale - offX;
   const dy = by * scale - offY;
   const dw = bw * scale;
   const dh = bh * scale;
-  // Mirror X: karena video ditampilkan scaleX(-1), x=0 native = kanan display
+  // Mirror X: video CSS scaleX(-1), coords native = non-mirrored
   const mirroredX = dispW - dx - dw;
   return {
-    nx: mirroredX / dispW,
-    ny: dy / dispH,
-    nw: dw / dispW,
-    nh: dh / dispH
+    nx: Math.max(0, mirroredX / dispW),
+    ny: Math.max(0, dy / dispH),
+    nw: Math.min(1, dw / dispW),
+    nh: Math.min(1, dh / dispH)
   };
 }
 
-// Strategy 1: MediaPipe FaceDetection
-async function _tryInitMediaPipe(ctx) {
-  if (typeof FaceDetection === 'undefined' && typeof window.FaceDetection === 'undefined') return false;
+// ── MediaPipe FaceDetection — proper async loop ──
+// Cara kerja MediaPipe: send(frame) → onResults(cb) dipanggil async
+// Kita pakai per-ctx instance dengan callback yang update _rawFaceBox
+async function _initMediaPipe(ctx) {
+  if (_mpReady[ctx]) return true;
+  const FD = window.FaceDetection;
+  if (!FD) return false;
   try {
-    const FD = window.FaceDetection || FaceDetection;
     const fd = new FD({
-      locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${f}`
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${f}`
     });
-    fd.setOptions({ model: 'short', minDetectionConfidence: 0.5 });
-    await new Promise((resolve, reject) => {
-      let resolved = false;
-      fd.onResults = () => { if (!resolved) { resolved = true; resolve(); } };
-      // Test with empty image to warm up
-      const testCanvas = document.createElement('canvas');
-      testCanvas.width = 64; testCanvas.height = 64;
-      setTimeout(() => { if (!resolved) { resolved = true; resolve(); } }, 2000);
-      fd.send({ image: testCanvas }).catch(() => { if (!resolved) { resolved = true; resolve(); } });
+    fd.setOptions({ model: 'short', minDetectionConfidence: 0.45 });
+    fd.onResults = (results) => {
+      const vid = document.getElementById(_VID[ctx]);
+      if (!vid) return;
+      const dispW = vid.offsetWidth || 260;
+      const dispH = vid.offsetHeight || 260;
+      const vw = vid.videoWidth, vh = vid.videoHeight;
+      if (results.detections && results.detections.length > 0) {
+        // MediaPipe returns normalized bbox relative to image size
+        const bb = results.detections[0].boundingBox;
+        // bb.xCenter, yCenter, width, height — semua 0-1 relatif video
+        const bx = (bb.xCenter - bb.width  / 2) * vw;
+        const by = (bb.yCenter - bb.height / 2) * vh;
+        _rawFaceBox[ctx] = _toNormalized(bx, by, bb.width * vw, bb.height * vh, dispW, dispH, vw, vh);
+      } else {
+        _rawFaceBox[ctx] = null;
+      }
+      _detectLock[ctx] = false; // release lock setelah callback
+    };
+    // Warm-up dengan blank image
+    await new Promise(resolve => {
+      const tmp = document.createElement('canvas');
+      tmp.width = 64; tmp.height = 64;
+      const origCb = fd.onResults;
+      fd.onResults = (r) => { origCb(r); resolve(); };
+      fd.send({ image: tmp }).catch(() => resolve());
+      setTimeout(resolve, 3000);
     });
+    fd.onResults = (results) => {
+      const vid = document.getElementById(_VID[ctx]);
+      if (!vid) return;
+      const dispW = vid.offsetWidth || 260;
+      const dispH = vid.offsetHeight || 260;
+      const vw = vid.videoWidth, vh = vid.videoHeight;
+      if (results.detections && results.detections.length > 0) {
+        const bb = results.detections[0].boundingBox;
+        const bx = (bb.xCenter - bb.width  / 2) * vw;
+        const by = (bb.yCenter - bb.height / 2) * vh;
+        _rawFaceBox[ctx] = _toNormalized(bx, by, bb.width * vw, bb.height * vh, dispW, dispH, vw, vh);
+      } else {
+        _rawFaceBox[ctx] = null;
+      }
+      _detectLock[ctx] = false;
+    };
     _mpFaceDetectors[ctx] = fd;
-    _faceDetectors[ctx] = fd;
+    _mpReady[ctx] = true;
     return true;
   } catch(e) { return false; }
 }
 
-// Strategy 2: Chrome built-in FaceDetector
+// Strategy: Chrome built-in FaceDetector
 function _tryInitNative(ctx) {
   if (!('FaceDetector' in window)) return false;
   try {
@@ -12274,16 +12308,12 @@ function _tryInitNative(ctx) {
   } catch(e) { return false; }
 }
 
-// Strategy 3: face-api.js
+// Strategy: face-api.js
 async function _tryInitFaceApi(ctx) {
   if (typeof faceapi === 'undefined') return false;
   if (!faceapi.nets || !faceapi.nets.tinyFaceDetector) return false;
   if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-    const URLS = [
-      'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
-      'https://unpkg.com/face-api.js@0.22.2/weights'
-    ];
-    for (const u of URLS) {
+    for (const u of ['https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights', 'https://unpkg.com/face-api.js@0.22.2/weights']) {
       try { await faceapi.nets.tinyFaceDetector.loadFromUri(u); break; } catch(e) {}
     }
   }
@@ -12292,32 +12322,53 @@ async function _tryInitFaceApi(ctx) {
 
 async function _initFaceDetector(ctx) {
   if (_faceDetectorReady[ctx]) return;
+  // Priority 1: MediaPipe (paling reliable di Chrome)
+  if (await _initMediaPipe(ctx)) { _faceDetectorReady[ctx] = 'mediapipe'; return; }
+  // Priority 2: Chrome native FaceDetector
   if (_tryInitNative(ctx)) { _faceDetectorReady[ctx] = 'native'; return; }
+  // Priority 3: face-api
   if (await _tryInitFaceApi(ctx)) { _faceDetectorReady[ctx] = 'faceapi'; return; }
-  _faceDetectorReady[ctx] = 'center'; // center-only fallback, no false positives
+  // Fallback: center box
+  _faceDetectorReady[ctx] = 'center';
 }
 
 let _heuristicBusy = {};
 
 async function _runFaceDetect(ctx) {
   if (_detectLock[ctx]) return;
-  _detectLock[ctx] = true;
-  try {
-    const vid = document.getElementById(_VID[ctx]);
-    if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
-    if (!_faceDetectorReady[ctx]) await _initFaceDetector(ctx);
+  const vid = document.getElementById(_VID[ctx]);
+  if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
+  if (!_faceDetectorReady[ctx]) {
+    await _initFaceDetector(ctx);
+    return;
+  }
 
-    const dispW = vid.offsetWidth  || 260;
-    const dispH = vid.offsetHeight || 260;
-    const vw = vid.videoWidth, vh = vid.videoHeight;
-    const strategy = _faceDetectorReady[ctx];
+  const strategy = _faceDetectorReady[ctx];
+  const dispW = vid.offsetWidth  || 260;
+  const dispH = vid.offsetHeight || 260;
+  const vw = vid.videoWidth, vh = vid.videoHeight;
 
-    if (strategy === 'native') {
+  if (strategy === 'mediapipe') {
+    const fd = _mpFaceDetectors[ctx];
+    if (!fd) return;
+    _detectLock[ctx] = true; // lock direlease di onResults callback
+    try {
+      await fd.send({ image: vid });
+    } catch(e) {
+      _detectLock[ctx] = false;
+    }
+  } else if (strategy === 'native') {
+    _detectLock[ctx] = true;
+    try {
       const faces = await _faceDetectors[ctx].detect(vid);
       _rawFaceBox[ctx] = (faces && faces.length > 0)
         ? _toNormalized(faces[0].boundingBox.left, faces[0].boundingBox.top, faces[0].boundingBox.width, faces[0].boundingBox.height, dispW, dispH, vw, vh)
         : null;
-    } else if (strategy === 'faceapi') {
+    } catch(e) {}
+    _detectLock[ctx] = false;
+  } else if (strategy === 'faceapi') {
+    _detectLock[ctx] = true;
+    try {
       const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.28 }));
       if (det) {
         const box = det.detection ? det.detection.box : det.box;
@@ -12325,12 +12376,10 @@ async function _runFaceDetect(ctx) {
       } else {
         _rawFaceBox[ctx] = null;
       }
-    }
-    // 'center': rawFaceBox tetap null → _getSmoothedBox pakai center fallback
-  } catch(e) {
-  } finally {
+    } catch(e) {}
     _detectLock[ctx] = false;
   }
+  // 'center': tidak ada deteksi → null → center fallback
 }
 
 // ── Smooth lerp face box → pixel coords (scaled to W,H saat render) ──
@@ -12341,9 +12390,9 @@ function _getSmoothedBox(ctx, W, H) {
   if (raw && raw.nw > 0.05 && raw.nh > 0.05) {
     target = { fx: raw.nx * W, fy: raw.ny * H, fw: raw.nw * W, fh: raw.nh * H };
   } else {
-    // Center fallback — wajah selfie close-up biasanya isi ~60% lebar, 68% tinggi
-    const fw = W * 0.60, fh = H * 0.68;
-    target = { fx: (W - fw) / 2, fy: H * 0.06, fw, fh };
+    // Center fallback — wajah selfie close-up, posisi vertikal tengah-atas frame
+    const fw = W * 0.60, fh = H * 0.65;
+    target = { fx: (W - fw) / 2, fy: H * 0.12, fw, fh };
   }
   if (!_faceSmooth[ctx]) {
     _faceSmooth[ctx] = { ...target };
