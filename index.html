@@ -12244,22 +12244,30 @@ async function _runFaceDetect(ctx) {
   const dispH = vid.offsetHeight || 260;
   const vw = vid.videoWidth, vh = vid.videoHeight;
 
-  // Helper: scale koordinat dari native video space → display space,
+  // Helper: konversi koordinat dari native video space → NORMALIZED (0-1),
   // lalu mirror X karena video ditampilkan dengan CSS scaleX(-1).
-  // Video pakai object-fit:cover (fill wrapper, crop sisi yang lebih panjang).
-  function toDisplay(bx, by, bw, bh) {
+  // Video pakai object-fit:cover — kita harus account untuk crop.
+  // Hasil disimpan sebagai rasio 0-1 agar saat render bisa dikalikan W,H aktual saat itu.
+  function toNormalized(bx, by, bw, bh) {
     // object-fit:cover: scale sampai sisi pendek mengisi display, crop sisi panjang
     const scaleToFill = Math.max(dispW / vw, dispH / vh);
     const scaledW = vw * scaleToFill, scaledH = vh * scaleToFill;
     const offX = (scaledW - dispW) / 2;  // berapa pixel dikrop kiri/kanan
     const offY = (scaledH - dispH) / 2;  // berapa pixel dikrop atas/bawah
+    // Koordinat pixel dalam display space
     const dx = bx * scaleToFill - offX;
     const dy = by * scaleToFill - offY;
     const dw = bw * scaleToFill;
     const dh = bh * scaleToFill;
     // Mirror X (karena CSS scaleX(-1) pada video element)
     const mirroredX = dispW - dx - dw;
-    return { x: mirroredX, y: dy, w: dw, h: dh };
+    // Simpan sebagai NORMALIZED (0-1) relatif terhadap dispW/dispH
+    return {
+      nx: mirroredX / dispW,
+      ny: dy / dispH,
+      nw: dw / dispW,
+      nh: dh / dispH
+    };
   }
 
   try {
@@ -12267,7 +12275,7 @@ async function _runFaceDetect(ctx) {
       const faces = await _faceDetectors[ctx].detect(vid);
       if (faces && faces.length > 0) {
         const b = faces[0].boundingBox;
-        _rawFaceBox[ctx] = toDisplay(b.left, b.top, b.width, b.height);
+        _rawFaceBox[ctx] = toNormalized(b.left, b.top, b.width, b.height);
       } else {
         _rawFaceBox[ctx] = null; // wajah tidak terdeteksi — reset ke fallback
       }
@@ -12275,7 +12283,7 @@ async function _runFaceDetect(ctx) {
       const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }));
       if (det) {
         const box = det.detection ? det.detection.box : det.box;
-        _rawFaceBox[ctx] = toDisplay(box.x, box.y, box.width, box.height);
+        _rawFaceBox[ctx] = toNormalized(box.x, box.y, box.width, box.height);
       } else {
         _rawFaceBox[ctx] = null; // wajah tidak terdeteksi — reset ke fallback
       }
@@ -12283,12 +12291,13 @@ async function _runFaceDetect(ctx) {
   } catch(e) {}
 }
 
-// ── Smooth lerp face box → display coords ──
+// ── Smooth lerp face box → pixel coords (scaled to W,H saat render) ──
 function _getSmoothedBox(ctx, W, H) {
   const raw = _rawFaceBox[ctx];
   let target;
   if (raw) {
-    target = { fx: raw.x, fy: raw.y, fw: raw.w, fh: raw.h };
+    // raw sekarang dalam normalized (0-1) — scale ke W,H aktual saat ini
+    target = { fx: raw.nx * W, fy: raw.ny * H, fw: raw.nw * W, fh: raw.nh * H };
   } else {
     // Fallback: posisi tengah proporsional
     const fw = W * 0.50, fh = H * 0.55;
@@ -12296,7 +12305,7 @@ function _getSmoothedBox(ctx, W, H) {
   }
   if (!_faceSmooth[ctx]) { _faceSmooth[ctx] = { ...target }; return { ...target }; }
   const s = _faceSmooth[ctx];
-  const a = raw ? 0.75 : 0.08;  // lebih responsif saat ada wajah (naik dari 0.55 → 0.75)
+  const a = raw ? 0.75 : 0.08;  // lebih responsif saat ada wajah
   s.fx += (target.fx - s.fx) * a;
   s.fy += (target.fy - s.fy) * a;
   s.fw += (target.fw - s.fw) * a;
@@ -13044,17 +13053,13 @@ function _bakeFun(ctx, canvas) {
   const W = canvas.width, H = canvas.height;
   const c = canvas.getContext('2d');
 
-  // Gunakan _rawFaceBox (dari sistem baru) untuk posisi filter di foto
+  // Gunakan _rawFaceBox (normalized) untuk posisi filter di foto
   const raw = _rawFaceBox[ctx];
   let fx, fy, fw, fh;
   if (raw) {
-    // raw box dalam display coords — scale ke canvas foto
-    const vid = document.getElementById(_VID[ctx]);
-    const dispW = (vid && vid.offsetWidth)  || 260;
-    const dispH = (vid && vid.offsetHeight) || 260;
-    const scaleX = W / dispW, scaleY = H / dispH;
-    fx = raw.x * scaleX; fy = raw.y * scaleY;
-    fw = raw.w * scaleX; fh = raw.h * scaleY;
+    // raw sekarang normalized (0-1) — scale langsung ke canvas foto size
+    fx = raw.nx * W; fy = raw.ny * H;
+    fw = raw.nw * W; fh = raw.nh * H;
   } else {
     fw = W * 0.50; fh = H * 0.55; fx = (W - fw) / 2; fy = H * 0.10;
   }
