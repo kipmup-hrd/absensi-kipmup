@@ -12830,17 +12830,6 @@ function _drawFunFrame(ctx) {
       break;
   }
 
-  // DEBUG — selalu tampil (bisa dimatikan dengan window._filterDebug = false)
-  if (window._filterDebug !== false) {
-    c.save();
-    c.strokeStyle = 'rgba(0,255,0,0.7)'; c.lineWidth = 2; c.setLineDash([4, 4]);
-    c.strokeRect(fx, fy, fw, fh); c.setLineDash([]);
-    c.fillStyle = '#00ff00'; c.font = `${Math.max(9, W*0.035)}px monospace`;
-    const raw2 = _rawFaceBox[ctx];
-    const strat = _faceDetectorReady[ctx] || 'init';
-    c.fillText(`[${strat}] ${raw2 ? '👤TRACKED' : '📍CENTER'}`, fx+2, fy+14);
-    c.restore();
-  }
 }
 
 // Beauty/Cute/Alien/Wobble — canvas overlay decoration (no pixel warp, compatible everywhere)
