@@ -12253,8 +12253,9 @@ async function _initMediaPipe(ctx) {
     fd.onResults = (results) => {
       const vid = document.getElementById(_VID[ctx]);
       if (!vid) return;
-      const dispW = vid.offsetWidth || 260;
-      const dispH = vid.offsetHeight || 260;
+      const _r0 = vid.getBoundingClientRect();
+      const dispW = Math.round(_r0.width)  || vid.offsetWidth  || 260;
+      const dispH = Math.round(_r0.height) || vid.offsetHeight || 260;
       const vw = vid.videoWidth, vh = vid.videoHeight;
       if (results.detections && results.detections.length > 0) {
         // MediaPipe returns normalized bbox relative to image size
@@ -12280,8 +12281,9 @@ async function _initMediaPipe(ctx) {
     fd.onResults = (results) => {
       const vid = document.getElementById(_VID[ctx]);
       if (!vid) return;
-      const dispW = vid.offsetWidth || 260;
-      const dispH = vid.offsetHeight || 260;
+      const _r1 = vid.getBoundingClientRect();
+      const dispW = Math.round(_r1.width)  || vid.offsetWidth  || 260;
+      const dispH = Math.round(_r1.height) || vid.offsetHeight || 260;
       const vw = vid.videoWidth, vh = vid.videoHeight;
       if (results.detections && results.detections.length > 0) {
         const bb = results.detections[0].boundingBox;
@@ -12344,8 +12346,9 @@ async function _runFaceDetect(ctx) {
   }
 
   const strategy = _faceDetectorReady[ctx];
-  const dispW = vid.offsetWidth  || 260;
-  const dispH = vid.offsetHeight || 260;
+  const _rect = vid.getBoundingClientRect();
+  const dispW = Math.round(_rect.width)  || vid.offsetWidth  || 260;
+  const dispH = Math.round(_rect.height) || vid.offsetHeight || 260;
   const vw = vid.videoWidth, vh = vid.videoHeight;
 
   if (strategy === 'mediapipe') {
@@ -12570,7 +12573,7 @@ function _drawFox(c, fx, fy, fw, fh) {
 
 // CROWN
 function _drawCrown(c, fx, fy, fw) {
-  const cx = fx + fw / 2, cy = fy - fw * 0.06, cw = fw * 0.7, ch = fw * 0.22;
+  const cx = fx + fw / 2, cy = fy + fw * 0.10, cw = fw * 0.7, ch = fw * 0.22;
   c.save(); c.shadowColor = 'rgba(255,200,0,0.7)'; c.shadowBlur = 16;
   const gg = c.createLinearGradient(cx - cw / 2, cy - ch, cx + cw / 2, cy);
   gg.addColorStop(0, '#ffe033'); gg.addColorStop(0.5, '#fff176'); gg.addColorStop(1, '#ffb300');
