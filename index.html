@@ -12382,7 +12382,51 @@ async function _runFaceDetect(ctx) {
     } catch(e) {}
     _detectLock[ctx] = false;
   }
-  // 'center': tidak ada deteksi → null → center fallback
+  // ── Brightness/skin-tone centroid heuristic (fallback saat semua detector gagal) ──
+  if (strategy === 'center') {
+    if (_heuristicBusy[ctx]) return;
+    _heuristicBusy[ctx] = true;
+    try {
+      const _rh = vid.getBoundingClientRect();
+      const dispW2 = Math.round(_rh.width)  || vid.offsetWidth  || 260;
+      const dispH2 = Math.round(_rh.height) || vid.offsetHeight || 260;
+      const vw2 = vid.videoWidth, vh2 = vid.videoHeight;
+      if (vw2 && vh2) {
+        const tmpC = document.createElement('canvas');
+        tmpC.width = Math.floor(vw2 / 20);
+        tmpC.height = Math.floor(vh2 / 20);
+        const tc = tmpC.getContext('2d', { willReadFrequently: true });
+        tc.drawImage(vid, 0, 0, tmpC.width, tmpC.height);
+        const imgData = tc.getImageData(0, 0, tmpC.width, tmpC.height).data;
+        let sumX = 0, sumY = 0, total = 0;
+        let minX = tmpC.width, maxX = 0, minY = tmpC.height, maxY = 0;
+        for (let py = 0; py < tmpC.height; py++) {
+          for (let px = 0; px < tmpC.width; px++) {
+            const i = (py * tmpC.width + px) * 4;
+            const r = imgData[i], g = imgData[i+1], b = imgData[i+2];
+            // Skin tone: r > g > b, r-b > 15, r > 60
+            if (r > 60 && r > g && g >= b && (r - b) > 15) {
+              const w = r + g;
+              sumX += px * w; sumY += py * w; total += w;
+              if (px < minX) minX = px; if (px > maxX) maxX = px;
+              if (py < minY) minY = py; if (py > maxY) maxY = py;
+            }
+          }
+        }
+        if (total > 0 && (maxX - minX) > 2 && (maxY - minY) > 2) {
+          const bx_v = ((minX - 1) / tmpC.width) * vw2;
+          const by_v = ((minY - 1) / tmpC.height) * vh2;
+          const bw_v = ((maxX - minX + 2) / tmpC.width) * vw2;
+          const bh_v = ((maxY - minY + 2) / tmpC.height) * vh2;
+          _rawFaceBox[ctx] = _toNormalized(bx_v, by_v, bw_v, bh_v, dispW2, dispH2, vw2, vh2);
+        } else {
+          _rawFaceBox[ctx] = null;
+        }
+      }
+    } catch(e) {}
+    _heuristicBusy[ctx] = false;
+  }
+  // else: tidak ada deteksi → null → center fallback di _getSmoothedBox
 }
 
 // ── Smooth lerp face box → pixel coords (scaled to W,H saat render) ──
@@ -12403,7 +12447,7 @@ function _getSmoothedBox(ctx, W, H) {
   }
   const s = _faceSmooth[ctx];
   // Lebih responsif saat wajah terdeteksi, lebih smooth saat hilang
-  const alpha = (raw && raw.nw > 0.05) ? 0.55 : 0.08;
+  const alpha = (raw && raw.nw > 0.05) ? 0.35 : 0.08;
   s.fx += (target.fx - s.fx) * alpha;
   s.fy += (target.fy - s.fy) * alpha;
   s.fw += (target.fw - s.fw) * alpha;
@@ -12626,7 +12670,7 @@ function _initGhost(ctx) {
 }
 function _drawGhost(c, fx, fy, fw, fh, ctx) {
   const t = Date.now() / 1000;
-  const gx = fx + fw * 0.5, gy = fy - fw * 0.30 + Math.sin(t * 1.2) * fw * 0.04;
+  const gx = fx + fw * 0.5, gy = fy + fw * 0.05 + Math.sin(t * 1.2) * fw * 0.04;
   const gw = fw * 0.36, gh = fw * 0.44;
   c.save(); c.shadowColor = 'rgba(140,220,255,0.6)'; c.shadowBlur = 20;
   const gg = c.createRadialGradient(gx, gy, 0, gx, gy + gh * 0.1, gw);
@@ -12907,9 +12951,8 @@ function _startLoop(ctx) {
     const now = Date.now();
     frameCount++;
 
-    // Deteksi wajah setiap 33ms (~30fps) — responsif di PC Chrome
-    // Rendering tetap di 60fps via rAF
-    if (now - lastDetect > 33) {
+    // Deteksi wajah setiap 100ms — cukup responsif, ringan untuk heuristic
+    if (now - lastDetect > 100) {
       lastDetect = now;
       _runFaceDetect(ctx); // async, non-blocking — loop render tidak terganggu
     }
