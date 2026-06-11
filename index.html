@@ -12292,60 +12292,9 @@ async function _tryInitFaceApi(ctx) {
 
 async function _initFaceDetector(ctx) {
   if (_faceDetectorReady[ctx]) return;
-  // Coba semua strategy
   if (_tryInitNative(ctx)) { _faceDetectorReady[ctx] = 'native'; return; }
   if (await _tryInitFaceApi(ctx)) { _faceDetectorReady[ctx] = 'faceapi'; return; }
-  // Fallback tetap pakai brightness heuristic
-  _faceDetectorReady[ctx] = 'heuristic';
-}
-
-// ── Brightness centroid heuristic ──
-// Sample video ke canvas kecil (WITH mirror agar coords match display),
-// cari centroid skin-tone, gunakan ukuran FIXED untuk bounding box.
-// Ukuran tidak dari span pixel — terlalu tidak stabil.
-function _detectByHeuristic(vid, dispW, dispH) {
-  try {
-    const S = 64;
-    const oc = (typeof OffscreenCanvas !== 'undefined')
-      ? new OffscreenCanvas(S, S)
-      : (() => { const c = document.createElement('canvas'); c.width = S; c.height = S; return c; })();
-    const octx = oc.getContext('2d');
-
-    // Gambar MIRRORED supaya koordinat centroid = display coords
-    octx.save();
-    octx.translate(S, 0);
-    octx.scale(-1, 1);
-    octx.drawImage(vid, 0, 0, S, S);
-    octx.restore();
-
-    const data = octx.getImageData(0, 0, S, S).data;
-    let sumX = 0, sumY = 0, totalW = 0;
-
-    for (let py = 0; py < S; py++) {
-      for (let px = 0; px < S; px++) {
-        const i = (py * S + px) * 4;
-        const r = data[i], g = data[i+1], b = data[i+2];
-        const skinScore = (r > 100 && g > 60 && b > 40 && r > g && r > b && (r - b) > 10) ? 1 : 0;
-        const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
-        const w = skinScore * brightness;
-        sumX += px * w; sumY += py * w; totalW += w;
-      }
-    }
-
-    if (totalW < 50) return null;
-
-    const cx = sumX / totalW / S;
-    const cy = sumY / totalW / S;
-
-    // Ukuran FIXED — disesuaikan untuk selfie close-up (wajah isi ~65-75% frame)
-    const estFW = 0.68, estFH = 0.75;
-    return {
-      nx: Math.max(0, Math.min(1 - estFW, cx - estFW / 2)),
-      ny: Math.max(0, Math.min(1 - estFH, cy - estFH * 0.50)),
-      nw: estFW,
-      nh: estFH
-    };
-  } catch(e) { return null; }
+  _faceDetectorReady[ctx] = 'center'; // center-only fallback, no false positives
 }
 
 let _heuristicBusy = {};
@@ -12356,48 +12305,29 @@ async function _runFaceDetect(ctx) {
   try {
     const vid = document.getElementById(_VID[ctx]);
     if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
-
-    if (!_faceDetectorReady[ctx]) {
-      await _initFaceDetector(ctx);
-    }
+    if (!_faceDetectorReady[ctx]) await _initFaceDetector(ctx);
 
     const dispW = vid.offsetWidth  || 260;
     const dispH = vid.offsetHeight || 260;
     const vw = vid.videoWidth, vh = vid.videoHeight;
-
     const strategy = _faceDetectorReady[ctx];
 
     if (strategy === 'native') {
-      // Chrome FaceDetector built-in
       const faces = await _faceDetectors[ctx].detect(vid);
-      if (faces && faces.length > 0) {
-        const b = faces[0].boundingBox;
-        _rawFaceBox[ctx] = _toNormalized(b.left, b.top, b.width, b.height, dispW, dispH, vw, vh);
-      } else {
-        // Tidak detect → coba heuristic
-        const h = _detectByHeuristic(vid, dispW, dispH);
-        _rawFaceBox[ctx] = h; // bisa null → fallback center
-      }
+      _rawFaceBox[ctx] = (faces && faces.length > 0)
+        ? _toNormalized(faces[0].boundingBox.left, faces[0].boundingBox.top, faces[0].boundingBox.width, faces[0].boundingBox.height, dispW, dispH, vw, vh)
+        : null;
     } else if (strategy === 'faceapi') {
       const det = await faceapi.detectSingleFace(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.28 }));
       if (det) {
         const box = det.detection ? det.detection.box : det.box;
         _rawFaceBox[ctx] = _toNormalized(box.x, box.y, box.width, box.height, dispW, dispH, vw, vh);
       } else {
-        const h = _detectByHeuristic(vid, dispW, dispH);
-        _rawFaceBox[ctx] = h;
-      }
-    } else {
-      // Heuristic only
-      if (!_heuristicBusy[ctx]) {
-        _heuristicBusy[ctx] = true;
-        const h = _detectByHeuristic(vid, dispW, dispH);
-        _rawFaceBox[ctx] = h;
-        _heuristicBusy[ctx] = false;
+        _rawFaceBox[ctx] = null;
       }
     }
+    // 'center': rawFaceBox tetap null → _getSmoothedBox pakai center fallback
   } catch(e) {
-    // Error → tetap pakai posisi terakhir atau center
   } finally {
     _detectLock[ctx] = false;
   }
@@ -12411,9 +12341,9 @@ function _getSmoothedBox(ctx, W, H) {
   if (raw && raw.nw > 0.05 && raw.nh > 0.05) {
     target = { fx: raw.nx * W, fy: raw.ny * H, fw: raw.nw * W, fh: raw.nh * H };
   } else {
-    // Center fallback — ukuran disesuaikan untuk selfie close-up
-    const fw = W * 0.68, fh = H * 0.75;
-    target = { fx: (W - fw) / 2, fy: H * 0.04, fw, fh };
+    // Center fallback — wajah selfie close-up biasanya isi ~60% lebar, 68% tinggi
+    const fw = W * 0.60, fh = H * 0.68;
+    target = { fx: (W - fw) / 2, fy: H * 0.06, fw, fh };
   }
   if (!_faceSmooth[ctx]) {
     _faceSmooth[ctx] = { ...target };
