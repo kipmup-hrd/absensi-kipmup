@@ -2134,7 +2134,8 @@ function switchIzinTab(tab) {
     </nav>
     <div class="sidebar-footer" style="padding:16px; border-top:1px solid var(--border);">
       <div id="admin-nama-display">Admin</div>
-      <button class="btn-sm" style="width:100%; margin-top:8px;" onclick="adminLogout()">Keluar</button>
+      <button class="btn-sm" style="width:100%; margin-top:8px; font-size:11px; background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.25); color:#f59e0b;" onclick="bersihkanStorageLokal()" title="Hapus foto lama dari storage perangkat ini">🧹 Bersihkan Storage</button>
+      <button class="btn-sm" style="width:100%; margin-top:6px;" onclick="adminLogout()">Keluar</button>
     </div>
   </div>
   <div class="admin-main">
@@ -3689,6 +3690,51 @@ async function adminLogin(){
     if(btn){ btn.disabled=false; btn.textContent='Masuk →'; }
   }
 }
+function bersihkanStorageLokal() {
+  if (!confirm('Bersihkan foto & data lama dari storage perangkat ini?
+Data absensi di Google Sheets TIDAK terhapus.')) return;
+  let freed = 0;
+  let sebelum = 0;
+  try { sebelum = JSON.stringify(localStorage).length; } catch(e) {}
+
+  // 1. Strip foto dari ujicoba_absen lama (simpan 30 hari, hapus foto > 7 hari)
+  try {
+    const records = JSON.parse(localStorage.getItem('ujicoba_absen') || '[]');
+    const cutoff7d = new Date(); cutoff7d.setDate(cutoff7d.getDate() - 7);
+    const c7 = cutoff7d.toISOString().split('T')[0];
+    const cleaned = records.map(r => {
+      const tgl = r.tanggal || (r.waktu ? r.waktu.split('T')[0] : '');
+      if (tgl < c7) { const {foto, ...rest} = r; return rest; }
+      return r;
+    });
+    localStorage.setItem('ujicoba_absen', JSON.stringify(cleaned));
+  } catch(e) {}
+
+  // 2. Hapus selfie gallery hari lain
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith('selfieGallery_shared_') && !k.endsWith(today)) {
+        localStorage.removeItem(k); freed++;
+      }
+      if (k.startsWith('absenSet_')) {
+        const m = k.match(/(\d{4}-\d{2}-\d{2})/);
+        if (m && m[1] < today) { localStorage.removeItem(k); freed++; }
+      }
+    }
+  } catch(e) {}
+
+  // 3. Hapus selfieGallery_kipm (foto selfie harian, bisa rebuild dari GAS)
+  try { localStorage.removeItem('selfieGallery_kipm'); freed++; } catch(e) {}
+
+  let sesudah = 0;
+  try { sesudah = JSON.stringify(localStorage).length; } catch(e) {}
+  const terkosongkan = Math.round((sebelum - sesudah) / 1024);
+  showToast('✅ Bersih! ~' + terkosongkan + ' KB dibebaskan (' + freed + ' key dihapus)', 'success');
+}
+
 function adminLogout(){ 
   localStorage.removeItem('adminSession'); 
   goTo('landing'); 
@@ -8033,7 +8079,7 @@ async function publikSubmitAbsen() {
 window.publikSubmitAbsen = publikSubmitAbsen;
 window.kegiatanBukaKamera=kegiatanBukaKamera; window.kegiatanAmbilFoto=kegiatanAmbilFoto;
 window.kegiatanUlangFoto=kegiatanUlangFoto; window.kegiatanLanjutScan=kegiatanLanjutScan;
-window.kegiatanToggleScan=kegiatanToggleScan; window.previewSelfieKegiatan=previewSelfieKegiatan; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.showEditAnggota=showEditAnggota; window.submitEditAnggota=submitEditAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.downloadJadwalPDF=downloadJadwalPDF; window.renderJadwalPreview=renderJadwalPreview; window.goToAbsenPulang=goToAbsenPulang; window.adminLogout=adminLogout; window.addAgendaItem=addAgendaItem; window.saveAgendaItem=saveAgendaItem; window.deleteAgendaItem=deleteAgendaItem; window.savePengumuman=savePengumuman; window.previewAgendaWarna=previewAgendaWarna; window.loadRiwayatPiket=loadRiwayatPiket; window.exportRiwayatCSV=exportRiwayatCSV;
+window.kegiatanToggleScan=kegiatanToggleScan; window.previewSelfieKegiatan=previewSelfieKegiatan; window.setScanType=setScanType; window.toggleScan=toggleScan; window.adminLogin=adminLogin; window.switchTab=switchTab; window.togglePickAnggota=togglePickAnggota; window.saveJadwalHari=saveJadwalHari; window.showAddAnggota=showAddAnggota; window.showEditAnggota=showEditAnggota; window.submitEditAnggota=submitEditAnggota; window.closeModal=closeModal; window.submitAddAnggota=submitAddAnggota; window.deleteAnggota=deleteAnggota; window.loadRekap=loadRekap; window.exportCSV=exportCSV; window.downloadJadwalPDF=downloadJadwalPDF; window.renderJadwalPreview=renderJadwalPreview; window.goToAbsenPulang=goToAbsenPulang; window.adminLogout=adminLogout; window.bersihkanStorageLokal=bersihkanStorageLokal; window.addAgendaItem=addAgendaItem; window.saveAgendaItem=saveAgendaItem; window.deleteAgendaItem=deleteAgendaItem; window.savePengumuman=savePengumuman; window.previewAgendaWarna=previewAgendaWarna; window.loadRiwayatPiket=loadRiwayatPiket; window.exportRiwayatCSV=exportRiwayatCSV;
 window.bukaKameraSelfie=bukaKameraSelfie; window.ambilFotoSelfie=ambilFotoSelfie; window.ulangFotoSelfie=ulangFotoSelfie; window.lanjutKeScan=lanjutKeScan; window.kembaliKeSelfie=kembaliKeSelfie;
 window.switchSubKegiatan=switchSubKegiatan;
 window.loadAllRankings=loadAllRankings; window.loadHistorisRank=loadHistorisRank; window.initRankingBulan=initRankingBulan;
@@ -11111,7 +11157,7 @@ function ujicobaSubmit() {
   try {
     const records = JSON.parse(localStorage.getItem('ujicoba_absen') || '[]');
     records.unshift(record);
-    // ✅ FIX: Hapus record lebih dari 30 hari untuk cegah localStorage penuh
+    // Hapus record lebih dari 30 hari untuk cegah localStorage penuh
     const cutoff30d = new Date(); cutoff30d.setDate(cutoff30d.getDate() - 30);
     const cutoffStr = cutoff30d.toISOString().split('T')[0];
     const filtered = records.filter(r => {
@@ -11119,8 +11165,63 @@ function ujicobaSubmit() {
       return tgl >= cutoffStr;
     });
     if (filtered.length > 500) filtered.splice(500);
-    localStorage.setItem('ujicoba_absen', JSON.stringify(filtered));
-  } catch(e) { showToast('⚠️ Gagal menyimpan data lokal', 'error'); }
+
+    // ✅ FIX: Coba simpan dulu. Jika QuotaExceeded (storage penuh),
+    // strip foto dari record LAMA (bukan yang baru), lalu coba lagi.
+    const tryStore = (data) => {
+      localStorage.setItem('ujicoba_absen', JSON.stringify(data));
+    };
+    try {
+      tryStore(filtered);
+    } catch(quota1) {
+      // Hapus foto dari semua record lama (bukan index 0 = record baru)
+      const stripped = filtered.map((r, i) => {
+        if (i === 0) return r; // record terbaru — simpan foto
+        const { foto, ...rest } = r;
+        return rest;
+      });
+      try {
+        tryStore(stripped);
+      } catch(quota2) {
+        // Jika masih penuh, simpan hanya 50 record terbaru tanpa foto (kecuali record terbaru)
+        const minimal = stripped.slice(0, 50);
+        try {
+          tryStore(minimal);
+        } catch(quota3) {
+          // Last resort: simpan record terbaru saja
+          localStorage.setItem('ujicoba_absen', JSON.stringify([record]));
+        }
+      }
+    }
+
+    // ✅ FIX: Bersihkan key localStorage lama yang tidak perlu (foto selfie hari lain, dll)
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        // Hapus selfie gallery shared dari hari lain
+        if (k.startsWith('selfieGallery_shared_') && !k.endsWith(today)) {
+          localStorage.removeItem(k);
+        }
+        // Hapus absen-kegiatan set yang lebih dari 2 hari
+        if (k.startsWith('absenSet_')) {
+          const dateMatch = k.match(/(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch && dateMatch[1] < today) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch(cleanErr) {}
+
+  } catch(e) {
+    // Jika bahkan parse awal gagal, simpan hanya record terbaru
+    try {
+      localStorage.setItem('ujicoba_absen', JSON.stringify([record]));
+    } catch(e2) {
+      showToast('⚠️ Storage perangkat penuh. Hubungi admin.', 'error');
+    }
+  }
 
   // ── Kirim ke GAS — gunakan token QR yang fresh, retry hingga berhasil ──
   (async () => {
