@@ -259,6 +259,11 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; font-family: var(--mono); white-space: nowrap; }
 .badge-hadir { background: rgba(74,222,128,0.15); color: var(--accent); }
@@ -686,9 +691,9 @@ tbody tr:hover td { color: var(--text); }
 }
 .mobile-nav-item.active { color: var(--accent); }
 .mobile-nav-item:hover:not(.active) { color: var(--text2); }
-/* Landing admin corner hidden on non-landing pages */
-.landing-admin-corner { display: none; }
-body.on-landing .landing-admin-corner { display: block; }
+/* Landing admin corner - sekarang di dalam #page-landing, otomatis ikut display:none */
+/* Tidak perlu body.on-landing logic lagi */
+.landing-admin-corner { display: block; }
 /* Admin topbar mobile header */
 .admin-topbar {
   display: flex;
@@ -827,15 +832,14 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
 
 </script>
 
-<!-- TOMBOL LOGIN ADMIN POJOK KANAN ATAS -->
-<div class="landing-admin-corner" id="landing-admin-corner">
-  <button class="landing-admin-corner-btn" onclick="goTo('admin-login')">
-    🔐 Login Admin
-  </button>
-</div>
-
 <!-- LANDING (4 OPSI) -->
 <div id="page-landing" class="page active">
+  <!-- TOMBOL LOGIN ADMIN POJOK KANAN ATAS - dipindah ke dalam page-landing agar ikut display:none -->
+  <div class="landing-admin-corner" id="landing-admin-corner" style="position:fixed; top:16px; left:16px; z-index:200;">
+    <button class="landing-admin-corner-btn" onclick="goTo('admin-login')">
+      🔐 Login Admin
+    </button>
+  </div>
   <div class="landing-card">
     <div class="logo-area">
       <div class="logo-canvas-wrap">
@@ -901,8 +905,8 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
 ══════════════════════════════════════════ -->
 <div id="page-ujicoba" class="page" style="overflow-y:auto; min-height:100vh; flex-direction:column;">
   <!-- Header -->
-  <div style="background:var(--bg2); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; gap:12px; align-items:center; flex-shrink:0;">
-    <div class="back-btn" onclick="goTo('landing')">←</div>
+  <div style="background:var(--bg2); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; gap:12px; align-items:center; flex-shrink:0; position:relative; z-index:20;">
+    <div class="back-btn" onclick="goTo('landing')" style="cursor:pointer; position:relative; z-index:10; flex-shrink:0;">←</div>
     <div style="flex:1;">
       <div style="font-weight:700; font-size:15px;">🏛️ Absen KIPM-UP</div>
       <div id="ujicoba-tanggal" style="font-size:11px; color:var(--text3);"></div>
@@ -3691,8 +3695,7 @@ async function adminLogin(){
   }
 }
 function bersihkanStorageLokal() {
-  if (!confirm('Bersihkan foto & data lama dari storage perangkat ini?
-Data absensi di Google Sheets TIDAK terhapus.')) return;
+  if (!confirm('Bersihkan foto & data lama dari storage perangkat ini?\nData absensi di Google Sheets TIDAK terhapus.')) return;
   let freed = 0;
   let sebelum = 0;
   try { sebelum = JSON.stringify(localStorage).length; } catch(e) {}
