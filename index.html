@@ -13415,27 +13415,42 @@ window.ujicobaAmbilFoto = function() {
   const video = document.getElementById('ujicoba-video');
   const canvas = document.getElementById('ujicoba-canvas');
   const colorFilter = _selfieFilters['ujicoba'] || 'none';
-  const vw = video.videoWidth || 480, vh = video.videoHeight || 480;
-  const side = Math.min(vw, vh);
-  canvas.width = side; canvas.height = side;
-  const c = canvas.getContext('2d');
-  const sx = Math.floor((vw - side) / 2), sy = Math.floor((vh - side) / 2);
-  c.save(); c.translate(canvas.width, 0); c.scale(-1, 1);
-  c.drawImage(video, sx, sy, side, side, 0, 0, side, side);
-  c.restore();
-  _applyFilterToCanvas(c, canvas, colorFilter);
-  _bakeFun('ujicoba', canvas); // ★ bake sebelum toDataURL
-  _bakeFrame('ujicoba', canvas); // ★ bake frame
-  ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
-  if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
-  video.style.display = 'none'; video.style.filter = '';
-  const preview = document.getElementById('ujicoba-preview');
-  preview.src = ujicobaFotoData; preview.style.display = 'block';
-  document.getElementById('ujicoba-cam-status').textContent = '📸 Foto diambil — siap submit';
-  document.getElementById('ujicoba-btn-ambil').style.display = 'none';
-  document.getElementById('ujicoba-btn-ulang').style.display = 'inline-block';
-  document.getElementById('ujicoba-btn-submit').style.display = 'block';
-  hideFilterBar('ujicoba');
+  let count = 3;
+  const cntEl = document.getElementById('ujicoba-countdown');
+  if (cntEl) {
+    cntEl.style.display = 'flex'; cntEl.textContent = count;
+  }
+  const iv = setInterval(() => {
+    count--;
+    if (count > 0) { 
+      if (cntEl) cntEl.textContent = count; 
+    }
+    else {
+      clearInterval(iv); 
+      if (cntEl) cntEl.style.display = 'none';
+      const vw = video.videoWidth || 480, vh = video.videoHeight || 480;
+      const side = Math.min(vw, vh);
+      canvas.width = side; canvas.height = side;
+      const c = canvas.getContext('2d');
+      const sx = Math.floor((vw - side) / 2), sy = Math.floor((vh - side) / 2);
+      c.save(); c.translate(canvas.width, 0); c.scale(-1, 1);
+      c.drawImage(video, sx, sy, side, side, 0, 0, side, side);
+      c.restore();
+      _applyFilterToCanvas(c, canvas, colorFilter);
+      _bakeFun('ujicoba', canvas); // ★ bake sebelum toDataURL
+      _bakeFrame('ujicoba', canvas); // ★ bake frame
+      ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
+      if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
+      video.style.display = 'none'; video.style.filter = '';
+      const preview = document.getElementById('ujicoba-preview');
+      preview.src = ujicobaFotoData; preview.style.display = 'block';
+      document.getElementById('ujicoba-cam-status').textContent = '📸 Foto diambil — siap submit';
+      document.getElementById('ujicoba-btn-ambil').style.display = 'none';
+      document.getElementById('ujicoba-btn-ulang').style.display = 'inline-block';
+      document.getElementById('ujicoba-btn-submit').style.display = 'block';
+      hideFilterBar('ujicoba');
+    }
+  }, 1000);
 };
 
 window.kegiatanAmbilFoto = function() {
