@@ -11072,7 +11072,7 @@ function ujicobaSubmit() {
   // ── CEK DUPLIKASI ABSEN ──
   const _todayCheck = new Date().toISOString().split('T')[0];
   let _sudahDatang = false, _sudahPulang = false;
-  let _waktuDatang = null; // ★ Simpan waktu DATANG untuk validasi 4 jam
+  let _waktuDatang = null; // ★ Simpan waktu DATANG untuk validasi 2 jam
   try {
     const _recs = JSON.parse(localStorage.getItem('ujicoba_absen') || '[]');
     _recs.forEach(r => {
@@ -11099,21 +11099,20 @@ function ujicobaSubmit() {
     return;
   }
   
-  // ★ VALIDASI 4 JAM MINIMUM ANTARA DATANG DAN PULANG ★
+  // ★ VALIDASI 2 JAM MINIMUM ANTARA DATANG DAN PULANG ★
   if (ujicobaCurrentTipe === 'PULANG' && _sudahDatang && _waktuDatang) {
     const waktuDatangObj = new Date(_waktuDatang);
     const waktuSekarang = new Date();
     const selisihMilidetik = waktuSekarang - waktuDatangObj;
-    const selisihJam = selisihMilidetik / (1000 * 60 * 60); // Convert to hours
-    const minimalJam = 4;
+    const selisihJam = selisihMilidetik / (1000 * 60 * 60);
+    const minimalJam = 2;
     
     if (selisihJam < minimalJam) {
-      // Hitung jam dan menit sisa
       const sisaMilidetik = (minimalJam * 60 * 60 * 1000) - selisihMilidetik;
       const sisaJam = Math.floor(sisaMilidetik / (1000 * 60 * 60));
       const sisaMenit = Math.floor((sisaMilidetik % (1000 * 60 * 60)) / (1000 * 60));
       
-      showToast(`⏳ Tunggu ${sisaJam}h ${sisaMenit}m lagi! Minimal 4 jam antara DATANG dan PULANG.`, 'error');
+      showToast(`⏳ Tunggu ${sisaJam}h ${sisaMenit}m lagi! Minimal 2 jam antara DATANG dan PULANG.`, 'error');
       if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '✅ Catat Absen'; btnSubmit.style.opacity = ''; }
       return;
     }
