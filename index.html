@@ -11072,11 +11072,15 @@ function ujicobaSubmit() {
   // ── CEK DUPLIKASI ABSEN ──
   const _todayCheck = new Date().toISOString().split('T')[0];
   let _sudahDatang = false, _sudahPulang = false;
+  let _waktuDatang = null; // ★ Simpan waktu DATANG untuk validasi 4 jam
   try {
     const _recs = JSON.parse(localStorage.getItem('ujicoba_absen') || '[]');
     _recs.forEach(r => {
       if ((r.nia === nia) && (r.tanggal === _todayCheck || (r.waktu && r.waktu.startsWith(_todayCheck)))) {
-        if (r.tipe === 'DATANG') _sudahDatang = true;
+        if (r.tipe === 'DATANG') {
+          _sudahDatang = true;
+          _waktuDatang = r.waktu; // ★ Simpan ISO timestamp DATANG
+        }
         if (r.tipe === 'PULANG') _sudahPulang = true;
       }
     });
@@ -11094,6 +11098,27 @@ function ujicobaSubmit() {
     if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '✅ Catat Absen'; btnSubmit.style.opacity = ''; }
     return;
   }
+  
+  // ★ VALIDASI 4 JAM MINIMUM ANTARA DATANG DAN PULANG ★
+  if (ujicobaCurrentTipe === 'PULANG' && _sudahDatang && _waktuDatang) {
+    const waktuDatangObj = new Date(_waktuDatang);
+    const waktuSekarang = new Date();
+    const selisihMilidetik = waktuSekarang - waktuDatangObj;
+    const selisihJam = selisihMilidetik / (1000 * 60 * 60); // Convert to hours
+    const minimalJam = 4;
+    
+    if (selisihJam < minimalJam) {
+      // Hitung jam dan menit sisa
+      const sisaMilidetik = (minimalJam * 60 * 60 * 1000) - selisihMilidetik;
+      const sisaJam = Math.floor(sisaMilidetik / (1000 * 60 * 60));
+      const sisaMenit = Math.floor((sisaMilidetik % (1000 * 60 * 60)) / (1000 * 60));
+      
+      showToast(`⏳ Tunggu ${sisaJam}h ${sisaMenit}m lagi! Minimal 4 jam antara DATANG dan PULANG.`, 'error');
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '✅ Catat Absen'; btnSubmit.style.opacity = ''; }
+      return;
+    }
+  }
+  
   if (ujicobaCurrentTipe === 'PULANG' && _sudahPulang) {
     showToast('✅ Kamu sudah absen PULANG hari ini. Sampai jumpa besok!', 'info');
     if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '✅ Catat Absen'; btnSubmit.style.opacity = ''; }
@@ -13415,37 +13440,27 @@ window.ujicobaAmbilFoto = function() {
   const video = document.getElementById('ujicoba-video');
   const canvas = document.getElementById('ujicoba-canvas');
   const colorFilter = _selfieFilters['ujicoba'] || 'none';
-  let count = 3;
-  const overlay = document.getElementById('ujicoba-countdown-overlay');
-  overlay.style.display = 'flex'; overlay.textContent = count;
-  const iv = setInterval(() => {
-    count--;
-    if (count > 0) { overlay.textContent = count; }
-    else {
-      clearInterval(iv); overlay.style.display = 'none';
-      const vw = video.videoWidth || 480, vh = video.videoHeight || 480;
-      const side = Math.min(vw, vh);
-      canvas.width = side; canvas.height = side;
-      const c = canvas.getContext('2d');
-      const sx = Math.floor((vw - side) / 2), sy = Math.floor((vh - side) / 2);
-      c.save(); c.translate(canvas.width, 0); c.scale(-1, 1);
-      c.drawImage(video, sx, sy, side, side, 0, 0, side, side);
-      c.restore();
-      _applyFilterToCanvas(c, canvas, colorFilter);
-      _bakeFun('ujicoba', canvas);
-      _bakeFrame('ujicoba', canvas);
-      ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
-      if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
-      video.style.display = 'none'; video.style.filter = '';
-      const preview = document.getElementById('ujicoba-preview');
-      preview.src = ujicobaFotoData; preview.style.display = 'block';
-      document.getElementById('ujicoba-cam-status').textContent = '📸 Foto diambil — siap submit';
-      document.getElementById('ujicoba-btn-ambil').style.display = 'none';
-      document.getElementById('ujicoba-btn-ulang').style.display = 'inline-block';
-      document.getElementById('ujicoba-btn-submit').style.display = 'block';
-      hideFilterBar('ujicoba');
-    }
-  }, 1000);
+  const vw = video.videoWidth || 480, vh = video.videoHeight || 480;
+  const side = Math.min(vw, vh);
+  canvas.width = side; canvas.height = side;
+  const c = canvas.getContext('2d');
+  const sx = Math.floor((vw - side) / 2), sy = Math.floor((vh - side) / 2);
+  c.save(); c.translate(canvas.width, 0); c.scale(-1, 1);
+  c.drawImage(video, sx, sy, side, side, 0, 0, side, side);
+  c.restore();
+  _applyFilterToCanvas(c, canvas, colorFilter);
+  _bakeFun('ujicoba', canvas); // ★ bake sebelum toDataURL
+  _bakeFrame('ujicoba', canvas); // ★ bake frame
+  ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
+  if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
+  video.style.display = 'none'; video.style.filter = '';
+  const preview = document.getElementById('ujicoba-preview');
+  preview.src = ujicobaFotoData; preview.style.display = 'block';
+  document.getElementById('ujicoba-cam-status').textContent = '📸 Foto diambil — siap submit';
+  document.getElementById('ujicoba-btn-ambil').style.display = 'none';
+  document.getElementById('ujicoba-btn-ulang').style.display = 'inline-block';
+  document.getElementById('ujicoba-btn-submit').style.display = 'block';
+  hideFilterBar('ujicoba');
 };
 
 window.kegiatanAmbilFoto = function() {
