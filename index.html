@@ -13416,18 +13416,13 @@ window.ujicobaAmbilFoto = function() {
   const canvas = document.getElementById('ujicoba-canvas');
   const colorFilter = _selfieFilters['ujicoba'] || 'none';
   let count = 3;
-  const cntEl = document.getElementById('ujicoba-countdown');
-  if (cntEl) {
-    cntEl.style.display = 'flex'; cntEl.textContent = count;
-  }
+  const overlay = document.getElementById('ujicoba-countdown-overlay');
+  overlay.style.display = 'flex'; overlay.textContent = count;
   const iv = setInterval(() => {
     count--;
-    if (count > 0) { 
-      if (cntEl) cntEl.textContent = count; 
-    }
+    if (count > 0) { overlay.textContent = count; }
     else {
-      clearInterval(iv); 
-      if (cntEl) cntEl.style.display = 'none';
+      clearInterval(iv); overlay.style.display = 'none';
       const vw = video.videoWidth || 480, vh = video.videoHeight || 480;
       const side = Math.min(vw, vh);
       canvas.width = side; canvas.height = side;
@@ -13437,8 +13432,8 @@ window.ujicobaAmbilFoto = function() {
       c.drawImage(video, sx, sy, side, side, 0, 0, side, side);
       c.restore();
       _applyFilterToCanvas(c, canvas, colorFilter);
-      _bakeFun('ujicoba', canvas); // ★ bake sebelum toDataURL
-      _bakeFrame('ujicoba', canvas); // ★ bake frame
+      _bakeFun('ujicoba', canvas);
+      _bakeFrame('ujicoba', canvas);
       ujicobaFotoData = canvas.toDataURL('image/jpeg', 0.45);
       if (ujicobaStream) { ujicobaStream.getTracks().forEach(t => t.stop()); ujicobaStream = null; }
       video.style.display = 'none'; video.style.filter = '';
