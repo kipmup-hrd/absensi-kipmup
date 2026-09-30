@@ -13719,33 +13719,43 @@ window.hideFilterBar = function(ctx) {
 
   /* ───────────── DETEKSI ───────────── */
 
+  const _status = {};            // ctx -> teks status untuk badge
+  const MODEL_URLS = ['https://unpkg.com/face-api.js@0.22.2/weights',
+                      'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
+                      'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights'];
+
   function _initDet(ctx) {
-    if (_det[ctx]) return Promise.resolve(_det[ctx]);
+    const cur = _det[ctx];
+    // detektor ML yang sudah jalan dipakai terus; mode 'skin' dicoba di-upgrade tiap 4 detik
+    if (cur && (cur.kind !== 'skin' || Date.now() < cur.retryAt)) return Promise.resolve(cur);
     if (_detPromise[ctx]) return _detPromise[ctx];
     _detPromise[ctx] = (async function () {
-      if ('FaceDetector' in window) {
-        try {
-          _det[ctx] = { kind: 'native', obj: new FaceDetector({ fastMode: true, maxDetectedFaces: MAX_FACES }) };
-          return _det[ctx];
-        } catch (e) { /* lanjut */ }
-      }
-      if (typeof faceapi !== 'undefined' && faceapi.nets && faceapi.nets.tinyFaceDetector) {
-        try {
+      try {
+        if ('FaceDetector' in window) {
+          try {
+            _det[ctx] = { kind: 'native', obj: new FaceDetector({ fastMode: true, maxDetectedFaces: MAX_FACES }) };
+            return _det[ctx];
+          } catch (e) { /* lanjut */ }
+        }
+        if (typeof faceapi === 'undefined') {
+          _status[ctx] = 'face-api belum termuat';
+        } else if (faceapi.nets && faceapi.nets.tinyFaceDetector) {
           if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-            const urls = ['https://unpkg.com/face-api.js@0.22.2/weights',
-                          'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights'];
-            for (let i = 0; i < urls.length && !faceapi.nets.tinyFaceDetector.isLoaded; i++) {
-              try { await faceapi.nets.tinyFaceDetector.loadFromUri(urls[i]); } catch (e) { /* coba url berikut */ }
+            for (let i = 0; i < MODEL_URLS.length && !faceapi.nets.tinyFaceDetector.isLoaded; i++) {
+              try { await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URLS[i]); } catch (e) { /* url berikut */ }
             }
           }
           if (faceapi.nets.tinyFaceDetector.isLoaded) {
             _det[ctx] = { kind: 'faceapi' };
             return _det[ctx];
           }
-        } catch (e) { /* lanjut */ }
+          _status[ctx] = 'model face-api gagal dimuat (cek internet)';
+        }
+        _det[ctx] = { kind: 'skin', retryAt: Date.now() + 4000 };
+        return _det[ctx];
+      } finally {
+        _detPromise[ctx] = null;
       }
-      _det[ctx] = { kind: 'skin' };
-      return _det[ctx];
     })();
     return _detPromise[ctx];
   }
@@ -13768,7 +13778,7 @@ window.hideFilterBar = function(ctx) {
       const Y = 0.299 * r + 0.587 * g + 0.114 * b;
       const Cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
       const Cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-      mask[i] = (Y > 50 && Cb >= 77 && Cb <= 127 && Cr >= 133 && Cr <= 173) ? 1 : 0;
+      mask[i] = (Y > 35 && Cb >= 70 && Cb <= 130 && Cr >= 128 && Cr <= 180) ? 1 : 0;
     }
     const seen = new Uint8Array(N), blobs = [], stack = [];
     for (let s = 0; s < N; s++) {
@@ -13787,7 +13797,7 @@ window.hideFilterBar = function(ctx) {
       }
       const bw = maxx - minx + 1, bh = maxy - miny + 1;
       const fill = count / (bw * bh), aspect = bw / bh;
-      if (count >= N * 0.012 && fill >= 0.4 && aspect >= 0.45 && aspect <= 1.8) {
+      if (count >= N * 0.006 && fill >= 0.3 && aspect >= 0.35 && aspect <= 2.2) {
         blobs.push({ minx: minx, maxx: maxx, miny: miny, maxy: maxy, count: count });
       }
     }
@@ -13951,6 +13961,21 @@ window.hideFilterBar = function(ctx) {
     }
   }
 
+  function _setBadge(ctx, text) {
+    const vid = document.getElementById(_VID[ctx]);
+    if (!vid || !vid.parentElement) return;
+    let b = document.getElementById(ctx + '-ff-badge');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = ctx + '-ff-badge';
+      b.style.cssText = 'position:absolute;left:50%;bottom:6px;transform:translateX(-50%);z-index:16;pointer-events:none;' +
+        'font:600 10px/1.3 sans-serif;color:#fff;background:rgba(0,0,0,.65);padding:2px 8px;border-radius:10px;white-space:nowrap;';
+      vid.parentElement.appendChild(b);
+    }
+    if (b._t !== text) { b.textContent = text; b._t = text; }
+    b.style.display = text ? 'block' : 'none';
+  }
+
   function _needsFallback(ctx) {
     const d = _det[ctx];
     return !d || d.kind === 'skin';   // detektor ML yang andal & tak menemukan wajah -> jangan menebak
@@ -13964,6 +13989,7 @@ window.hideFilterBar = function(ctx) {
   const _origStop = window._stopOverlay;
   window._stopOverlay = function (ctx) {
     _tracks[ctx] = [];
+    _setBadge(ctx, '');
     if (typeof _origStop === 'function') _origStop(ctx);
   };
 
@@ -13997,6 +14023,13 @@ window.hideFilterBar = function(ctx) {
       faces.push({ fx: (W - fw) / 2, fy: H * 0.18, fw: fw, fh: fh, a: 0.9 });
     }
 
+    (function () {
+      const d = _det[ctx], real = tr.filter(function (t) { return t.miss === 0; }).length;
+      const kind = d ? d.kind : '...';
+      let txt = kind + ' · ' + real + ' wajah';
+      if (!real) txt += ' — ' + (_status[ctx] || 'wajah tidak terdeteksi');
+      _setBadge(ctx, txt);
+    })();
     faces.forEach(function (f) {
       c.save(); c.globalAlpha = f.a;
       _drawOne(c, fname, f.fx, f.fy, f.fw, f.fh, ctx);
