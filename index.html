@@ -1282,7 +1282,7 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
         <div style="display:flex; gap:7px;"><span style="color:var(--accent3); flex-shrink:0;">⏰</span><span>Jam piket <b style="color:var(--text);">09.00 – 16.00 WIB</b>, Senin–Jumat sesuai jadwal yang disepakati.</span></div>
         <div style="display:flex; gap:7px;"><span style="color:var(--accent); flex-shrink:0;">✅</span><span>Wajib absen <b style="color:var(--text);">Datang</b> saat tiba &amp; <b style="color:var(--text);">Pulang</b> saat meninggalkan GIBEI FEBUP.</span></div>
         <div style="display:flex; gap:7px;"><span style="color:var(--red); flex-shrink:0;">⚠️</span><span>Lupa absen Pulang → durasi hadir dihitung <b style="color:var(--red);">hanya 2 jam</b> dan hanya mendapat <b style="color:var(--accent3);">1 ⭐</b>.</span></div>
-        <div style="display:flex; gap:7px;"><span style="color:var(--accent3); flex-shrink:0;">⭐</span><span>Sistem poin piket: <b style="color:var(--text);">tidak hadir = 0 ⭐</b> · <b style="color:var(--text);">hadir tapi lupa pulang = 1 ⭐</b> · <b style="color:var(--text);">hadir + pulang &lt;4 jam = 2 ⭐</b> · <b style="color:var(--text);">hadir + pulang ≥4 jam = 4 ⭐</b>.</span></div>
+        <div style="display:flex; gap:7px;"><span style="color:var(--accent3); flex-shrink:0;">⭐</span><span>Sistem poin piket: <b style="color:var(--text);">tidak hadir = 0 ⭐</b> · <b style="color:var(--text);">hadir tapi lupa pulang = 1 ⭐</b> · <b style="color:var(--text);">hadir + pulang &lt;4 jam = 2 ⭐</b> · <b style="color:var(--text);">hadir + pulang ≥4 jam = 3 ⭐</b>.</span></div>
         <div style="display:flex; gap:7px;"><span style="color:var(--accent2); flex-shrink:0;">📝</span><span>Tidak bisa hadir? Ajukan <b style="color:var(--text);">Izin</b> di beranda &amp; kabari divisi HR.</span></div>
       </div>
     </div>
@@ -1806,8 +1806,8 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
     <!-- Step 1: Selfie -->
     <div id="kegiatan-selfie-section" style="background:var(--bg2); border-radius:12px; padding:20px; margin-bottom:16px; text-align:center;">
       <div style="font-size:13px; font-weight:600; color:var(--text2); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px; display:none;">Step 1 dari 2</div>
-      <div style="font-size:15px; font-weight:600; margin-bottom:4px;">📸 Foto Selfie (Opsional)</div>
-      <div style="font-size:12px; color:var(--text2); margin-bottom:14px;">Bisa langsung lanjut scan QR tanpa foto selfie</div>
+      <div style="font-size:15px; font-weight:600; margin-bottom:4px;">📸 Foto Selfie (Wajib)</div>
+      <div style="font-size:12px; color:var(--text2); margin-bottom:14px;">Foto selfie wajib diambil sebelum lanjut scan QR</div>
       <div id="kegiatan-selfie-cam-wrapper" style="position:relative; width:260px; height:260px; margin:0 auto 12px; border-radius:16px; overflow:hidden; border:3px solid var(--border2); background:var(--bg3); display:flex; align-items:center; justify-content:center;">
         <video id="kegiatan-selfie-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none;"></video>
         <div id="kegiatan-selfie-placeholder" style="color:var(--text3); text-align:center;"><div style="font-size:36px;">👤</div><div style="font-size:11px;">Kamera belum aktif</div></div>
@@ -2133,6 +2133,8 @@ function switchIzinTab(tab) {
       <button class="nav-item" onclick="switchTab('izin')" data-tab="izin">📝 Izin & Ketidakhadiran</button>
       <button class="nav-item" onclick="switchTab('anggota')" data-tab="anggota">👥 Data Anggota BPH Aktif</button>
       <button class="nav-item" onclick="switchTab('data-kipm')" data-tab="data-kipm">📚 Data Anggota KIPM</button>
+      <button class="nav-item" onclick="switchTab('riwayat-kipmup')" data-tab="riwayat-kipmup">🏛️ Riwayat Absen KIPM-UP</button>
+      <button class="nav-item" onclick="switchTab('riwayat-nonbph')" data-tab="riwayat-nonbph">🌱 Riwayat Absen Non-BPH</button>
       <button class="nav-item" onclick="switchTab('konten')" data-tab="konten">🖊️ Edit Konten Halaman</button>
       <!-- Papan Peringkat dihapus — sudah terintegrasi di Riwayat DP & Riwayat Piket -->
     </nav>
@@ -3406,6 +3408,7 @@ async function loadJadwalScan(){
   el.innerHTML = '<div class="loading" style="color:var(--accent);">Memuat jadwal & sinkronisasi status...</div>';
   if(elFace) elFace.innerHTML = '<div class="loading" style="color:var(--accent);">Memuat jadwal...</div>';
   
+  await Promise.all([syncJadwalDariGAS(), syncIzinThrottled()]);
   const dow = new Date().getDay(); 
   const list = jadwalMingguan[dow] || [];
 
@@ -3790,6 +3793,52 @@ async function syncAnggotaDariGAS(onDone) {
   }
 }
 window.syncAnggotaDariGAS = syncAnggotaDariGAS;
+
+// FIX (dual storage): jadwalMingguan sebelumnya hanya DIKIRIM ke Sheets, tak pernah DITARIK balik.
+// Laptop lain (mis. laptop HR) jadi selalu mulai dari jadwal default. Sekarang ditarik dari GAS.
+let _lastSyncJadwal = 0, _lastSyncIzin = 0;
+async function syncJadwalDariGAS(force) {
+  if (!force && Date.now() - _lastSyncJadwal < 30000) return false; // throttle 30 dtk
+  _lastSyncJadwal = Date.now();
+  try {
+    const res = await api({ action: 'getJadwalPiket' });
+    if (!(res && res.ok && Array.isArray(res.data)) || !res.data.length) return false;
+    const todayMs = new Date(getTodayWIB() + 'T00:00:00Z').getTime();
+    const byDate = {};
+    res.data.forEach(row => {
+      if (!row.tanggal || !row.NIA) return;
+      if (!byDate[row.tanggal]) byDate[row.tanggal] = [];
+      byDate[row.tanggal].push(String(row.NIA));
+    });
+    const bestForDow = {1:null,2:null,3:null,4:null,5:null};
+    Object.keys(byDate).forEach(tgl => {
+      const dow = new Date(tgl + 'T00:00:00Z').getUTCDay();
+      if (dow < 1 || dow > 5) return;
+      const diff = Math.abs(new Date(tgl + 'T00:00:00Z').getTime() - todayMs);
+      if (!bestForDow[dow] || diff < bestForDow[dow].diff) bestForDow[dow] = { tgl, diff, nias: byDate[tgl] };
+    });
+    let changed = false;
+    for (let h = 1; h <= 5; h++) {
+      if (bestForDow[h] && bestForDow[h].nias.length) {
+        const newList = Array.from(new Set(bestForDow[h].nias)).sort();
+        const oldList = Array.from(jadwalMingguan[h] || []).sort();
+        const same = newList.length === oldList.length && newList.every((v,i) => v === oldList[i]);
+        if (!same) { jadwalMingguan[h] = newList; changed = true; }
+      }
+    }
+    if (changed) { try { localStorage.setItem('jadwalMingguan', JSON.stringify(jadwalMingguan)); } catch(e) {} }
+    return changed;
+  } catch(e) {
+    console.warn('[sync jadwal] gagal ambil dari GAS (offline?):', e.message);
+    return false;
+  }
+}
+window.syncJadwalDariGAS = syncJadwalDariGAS;
+async function syncIzinThrottled() {
+  if (Date.now() - _lastSyncIzin < 30000) return;
+  _lastSyncIzin = Date.now();
+  try { await syncIzinDariGAS(); } catch(e) {}
+}
 function startClock(){ setInterval(()=>{ document.getElementById('topbar-clock').innerText = new Date().toLocaleTimeString('id-ID'); },1000); }
 function switchTab(tab){ 
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); 
@@ -3832,6 +3881,7 @@ function switchTab(tab){
 
 // ADMIN: JADWAL LOGIC
 async function loadAnggotaForPicker(){ 
+  await syncJadwalDariGAS(true);
   const hari = parseInt(document.getElementById('jadwal-hari-select').value);
   selectedAnggota = new Set(jadwalMingguan[hari] || []);
   renderAnggotaPicker(); 
@@ -4462,7 +4512,7 @@ function renderKalenderJadwal(){
 // =========================================================================
 // SISTEM KEGIATAN — Sesi, GPS Lock, 1x Absen, Rekap
 // =========================================================================
-let sesiList = JSON.parse(sessionStorage.getItem('sesiList') || '[]');
+let sesiList = JSON.parse(localStorage.getItem('sesiList') || sessionStorage.getItem('sesiList') || '[]'); // FIX: tidak hilang saat tab ditutup
 let izinList = JSON.parse(localStorage.getItem('izinList') || '[]');
 
 // Helper: cek apakah timestamp masih di hari WIB yang sama
@@ -4493,7 +4543,14 @@ let kegiatanCountdownInterval = null;
 let activeSesiId = null; // sesi yang sedang dibuka oleh anggota
 
 // ── Helper ──
-function saveSesi() { sessionStorage.setItem('sesiList', JSON.stringify(sesiList)); }
+function saveSesi() {
+  // Foto resolusi penuh & file bahan besar tidak ikut disimpan ke localStorage (hindari kuota penuh);
+  // thumbnail (selfieMini) tetap tersimpan.
+  try {
+    localStorage.setItem('sesiList', JSON.stringify(sesiList, (k, v) =>
+      (k === 'selfieDataURL' || (k === 'dataURL' && typeof v === 'string' && v.length > 400000)) ? undefined : v));
+  } catch(e) { console.warn('saveSesi gagal:', e.message); }
+}
 function saveIzin() { localStorage.setItem('izinList', JSON.stringify(izinList)); }
 
 // Sync riwayat izin dari GAS — dipanggil saat tab Daftar Izin dibuka
@@ -5225,7 +5282,7 @@ function goToIzinAnggota() {
   // Isi NIA kalau ada
   const nia = document.getElementById('kegiatan-input-nia')?.value || '';
   if(nia) document.getElementById('izin-anggota-nia').value = nia;
-  document.getElementById('izin-back-btn').onclick = () => history.back() || goTo('landing');
+  document.getElementById('izin-back-btn').onclick = () => goTo('landing');
   goTo('izin-anggota');
 }
 
@@ -7453,7 +7510,7 @@ window.goTo=goTo;
 // Restore halaman dari hash URL saat refresh (termasuk admin jika session aktif)
 (function restorePageFromHash() {
   const hash = window.location.hash.replace('#', '');
-  const publicPages = ['scan', 'kalender', 'kegiatan-scan', 'izin-anggota', 'pengaduan', 'kiosk-login', 'absen-bursa'];
+  const publicPages = ['scan', 'kalender', 'kegiatan-scan', 'izin-anggota', 'kiosk-login', 'absen-bursa'];
   const adminPages = ['admin', 'admin-login'];
 
   // Cek session admin di localStorage
@@ -7481,7 +7538,10 @@ window.goTo=goTo;
   } catch(e) {}
 
   // Restore halaman publik dari hash
-  if (hash && publicPages.includes(hash)) {
+  // FIX: link lama "#pengaduan" (sekarang digabung ke tab Pengaduan di halaman Izin)
+  if (hash === 'pengaduan') {
+    setTimeout(() => { try { goTo('izin-anggota'); if (typeof switchIzinTab === 'function') switchIzinTab('pengaduan'); } catch(e) {} }, 100);
+  } else if (hash && publicPages.includes(hash)) {
     setTimeout(() => { try { goTo(hash); } catch(e) {} }, 100);
   }
 })();
@@ -7597,7 +7657,7 @@ async function absenBursaSubmit() {
   if (!nia) { showToast('Masukkan NIA dulu', 'error'); return; }
 
   // Cari di data lokal dulu; jika tidak ada, tetap lanjut karena GAS yang validasi
-  const anggota = allAnggota.find(a => a.NIA === nia);
+  let anggota = allAnggota.find(a => a.NIA === nia);
 
   const submitBtn  = document.getElementById('absen-bursa-submit');
   const loadingEl  = document.getElementById('absen-bursa-loading');
@@ -7617,6 +7677,7 @@ async function absenBursaSubmit() {
     });
 
     if (res.ok) {
+      if (!anggota) anggota = { nama: res.nama || nia, divisi: '-', NIA: nia }; // FIX: NIA belum ter-sync lokal
       if (loadingEl) loadingEl.style.display = 'none';
       if (_absenBursaGPSWatch) { navigator.geolocation.clearWatch(_absenBursaGPSWatch); }
 
@@ -8309,6 +8370,21 @@ window.setScanType = function(t) {
     btnP.style.color = t==='PULANG' ? '#c084fc' : 'var(--text2)';
     btnP.style.fontWeight = t==='PULANG' ? '600' : '400';
   }
+  // FIX: tombol Datang/Pulang di panel Face ID juga ikut berubah
+  const btnDFace = document.getElementById('btn-tipe-datang-face');
+  const btnPFace = document.getElementById('btn-tipe-pulang-face');
+  if(btnDFace) {
+    btnDFace.style.background = t==='DATANG' ? 'rgba(74,222,128,0.15)' : 'var(--bg3)';
+    btnDFace.style.borderColor = t==='DATANG' ? 'var(--accent)' : 'var(--border2)';
+    btnDFace.style.color = t==='DATANG' ? 'var(--accent)' : 'var(--text2)';
+    btnDFace.style.fontWeight = t==='DATANG' ? '600' : '400';
+  }
+  if(btnPFace) {
+    btnPFace.style.background = t==='PULANG' ? 'rgba(192,132,252,0.15)' : 'var(--bg3)';
+    btnPFace.style.borderColor = t==='PULANG' ? '#c084fc' : 'var(--border2)';
+    btnPFace.style.color = t==='PULANG' ? '#c084fc' : 'var(--text2)';
+    btnPFace.style.fontWeight = t==='PULANG' ? '600' : '400';
+  }
   // Di mode baru, tidak perlu re-render QR karena HP yang scan, bukan tampilkan QR
 };
 
@@ -8445,6 +8521,7 @@ async function loadKioskJadwal() {
   const el = document.getElementById('kiosk-jadwal-today');
   const elSelfie = document.getElementById('kiosk-jadwal-selfie');
   const elFaceID = document.getElementById('kiosk-jadwal-faceid');
+  await syncJadwalDariGAS();
   const dow = new Date().getDay();
   const list = jadwalMingguan[dow] || [];
 
@@ -10326,6 +10403,7 @@ try {
 // kipmData — diinisiasi setelah KIPM_DEFAULT_DATA di atas (dekat realAnggota)
 let kipmData = JSON.parse(JSON.stringify(KIPM_DEFAULT_DATA));
 
+const bphAktifNIASet = new Set(realAnggota.map(a => a.NIA)); // FIX: BPH aktif = daftar asli, bukan allAnggota gabungan
 // Sinkronisasi KIPM_DEFAULT_DATA ke allAnggota agar semua anggota bisa absen
 // Dipanggil DI SINI karena KIPM_DEFAULT_DATA sudah dideklarasikan di atas
 (function() {
@@ -10556,10 +10634,7 @@ function kipmRender() {
 
   // Catatan: semua anggota yang memiliki NIA valid bisa absen dengan NIA masing-masing
   // Kolom "Absensi" menunjukkan apakah anggota juga terdaftar sebagai BPH Aktif (ikut jadwal piket)
-  const bphAktifSet = new Set(
-    ((typeof allAnggota !== 'undefined' && allAnggota.length > 0) ? allAnggota : realAnggota)
-      .map(a => a.NIA)
-  );
+  const bphAktifSet = (typeof bphAktifNIASet !== 'undefined') ? bphAktifNIASet : new Set(realAnggota.map(a => a.NIA));
 
   let html = '';
 
@@ -10908,6 +10983,7 @@ function goToUjiCoba() {
   ujicobaLoadEvents();
   ujicobaReset();
   ujicobaRenderHistory();
+  if (typeof startGPSWatch === 'function') startGPSWatch(); // FIX: GPS wajib aktif di alur absen utama
 }
 
 function closeUjiCobaModal() {
@@ -11062,17 +11138,17 @@ function ujicobaUlangFoto() {
   document.getElementById('ujicoba-btn-buka').style.display = 'inline-block';
 }
 
-function ujicobaSubmit() {
+async function ujicobaSubmit() {
   const nia = document.getElementById('ujicoba-nia-input').value.trim();
   if (!nia) { showToast('Masukkan NIA terlebih dahulu', 'error'); return; }
   if (!ujicobaFotoData) { showToast('Ambil foto selfie terlebih dahulu', 'error'); return; }
 
   // ✅ FIX: Disable tombol submit agar tidak bisa klik 2x
   const btnSubmit = document.getElementById('ujicoba-btn-submit');
-  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = '⏳ Memproses...'; btnSubmit.style.opacity = '0.7'; }
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = '⏳ Memeriksa status...'; btnSubmit.style.opacity = '0.7'; }
 
-  // ── CEK DUPLIKASI ABSEN ──
-  const _todayCheck = new Date().toISOString().split('T')[0];
+  // ── CEK DUPLIKASI ABSEN — gabungan lokal + server (server = sumber kebenaran) ──
+  const _todayCheck = getTodayWIB();
   let _sudahDatang = false, _sudahPulang = false;
   let _waktuDatang = null; // ★ Simpan waktu DATANG untuk validasi 2 jam
   try {
@@ -11087,6 +11163,19 @@ function ujicobaSubmit() {
       }
     });
   } catch(e2) {}
+
+  // FIX: verifikasi ulang ke server — tetap akurat walau localStorage kosong / beda perangkat
+  try {
+    const _srvRes = await api({ action: 'getRekapAbsensi', from: _todayCheck, to: _todayCheck });
+    if (_srvRes && _srvRes.ok && Array.isArray(_srvRes.data)) {
+      _srvRes.data.forEach(r => {
+        if (String(r.NIA) !== String(nia)) return;
+        if (r.tipe === 'DATANG') { _sudahDatang = true; if (!_waktuDatang) _waktuDatang = r.waktu; }
+        if (r.tipe === 'PULANG') _sudahPulang = true;
+      });
+    }
+  } catch(eSrv) { /* server tak terjangkau — lanjut dengan hasil cek lokal */ }
+  if (btnSubmit) { btnSubmit.textContent = '⏳ Memproses...'; }
 
   if (ujicobaCurrentTipe === 'DATANG' && _sudahDatang) {
     // Sudah absen datang — tampilkan notif khusus (bukan error biasa)
@@ -11148,7 +11237,7 @@ function ujicobaSubmit() {
   try {
     const cached = JSON.parse(localStorage.getItem('jadwal_piket') || 'null');
     if (cached && Array.isArray(cached)) {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getTodayWIB();
       const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
       const todayName = dayNames[new Date().getDay()];
       cached.forEach(entry => {
@@ -11167,7 +11256,7 @@ function ujicobaSubmit() {
 
   const now = new Date();
   const waktuStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = getTodayWIB();
 
   // ── Save to ujicoba_absen (full history, all anggota piket & non-piket)
   const record = {
@@ -11225,7 +11314,7 @@ function ujicobaSubmit() {
 
     // ✅ FIX: Bersihkan key localStorage lama yang tidak perlu (foto selfie hari lain, dll)
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayWIB();
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
         if (!k) continue;
@@ -11348,19 +11437,13 @@ function ujicobaReset() {
 
 // ── Load Piket Hari Ini — TERHUBUNG ke jadwalMingguan (sama dengan Kiosk & Absen Piket) ──
 function ujicobaLoadPiket() {
-  // Sync jadwal from GAS into localStorage so isPiket detection is accurate
-  (async () => {
-    try {
-      const jadwalRes = await api({ action: 'getJadwalPiket' });
-      if (jadwalRes && jadwalRes.ok && jadwalRes.data) {
-        localStorage.setItem('jadwal_piket', JSON.stringify(jadwalRes.data));
-      }
-    } catch(e) { console.warn('[Ujicoba] Gagal sync jadwal piket:', e.message); }
-  })();
+  // FIX (dual storage): tarik jadwal & izin terbaru dari Sheets, render ulang bila berubah
+  syncJadwalDariGAS().then(changed => { if (changed) ujicobaLoadPiket(); });
+  syncIzinThrottled();
   const container = document.getElementById('ujicoba-piket-list');
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const dow = today.getDay(); // 0=Min,1=Sen,...,5=Jum,6=Sab
+  const todayStr = getTodayWIB();
+  const dow = new Date(getTodayWIB() + 'T00:00:00Z').getUTCDay(); // 0=Min..6=Sab (WIB)
 
   // ── MIGRASI: Pakai jadwalMingguan yang sama dengan Absen Piket / Kiosk ──
   const todayNIAs = (typeof jadwalMingguan !== 'undefined' && jadwalMingguan[dow]) ? jadwalMingguan[dow] : [];
@@ -11628,7 +11711,7 @@ function closeUjicobaNotif(doRefresh) {
 function ujicobaRenderHistory() {
   const container = document.getElementById('ujicoba-history-list');
   if (!container) return;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayWIB();
   try {
     const records = JSON.parse(localStorage.getItem('ujicoba_absen') || '[]');
     const todayRecords = records.filter(r => r.tanggal === todayStr || (r.waktu && r.waktu.startsWith(todayStr)));
@@ -11676,7 +11759,7 @@ function ujicobaRenderHistory() {
 // ── REKAP LUPA ABSEN PULANG ──
 // Dipanggil saat jam 20:00 atau manual oleh admin
 function getRekappLupaPulang() {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayWIB();
   let records = [];
   try { records = JSON.parse(localStorage.getItem('ujicoba_absen') || '[]'); } catch(e) {}
   const todayRecs = records.filter(r => r.tanggal === todayStr || (r.waktu && r.waktu.startsWith(todayStr)));
@@ -11736,7 +11819,7 @@ function showRekapLupaPulang() {
     const now = new Date();
     if (now.getHours() === 20 && now.getMinutes() === 0) {
       // ✅ FIX: Cek apakah rekap sudah ditampilkan hari ini — mencegah muncul ulang saat refresh
-      const todayStr = now.toISOString().split('T')[0];
+      const todayStr = getTodayWIB();
       const alreadyShown = localStorage.getItem('rekap_lupa_shown');
       if (alreadyShown === todayStr) return; // Sudah ditampilkan hari ini, skip
 
@@ -11773,7 +11856,7 @@ function ujicobaPreviewFoto(idx) {
 }
 // ── Dashboard Widget: Absen KIPM-UP Hari Ini ──
 function refreshDashboardUjicoba() {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayWIB();
   let records = [];
   try { records = JSON.parse(localStorage.getItem('ujicoba_absen') || '[]'); } catch(e) {}
   const todayRecs = records.filter(r => r.tanggal === todayStr || (r.waktu && r.waktu.startsWith(todayStr)));
@@ -12301,15 +12384,6 @@ window.hideFilterBar   = hideFilterBar;
 </script>
 
 <!-- ══ FUN FILTER ENGINE v5 — MediaPipe FaceLandmarker real-time tracking ══ -->
-<script>
-// Load MediaPipe Face Landmarker (primary — same tech as Instagram/TikTok filters)
-(function() {
-  const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js';
-  script.crossOrigin = 'anonymous';
-  document.head.appendChild(script);
-})();
-</script>
 <script>
 
 // ══════════════════════════════════════════════════════════════════════
@@ -13578,6 +13652,385 @@ window.hideFilterBar = function(ctx) {
   const foc = _frameOverlayCanvases[ctx];
   if (foc) foc.getContext('2d').clearRect(0, 0, foc.width, foc.height);
 };
+</script>
+
+<!-- ══ FUN FILTER v6 — multi-wajah + koordinat cover-aware ══ -->
+<script>
+/* ==========================================================================
+   FUN FILTER v6 — patch untuk PRESENZA / KIPM-UP
+   Tempel SETELAH <script> "FUN FILTER SYSTEM v5" (paling bawah, sebelum </body>).
+   Modul ini menimpa (override) fungsi v5 berikut:
+     _initFaceDetector, _runFaceDetect, _drawFunFrame, _bakeFun, _stopOverlay
+   Fungsi gambar v5 (_drawCatEars, _drawBlush, _drawCrown, dst) tetap dipakai.
+
+   Perbaikan:
+   1. MULTI-WAJAH: semua wajah terdeteksi (maks 5), tiap wajah punya filter sendiri.
+   2. KOORDINAT BENAR: posisi wajah dikoreksi untuk object-fit:cover + mirror (preview)
+      dan untuk crop kotak (foto ujicoba) / full-frame (foto kegiatan & kiosk).
+   3. TRACKING: wajah dicocokkan antar-frame (nearest-center) + smoothing, jadi filter
+      tidak loncat/tertukar saat 2 orang bergeser atau bersilangan.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  const MAX_FACES = 5;
+  const MAX_MISS = 6;              // berapa kali deteksi gagal sebelum track dibuang
+  const SMOOTH = 0.4;              // lerp per frame render
+
+  const _tracks = {};              // ctx -> [{id,tx,ty,tw,th,x,y,w,h,miss}] (koordinat piksel video ASLI)
+  const _lastVid = {};             // ctx -> {vw,vh}
+  const _det = {};                 // ctx -> {kind, obj}
+  const _detPromise = {};
+  const _busy = {};
+  const _skinCv = {};
+  let _nextId = 1;
+
+  /* ───────────── GEOMETRI ───────────── */
+
+  // object-fit:cover: skala = max(W/vw, H/vh), sisa di-crop rata kiri-kanan / atas-bawah
+  function _cover(vw, vh, W, H) {
+    const s = Math.max(W / vw, H / vh);
+    return { s: s, ox: (W - vw * s) / 2, oy: (H - vh * s) / 2 };
+  }
+
+  // piksel video asli -> koordinat overlay (video di-mirror CSS scaleX(-1), overlay TIDAK di-mirror)
+  function nativeToDisplay(b, vw, vh, W, H) {
+    const k = _cover(vw, vh, W, H);
+    const x1 = b.x * k.s + k.ox, w = b.w * k.s;
+    return { fx: W - (x1 + w), fy: b.y * k.s + k.oy, fw: w, fh: b.h * k.s };
+  }
+
+  // piksel video asli -> koordinat canvas foto (canvas sudah di-mirror saat digambar)
+  function nativeToCanvas(b, vw, vh, cw, ch) {
+    const side = Math.min(vw, vh);
+    // mode crop-kotak tengah (foto ujicoba)
+    if (vw !== vh && cw === ch && Math.abs(cw - side) <= 1) {
+      const sx = Math.floor((vw - side) / 2), sy = Math.floor((vh - side) / 2);
+      const k = cw / side;
+      const x1 = (b.x - sx) * k, w = b.w * k;
+      return { fx: cw - (x1 + w), fy: (b.y - sy) * k, fw: w, fh: b.h * k };
+    }
+    // mode full-frame (foto kegiatan & kiosk)
+    const kx = cw / vw, ky = ch / vh;
+    return { fx: cw - (b.x + b.w) * kx, fy: b.y * ky, fw: b.w * kx, fh: b.h * ky };
+  }
+
+  window.__ff6 = { nativeToDisplay: nativeToDisplay, nativeToCanvas: nativeToCanvas }; // untuk debugging/tes
+
+  /* ───────────── DETEKSI ───────────── */
+
+  function _initDet(ctx) {
+    if (_det[ctx]) return Promise.resolve(_det[ctx]);
+    if (_detPromise[ctx]) return _detPromise[ctx];
+    _detPromise[ctx] = (async function () {
+      if ('FaceDetector' in window) {
+        try {
+          _det[ctx] = { kind: 'native', obj: new FaceDetector({ fastMode: true, maxDetectedFaces: MAX_FACES }) };
+          return _det[ctx];
+        } catch (e) { /* lanjut */ }
+      }
+      if (typeof faceapi !== 'undefined' && faceapi.nets && faceapi.nets.tinyFaceDetector) {
+        try {
+          if (!faceapi.nets.tinyFaceDetector.isLoaded) {
+            const urls = ['https://unpkg.com/face-api.js@0.22.2/weights',
+                          'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights'];
+            for (let i = 0; i < urls.length && !faceapi.nets.tinyFaceDetector.isLoaded; i++) {
+              try { await faceapi.nets.tinyFaceDetector.loadFromUri(urls[i]); } catch (e) { /* coba url berikut */ }
+            }
+          }
+          if (faceapi.nets.tinyFaceDetector.isLoaded) {
+            _det[ctx] = { kind: 'faceapi' };
+            return _det[ctx];
+          }
+        } catch (e) { /* lanjut */ }
+      }
+      _det[ctx] = { kind: 'skin' };
+      return _det[ctx];
+    })();
+    return _detPromise[ctx];
+  }
+
+  // Fallback tanpa library: cari blob warna kulit, pisahkan per-komponen (connected components)
+  function _skinBlobs(ctx, vid, vw, vh) {
+    const SW = 48, SH = Math.max(12, Math.round(SW * vh / vw));
+    let cv = _skinCv[ctx];
+    if (!cv || cv.width !== SW || cv.height !== SH) {
+      cv = document.createElement('canvas');
+      cv.width = SW; cv.height = SH;
+      cv._c = cv.getContext('2d', { willReadFrequently: true });
+      _skinCv[ctx] = cv;
+    }
+    try { cv._c.drawImage(vid, 0, 0, SW, SH); } catch (e) { return []; }
+    const d = cv._c.getImageData(0, 0, SW, SH).data;
+    const N = SW * SH, mask = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2];
+      const Y = 0.299 * r + 0.587 * g + 0.114 * b;
+      const Cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+      const Cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+      mask[i] = (Y > 50 && Cb >= 77 && Cb <= 127 && Cr >= 133 && Cr <= 173) ? 1 : 0;
+    }
+    const seen = new Uint8Array(N), blobs = [], stack = [];
+    for (let s = 0; s < N; s++) {
+      if (!mask[s] || seen[s]) continue;
+      let minx = SW, maxx = 0, miny = SH, maxy = 0, count = 0;
+      stack.push(s); seen[s] = 1;
+      while (stack.length) {
+        const p = stack.pop(), px = p % SW, py = (p - px) / SW;
+        count++;
+        if (px < minx) minx = px; if (px > maxx) maxx = px;
+        if (py < miny) miny = py; if (py > maxy) maxy = py;
+        if (px > 0      && mask[p - 1]  && !seen[p - 1])  { seen[p - 1] = 1;  stack.push(p - 1); }
+        if (px < SW - 1 && mask[p + 1]  && !seen[p + 1])  { seen[p + 1] = 1;  stack.push(p + 1); }
+        if (py > 0      && mask[p - SW] && !seen[p - SW]) { seen[p - SW] = 1; stack.push(p - SW); }
+        if (py < SH - 1 && mask[p + SW] && !seen[p + SW]) { seen[p + SW] = 1; stack.push(p + SW); }
+      }
+      const bw = maxx - minx + 1, bh = maxy - miny + 1;
+      const fill = count / (bw * bh), aspect = bw / bh;
+      if (count >= N * 0.012 && fill >= 0.4 && aspect >= 0.45 && aspect <= 1.8) {
+        blobs.push({ minx: minx, maxx: maxx, miny: miny, maxy: maxy, count: count });
+      }
+    }
+    blobs.sort(function (a, b) { return b.count - a.count; });
+    return blobs.slice(0, MAX_FACES).map(function (bl) {
+      const bw = bl.maxx - bl.minx + 1, bh = bl.maxy - bl.miny + 1;
+      const padX = bw * 0.08, padY = bh * 0.08;
+      const kx = vw / SW, ky = vh / SH;
+      let x = Math.max(0, (bl.minx - padX) * kx), y = Math.max(0, (bl.miny - padY) * ky);
+      let w = Math.min(vw - x, (bw + padX * 2) * kx), h = Math.min(vh - y, (bh + padY * 2) * ky);
+      if (h > w * 1.35) h = w * 1.35;   // buang leher
+      return { x: x, y: y, w: w, h: h };
+    });
+  }
+
+  async function _detect(ctx) {
+    if (_busy[ctx]) return;
+    const vid = document.getElementById(_VID[ctx]);
+    if (!vid || vid.readyState < 2 || !vid.videoWidth) return;
+    _busy[ctx] = true;
+    try {
+      const d = await _initDet(ctx);
+      const vw = vid.videoWidth, vh = vid.videoHeight;
+      _lastVid[ctx] = { vw: vw, vh: vh };
+      let boxes = null;
+      if (d.kind === 'native') {
+        try {
+          const f = await d.obj.detect(vid);
+          boxes = f.map(function (x) { const b = x.boundingBox; return { x: b.x, y: b.y, w: b.width, h: b.height }; });
+        } catch (e) { d.kind = 'skin'; }
+      } else if (d.kind === 'faceapi') {
+        try {
+          const r = await faceapi.detectAllFaces(vid, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 }));
+          boxes = r.slice(0, MAX_FACES).map(function (x) { const b = x.box; return { x: b.x, y: b.y, w: b.width, h: b.height }; });
+        } catch (e) { d.kind = 'skin'; }
+      }
+      if (boxes === null) boxes = _skinBlobs(ctx, vid, vw, vh);
+      _updateTracks(ctx, boxes);
+    } catch (e) { /* abaikan, coba lagi di siklus berikut */ }
+    finally { _busy[ctx] = false; }
+  }
+
+  /* ───────────── TRACKING ───────────── */
+
+  function _updateTracks(ctx, boxes) {
+    const tr = _tracks[ctx] || (_tracks[ctx] = []);
+    const pairs = [];
+    tr.forEach(function (t, ti) {
+      boxes.forEach(function (b, bi) {
+        const dx = (t.tx + t.tw / 2) - (b.x + b.w / 2), dy = (t.ty + t.th / 2) - (b.y + b.h / 2);
+        const dist = Math.hypot(dx, dy);
+        if (dist < Math.max(t.tw, b.w) * 1.2) pairs.push({ ti: ti, bi: bi, dist: dist });
+      });
+    });
+    pairs.sort(function (a, b) { return a.dist - b.dist; });
+    const tu = new Set(), bu = new Set();
+    pairs.forEach(function (p) {
+      if (tu.has(p.ti) || bu.has(p.bi)) return;
+      tu.add(p.ti); bu.add(p.bi);
+      const t = tr[p.ti], b = boxes[p.bi];
+      t.tx = b.x; t.ty = b.y; t.tw = b.w; t.th = b.h; t.miss = 0;
+    });
+    tr.forEach(function (t, i) { if (!tu.has(i)) t.miss++; });
+    boxes.forEach(function (b, bi) {
+      if (!bu.has(bi)) tr.push({ id: _nextId++, tx: b.x, ty: b.y, tw: b.w, th: b.h, x: b.x, y: b.y, w: b.w, h: b.h, miss: 0 });
+    });
+    _tracks[ctx] = tr.filter(function (t) { return t.miss <= MAX_MISS; });
+  }
+
+  /* ───────────── GAMBAR ───────────── */
+
+  function _alienFace(c, fx, fy, fw, fh) {
+    [[fx + fw * 0.30, fy + fh * 0.37], [fx + fw * 0.70, fy + fh * 0.37]].forEach(function (p) {
+      const eg = c.createRadialGradient(p[0], p[1], 0, p[0], p[1], fw * 0.10);
+      eg.addColorStop(0, 'rgba(80,255,120,0.95)'); eg.addColorStop(1, 'rgba(80,255,120,0)');
+      c.save(); c.fillStyle = eg; c.beginPath(); c.arc(p[0], p[1], fw * 0.10, 0, Math.PI * 2); c.fill(); c.restore();
+    });
+    [fx + fw * 0.30, fx + fw * 0.70].forEach(function (ax, i) {
+      const dir = i === 0 ? -1 : 1, ay = fy - fw * 0.08, tx = ax + dir * fw * 0.08;
+      c.save(); c.strokeStyle = '#40ff80'; c.lineWidth = Math.max(1.5, fw * 0.018); c.lineCap = 'round';
+      c.shadowColor = '#40ff80'; c.shadowBlur = 8;
+      c.beginPath(); c.moveTo(ax, fy); c.quadraticCurveTo(ax + dir * fw * 0.05, fy - fw * 0.22, tx, ay); c.stroke(); c.restore();
+      c.save(); c.fillStyle = '#80ffaa'; c.shadowColor = '#40ff80'; c.shadowBlur = 12;
+      c.beginPath(); c.arc(tx, ay, fw * 0.04, 0, Math.PI * 2); c.fill(); c.restore();
+    });
+  }
+
+  function _wobbleFace(c, fx, fy, fw, fh) {
+    const t = Date.now() / 600;
+    const r = Math.floor(180 + 40 * Math.sin(t)), g = Math.floor(200 + 30 * Math.sin(t + 2)), b = Math.floor(100 + 50 * Math.sin(t + 4));
+    for (let i = 0; i < 6; i++) {
+      const a = t + i * Math.PI / 3, cx = fx + fw * 0.5 + Math.cos(a) * fw * 0.55, cy = fy + fh * 0.45 + Math.sin(a) * fh * 0.45;
+      const cr = c.createRadialGradient(cx, cy, 0, cx, cy, fw * 0.12);
+      cr.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',0.6)'); cr.addColorStop(1, 'transparent');
+      c.save(); c.fillStyle = cr; c.beginPath(); c.arc(cx, cy, fw * 0.12, 0, Math.PI * 2); c.fill(); c.restore();
+    }
+    for (let i = 0; i < 4; i++) {
+      const sa = t * 1.2 + i * Math.PI / 2;
+      const sx = fx + fw * 0.5 + Math.cos(sa) * fw * 0.58, sy = fy + fh * 0.3 + Math.sin(sa) * fh * 0.38;
+      c.save(); c.globalAlpha = 0.85 * c.globalAlpha; c.font = Math.floor(fw * 0.10) + 'px serif'; c.fillText('⭐', sx - fw * 0.05, sy); c.restore();
+    }
+  }
+
+  function _beautyFace(c, fx, fy, fw, fh) {
+    const gr = c.createRadialGradient(fx + fw * 0.5, fy + fh * 0.45, fw * 0.1, fx + fw * 0.5, fy + fh * 0.45, fw * 0.65);
+    gr.addColorStop(0, 'rgba(255,220,240,0.0)'); gr.addColorStop(0.7, 'rgba(255,200,230,0.12)'); gr.addColorStop(1, 'rgba(255,180,220,0.25)');
+    c.save(); c.fillStyle = gr; c.beginPath(); c.ellipse(fx + fw * 0.5, fy + fh * 0.45, fw * 0.65, fh * 0.65, 0, 0, Math.PI * 2); c.fill(); c.restore();
+    _drawBlush(c, fx, fy, fw, fh, 'rgba(255,160,160,0.35)');
+    [[fx + fw * 0.30, fy + fh * 0.37], [fx + fw * 0.70, fy + fh * 0.37]].forEach(function (p) {
+      c.save(); c.fillStyle = 'rgba(255,255,255,0.90)'; c.shadowColor = 'white'; c.shadowBlur = 6;
+      c.beginPath(); c.arc(p[0], p[1], fw * 0.022, 0, Math.PI * 2); c.fill(); c.restore();
+    });
+  }
+
+  // Bagian yang digambar PER WAJAH
+  function _drawOne(c, fname, fx, fy, fw, fh, ctx) {
+    switch (fname) {
+      case 'cat':    _drawCatEars(c, fx, fy, fw, fh); _drawBlush(c, fx, fy, fw, fh, 'rgba(255,80,130,0.55)'); _drawWhiskers(c, fx, fy, fw, fh, '#664444'); _drawNose(c, fx, fy, fw, fh, '#cc6688'); break;
+      case 'bunny':  _drawBunnyEars(c, fx, fy, fw, fh); _drawBlush(c, fx, fy, fw, fh, 'rgba(255,100,170,0.52)'); _drawNose(c, fx, fy, fw, fh, '#ffaacc'); break;
+      case 'bear':   _drawBearEars(c, fx, fy, fw, fh); _drawBlush(c, fx, fy, fw, fh, 'rgba(200,110,50,0.52)'); _drawNose(c, fx, fy, fw, fh, '#6a3010'); break;
+      case 'dog':    _drawDogEars(c, fx, fy, fw, fh); _drawBlush(c, fx, fy, fw, fh, 'rgba(190,130,60,0.50)'); _drawWhiskers(c, fx, fy, fw, fh, '#806030'); _drawNose(c, fx, fy, fw, fh, '#302010'); break;
+      case 'fox':    _drawFox(c, fx, fy, fw, fh); _drawBlush(c, fx, fy, fw, fh, 'rgba(200,80,20,0.40)'); _drawNose(c, fx, fy, fw, fh, '#c04010'); break;
+      case 'crown':  _drawCrown(c, fx, fy, fw); break;
+      case 'heart':  _drawBlush(c, fx, fy, fw, fh, 'rgba(255,60,120,0.60)'); break;
+      case 'devil':  _drawDevil(c, fx, fy, fw, fh); break;
+      case 'skull':  _drawSkull(c, fx, fy, fw, fh); break;
+      case 'ghost':  _drawGhost(c, fx, fy, fw, fh, ctx); break;
+      case 'beauty': _beautyFace(c, fx, fy, fw, fh); break;
+      case 'cute':   _drawCuteFilter(c, fx, fy, fw, fh); break;
+      case 'alien':  _alienFace(c, fx, fy, fw, fh); break;
+      case 'wobble': _wobbleFace(c, fx, fy, fw, fh); break;
+    }
+  }
+
+  // Bagian yang digambar SEKALI per frame (tint layar, partikel)
+  function _drawGlobal(c, fname, ctx, W, H, faces, forPhoto) {
+    if (!faces.length) return;
+    if (fname === 'alien') {
+      const f = faces[0];
+      const gr = c.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.7);
+      gr.addColorStop(0, 'rgba(50,200,80,0.0)'); gr.addColorStop(0.6, 'rgba(30,180,60,0.16)'); gr.addColorStop(1, 'rgba(20,150,40,0.32)');
+      c.save(); c.fillStyle = gr; c.fillRect(0, 0, W, H); c.restore();
+    } else if (fname === 'wobble') {
+      const t = Date.now() / 600;
+      c.save(); c.globalAlpha = 0.18;
+      c.fillStyle = 'rgb(' + Math.floor(180 + 40 * Math.sin(t)) + ',' + Math.floor(200 + 30 * Math.sin(t + 2)) + ',' + Math.floor(100 + 50 * Math.sin(t + 4)) + ')';
+      c.fillRect(0, 0, W, H); c.restore();
+    } else if (fname === 'heart') {
+      if (forPhoto) {
+        if (_heartParticles[ctx]) _heartParticles[ctx].forEach(function (p) {
+          const hx = p.x * W, hy = p.y * H, s = p.size;
+          c.save(); c.globalAlpha = p.alpha; c.fillStyle = p.color;
+          c.beginPath(); c.moveTo(hx, hy + s * 0.3);
+          c.bezierCurveTo(hx - s * 0.6, hy - s * 0.2, hx - s, hy + s * 0.4, hx, hy + s);
+          c.bezierCurveTo(hx + s, hy + s * 0.4, hx + s * 0.6, hy - s * 0.2, hx, hy + s * 0.3);
+          c.fill(); c.restore();
+        });
+      } else { _updateDrawHearts(c, ctx, W, H); }
+    } else if (fname === 'crown' || fname === 'beauty') {
+      _drawSparkles(c, ctx, W, H);
+    }
+  }
+
+  function _needsFallback(ctx) {
+    const d = _det[ctx];
+    return !d || d.kind === 'skin';   // detektor ML yang andal & tak menemukan wajah -> jangan menebak
+  }
+
+  /* ───────────── OVERRIDE FUNGSI v5 ───────────── */
+
+  window._initFaceDetector = function (ctx) { return _initDet(ctx); };
+  window._runFaceDetect = function (ctx) { return _detect(ctx); };
+
+  const _origStop = window._stopOverlay;
+  window._stopOverlay = function (ctx) {
+    _tracks[ctx] = [];
+    if (typeof _origStop === 'function') _origStop(ctx);
+  };
+
+  window._drawFunFrame = function (ctx) {
+    const fname = _funFilters[ctx];
+    if (!fname || fname === 'none') return;
+    const oc = _getOrCreateOverlay(ctx);
+    const vid = document.getElementById(_VID[ctx]);
+    if (!oc || !vid || vid.readyState < 1 || !vid.videoWidth) return;
+
+    const rect = vid.getBoundingClientRect();
+    const W = Math.round(rect.width) || vid.offsetWidth || 260;
+    const H = Math.round(rect.height) || vid.offsetHeight || 260;
+    if (!W || !H) return;
+    if (oc.width !== W || oc.height !== H) { oc.width = W; oc.height = H; }
+    const c = oc.getContext('2d');
+    c.clearRect(0, 0, W, H);
+
+    const vw = vid.videoWidth, vh = vid.videoHeight;
+    const tr = _tracks[ctx] || [];
+    const faces = [];
+    tr.forEach(function (t) {
+      t.x += (t.tx - t.x) * SMOOTH; t.y += (t.ty - t.y) * SMOOTH;
+      t.w += (t.tw - t.w) * SMOOTH; t.h += (t.th - t.h) * SMOOTH;
+      const p = nativeToDisplay({ x: t.x, y: t.y, w: t.w, h: t.h }, vw, vh, W, H);
+      p.a = t.miss > 0 ? Math.max(0, 1 - t.miss / (MAX_MISS + 1)) : 1;
+      faces.push(p);
+    });
+    if (!faces.length && _needsFallback(ctx)) {
+      const fw = W * 0.55, fh = H * 0.60;
+      faces.push({ fx: (W - fw) / 2, fy: H * 0.18, fw: fw, fh: fh, a: 0.9 });
+    }
+
+    faces.forEach(function (f) {
+      c.save(); c.globalAlpha = f.a;
+      _drawOne(c, fname, f.fx, f.fy, f.fw, f.fh, ctx);
+      c.restore();
+    });
+    _drawGlobal(c, fname, ctx, W, H, faces, false);
+  };
+
+  // Dipanggil oleh fungsi jepret foto SEBELUM canvas.toDataURL — canvas sudah di-mirror & (untuk ujicoba) di-crop kotak
+  window._bakeFun = function (ctx, canvas) {
+    const fname = _funFilters[ctx];
+    if (!fname || fname === 'none') return;
+    const W = canvas.width, H = canvas.height, c = canvas.getContext('2d');
+    const lv = _lastVid[ctx];
+    const faces = [];
+    if (lv) {
+      (_tracks[ctx] || []).forEach(function (t) {
+        if (t.miss > 2) return;
+        faces.push(nativeToCanvas({ x: t.x, y: t.y, w: t.w, h: t.h }, lv.vw, lv.vh, W, H));
+      });
+    }
+    if (!faces.length && _needsFallback(ctx)) {
+      const fw = W * 0.55, fh = H * 0.60;
+      faces.push({ fx: (W - fw) / 2, fy: H * 0.15, fw: fw, fh: fh });
+    }
+    faces.forEach(function (f) {
+      c.save(); _drawOne(c, fname, f.fx, f.fy, f.fw, f.fh, ctx); c.restore();
+    });
+    _drawGlobal(c, fname, ctx, W, H, faces, true);
+  };
+
+  console.log('✅ Fun Filter v6 aktif — multi-wajah, koordinat cover-aware, tracking antar-frame');
+})();
+
 </script>
 </body>
 </html>
