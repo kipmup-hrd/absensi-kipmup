@@ -3081,6 +3081,22 @@ function getTodayWIB() {
   return `${y}-${m}-${d}`;
 }
 
+// Hari dalam seminggu menurut WIB (0=Min ... 6=Sab), tidak bergantung zona waktu perangkat.
+function getDowWIB() {
+  return new Date(Date.now() + 7 * 3600 * 1000).getUTCDay();
+}
+
+// Ubah (tanggal 'YYYY-MM-DD', waktu dari server) menjadi objek Date (WIB, +07:00). Null jika tak bisa diurai.
+// Waktu dari GAS berupa 'HH:mm', 'HH:mm:ss', atau string Date panjang ("Sat Dec 30 1899 21:53:00 GMT+0707 ...")
+// — BUKAN format ISO, jadi tidak boleh langsung dipakai di new Date(...).
+function _parseWaktuServerToDate(tanggal, waktuStr) {
+  if (!tanggal || !waktuStr) return null;
+  const m = String(waktuStr).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return null;
+  const d = new Date(`${tanggal}T${String(m[1]).padStart(2, '0')}:${m[2]}:${m[3] || '00'}+07:00`);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 let selectedAnggota = new Set();
 let currentScanType = 'DATANG';
 let scannerActive = false, html5Scanner = null;
@@ -3323,6 +3339,8 @@ function goToAbsenPulang(){
 }
 
 function goTo(page){
+  // Jaring pengaman: jika halaman tidak ada (mis. link lama), kembali ke landing — mencegah layar blank total
+  if(!document.getElementById('page-'+page)) page = 'landing';
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active'); p.style.display='none';});
   document.getElementById('page-'+page).style.display='flex';
   document.getElementById('page-'+page).classList.add('active');
@@ -3409,7 +3427,7 @@ async function loadJadwalScan(){
   if(elFace) elFace.innerHTML = '<div class="loading" style="color:var(--accent);">Memuat jadwal...</div>';
   
   await Promise.all([syncJadwalDariGAS(), syncIzinThrottled()]);
-  const dow = new Date().getDay(); 
+  const dow = getDowWIB(); 
   const list = jadwalMingguan[dow] || [];
 
   if(!list.length) {
@@ -3718,7 +3736,7 @@ function bersihkanStorageLokal() {
 
   // 2. Hapus selfie gallery hari lain
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayWIB();
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
       if (!k) continue;
@@ -3935,59 +3953,7 @@ function renderJadwalPreview(){
   document.getElementById('jadwal-preview-minggu').innerHTML = html; 
 }
 
-async function saveJadwalHari() {
-  const hari = parseInt(document.getElementById('jadwal-hari-select').value);
-  if (selectedAnggota.size === 0) { showToast('Centang minimal 1 anggota!', 'error'); return; }
- 
-  // Simpan ke localStorage seperti biasa
-  jadwalMingguan[hari] = Array.from(selectedAnggota);
-  localStorage.setItem('jadwalMingguan', JSON.stringify(jadwalMingguan));
-  showToast('✅ Jadwal tersimpan lokal. Sinkronisasi ke Sheets...', 'info');
-  renderJadwalPreview();
- 
-  // Hitung tanggal-tanggal untuk hari ini dan 4 minggu ke depan
-  // sehingga Sheet Jadwal Piket terisi untuk waktu yang akan datang
-  const hariNama = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-  const entries = [];
- 
-  // Hitung tanggal Senin minggu ini
-  const today = new Date();
-  const todayDow = today.getDay() === 0 ? 7 : today.getDay(); // 1=Sen..7=Min
-  const senin = new Date(today);
-  senin.setDate(today.getDate() - (todayDow - 1));
- 
-  // Generate 5 minggu ke depan (termasuk minggu ini)
-  for (let week = 0; week < 5; week++) {
-    for (let h = 1; h <= 5; h++) {
-      const list = jadwalMingguan[h] || [];
-      if (!list.length) continue;
- 
-      const tglDate = new Date(senin);
-      tglDate.setDate(senin.getDate() + (week * 7) + (h - 1));
-      const y = tglDate.getFullYear();
-      const m = String(tglDate.getMonth() + 1).padStart(2, '0');
-      const d = String(tglDate.getDate()).padStart(2, '0');
-      const tglStr = `${y}-${m}-${d}`;
- 
-      list.forEach(nia => {
-        const a = allAnggota.find(x => x.NIA === nia);
-        if (a) entries.push({ tanggal: tglStr, NIA: a.NIA, nama: a.nama, divisi: a.divisi || '-' });
-      });
-    }
-  }
- 
-  // Kirim ke GAS
-  try {
-    const res = await api({ action: 'setJadwalMingguan', jadwal: JSON.stringify(entries) });
-    if (res && res.ok) {
-      showToast('✅ Jadwal berhasil disinkronkan ke Google Sheets!', 'success');
-    } else {
-      showToast('⚠️ Tersimpan lokal. GAS: ' + (res?.msg || 'Tidak ada respons'), 'error');
-    }
-  } catch (e) {
-    showToast('⚠️ Tersimpan lokal. GAS offline: ' + e.message, 'error');
-  }
-}
+// (saveJadwalHari() hanya didefinisikan satu kali — lihat blok 'PATCH FRONTEND v3' di bawah)
 
 function downloadJadwalPDF(){ 
   let html=`<html><head><meta charset="UTF-8"><title>Jadwal Piket KIPM-UP</title><style>body{font-family:sans-serif;padding:20px;}h1{color:#2d6a4f;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f1f8e9;}</style></head><body><h1>📋 Jadwal Piket KIPM-UP</h1><p>Cetak: ${new Date().toLocaleDateString('id-ID')}</p>`; 
@@ -4013,7 +3979,7 @@ async function loadDashboard(){
   const hadirSet = new Set(dataAbsen.filter(r=>r.tipe==='DATANG').map(r=>r.NIA));
   const hadirHariIni = hadirSet.size;
 
-  const dow = new Date().getDay();
+  const dow = getDowWIB();
   const jadwalHariIni = (jadwalMingguan[dow] || []).length;
   const persen = jadwalHariIni > 0 ? Math.round((hadirHariIni / jadwalHariIni) * 100) : 0;
   const totalAnggota = allAnggota.length;
@@ -4296,7 +4262,7 @@ async function showHistoryAnggota(nia, nama, divisi) {
   // Set default tanggal: 3 bulan ke belakang
   const today = new Date();
   const from3m = new Date(today); from3m.setMonth(from3m.getMonth() - 3);
-  const toStr = today.toISOString().split('T')[0];
+  const toStr = getTodayWIB();
   const fromStr = from3m.toISOString().split('T')[0];
   document.getElementById('hist-nia-from').value = fromStr;
   document.getElementById('hist-nia-to').value = toStr;
@@ -4486,7 +4452,7 @@ function renderKalenderJadwal(){
   const hariNama = ['','Senin','Selasa','Rabu','Kamis','Jumat'];
   const hariColors = ['','var(--accent2)','var(--accent3)','var(--accent)','#c084fc','#f87171'];
   const today = new Date();
-  const todayDow = today.getDay(); // 0=Minggu, 1=Senin, dst
+  const todayDow = getDowWIB(); // 0=Minggu, 1=Senin, dst (WIB)
   
   let html = '';
   for(let h=1; h<=5; h++){
@@ -5501,7 +5467,7 @@ function kegiatanToggleScan() {
   }
   const nia = document.getElementById('kegiatan-input-nia').value.trim();
   if(!nia){ showToast('Isi NIA dulu','error'); return; }
-  // Selfie bersifat OPSIONAL untuk kegiatan — tidak block scan
+  // Selfie WAJIB untuk kegiatan — dipastikan di kegiatanLanjutScan() sebelum bagian scan QR ditampilkan
 
   kegiatanHtml5Scanner = new Html5Qrcode('kegiatan-qr-reader');
   kegiatanHtml5Scanner.start({facingMode:'environment'},{fps:10,qrbox:200}, async (text) => {
@@ -5993,7 +5959,15 @@ async function loadAllRankings() {
       await processRankingPiket(res.piket || []);
       const gasSesiList = res.sesi || [];
       const localSesiList = sesiList || [];
-      const allSesi = [...gasSesiList, ...localSesiList];
+      // Sesi yang sudah ditutup ada di Sheets sekaligus di localStorage → jangan dihitung dua kali.
+      // Sesi tanpa id tetap dipakai (tidak dibuang). Urutan: data Sheets diprioritaskan.
+      const _seenSesi = new Set();
+      const allSesi = [...gasSesiList, ...localSesiList].filter(s => {
+        const _id = s && (s.sesiId || s.id);
+        if (!_id) return true;
+        if (_seenSesi.has(_id)) return false;
+        _seenSesi.add(_id); return true;
+      });
       processRankingKegiatan(from, to, allSesi);
       // Ranking DP — pakai piket data + sesi gabungan
       await loadRankingDP(res.piket || [], allSesi, from, to);
@@ -6021,7 +5995,7 @@ async function processRankingPiket(data) {
   //   0 ⭐ = dijadwalkan piket tapi TIDAK hadir sama sekali (Alpha)
   //   1 ⭐ = hadir (datang) tapi TIDAK absen pulang (lupa pulang)
   //   2 ⭐ = hadir + pulang, durasi < 4 jam
-  //   3 ⭐ = hadir + pulang, durasi ≥ 4 jam
+  //   4 ⭐ = hadir + pulang, durasi ≥ 4 jam
   // Sumber jadwal: jadwalMingguan (lokal) — sama dengan Riwayat Absensi Piket
   // Semua anggota terjadwal ditampilkan, termasuk yang 0 bintang
   // ================================================================
@@ -6109,7 +6083,7 @@ async function processRankingPiket(data) {
         menit = pair.durasi;
         piketMap[nia].hariHadir++;
       } else if (pair.adaPulang && pair.durasi >= BATAS_4_JAM) {
-        bintangHari = 3; // Hadir + pulang ≥ 4 jam (full)
+        bintangHari = 4; // Hadir + pulang ≥ 4 jam (full) — sesuai aturan di UI (4 ⭐)
         menit = pair.durasi;
         piketMap[nia].hariHadir++;
       }
@@ -7744,7 +7718,7 @@ async function absenBursaLoadJadwal() {
   const el = document.getElementById('absen-bursa-jadwal-list');
   if (!el) return;
   try {
-    const dow = new Date().getDay();
+    const dow = getDowWIB();
     const list = (typeof jadwalMingguan !== 'undefined' && jadwalMingguan[dow]) || [];
     if (!list.length) { el.textContent = 'Tidak ada jadwal piket hari ini.'; return; }
 
@@ -8522,7 +8496,7 @@ async function loadKioskJadwal() {
   const elSelfie = document.getElementById('kiosk-jadwal-selfie');
   const elFaceID = document.getElementById('kiosk-jadwal-faceid');
   await syncJadwalDariGAS();
-  const dow = new Date().getDay();
+  const dow = getDowWIB();
   const list = jadwalMingguan[dow] || [];
 
   const emptyMsg = '<div style="font-size:12px; color:var(--text3);">Tidak ada jadwal hari ini</div>';
@@ -9217,7 +9191,7 @@ async function submitPengaduan() {
 
   if(!isi) { showToast('Isi pengaduan tidak boleh kosong','error'); return; }
 
-  const btn = document.querySelector('#page-pengaduan .btn-sm.primary');
+  const btn = document.querySelector('#tab-pengaduan-panel .btn-sm.primary');
   if(btn) { btn.disabled=true; btn.textContent='⌛ Mengirim...'; }
   if(statusEl) statusEl.style.display='none';
 
@@ -11048,7 +11022,7 @@ function ujicobaCheckNIA() {
   if (typeof allAnggota !== 'undefined' && allAnggota.length > 0) {
     const a = allAnggota.find(x => x.NIA === nia);
     if (a) {
-      const isJadwal = typeof jadwalMingguan !== 'undefined' && (jadwalMingguan[new Date().getDay()] || []).includes(nia);
+      const isJadwal = typeof jadwalMingguan !== 'undefined' && (jadwalMingguan[getDowWIB()] || []).includes(nia);
       display.textContent = '✅ ' + a.nama + (a.divisi ? ' — ' + a.divisi : '') + (isJadwal ? ' 📋 Piket hari ini' : '');
       display.style.color = isJadwal ? 'var(--accent)' : 'var(--accent2)';
       return;
@@ -11165,12 +11139,25 @@ async function ujicobaSubmit() {
   } catch(e2) {}
 
   // FIX: verifikasi ulang ke server — tetap akurat walau localStorage kosong / beda perangkat
+  // Timeout 8 detik: bila server menggantung, lanjut dengan hasil cek lokal agar tombol tidak macet.
   try {
-    const _srvRes = await api({ action: 'getRekapAbsensi', from: _todayCheck, to: _todayCheck });
+    const _srvRes = await Promise.race([
+      api({ action: 'getRekapAbsensi', from: _todayCheck, to: _todayCheck }),
+      new Promise(resolve => setTimeout(() => resolve(null), 8000))
+    ]);
     if (_srvRes && _srvRes.ok && Array.isArray(_srvRes.data)) {
       _srvRes.data.forEach(r => {
         if (String(r.NIA) !== String(nia)) return;
-        if (r.tipe === 'DATANG') { _sudahDatang = true; if (!_waktuDatang) _waktuDatang = r.waktu; }
+        if (r.tipe === 'DATANG') {
+          _sudahDatang = true;
+          // Waktu dari server bukan ISO ('HH:mm:ss' / string Date GAS) → new Date(r.waktu) jadi Invalid Date
+          // atau tahun 1899, sehingga aturan minimal 2 jam lolos begitu saja. Ubah dulu ke Date WIB.
+          const _dSrv = _parseWaktuServerToDate(r.tanggal || _todayCheck, r.waktu);
+          if (_dSrv) {
+            const _cur = _waktuDatang ? new Date(_waktuDatang) : null;
+            if (!_cur || isNaN(_cur.getTime()) || _dSrv < _cur) _waktuDatang = _dSrv.toISOString();
+          }
+        }
         if (r.tipe === 'PULANG') _sudahPulang = true;
       });
     }
@@ -11233,22 +11220,40 @@ async function ujicobaSubmit() {
     });
   } catch(e) {}
 
+  // FIX: key 'kipmAnggotaData' (tanpa _v5) sudah tidak ditulis oleh versi sekarang, jadi nama bisa jatuh
+  // jadi NIA (tampil di popup "Yeay!"). Cari juga di allAnggota dan kipmData.
+  if (namaAnggota === nia) {
+    try {
+      const _a = (typeof allAnggota !== 'undefined') ? allAnggota.find(x => x.NIA === nia) : null;
+      if (_a && _a.nama) { namaAnggota = _a.nama; if (!jabatan) jabatan = _a.divisi || ''; }
+      if (typeof kipmData !== 'undefined' && kipmData) {
+        Object.entries(kipmData).forEach(([genKey, gen]) => (gen.members || []).forEach(m => {
+          if (m.nia === nia) { if (namaAnggota === nia && m.nama) namaAnggota = m.nama; jabatan = m.jabatan || jabatan; generasi = genKey; }
+        }));
+      }
+    } catch(e) {}
+  }
+
+  // Terjadwal piket hari ini? Sumber utama = jadwalMingguan (sama dengan daftar "Piket Hari Ini" di kolom kiri,
+  // dan sudah disinkronkan dari GAS oleh syncJadwalDariGAS).
+  try { if ((jadwalMingguan[getDowWIB()] || []).includes(nia)) isPiket = true; } catch(e) {}
+
   // Check if this person is scheduled for piket today
   try {
     const cached = JSON.parse(localStorage.getItem('jadwal_piket') || 'null');
     if (cached && Array.isArray(cached)) {
       const todayStr = getTodayWIB();
       const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-      const todayName = dayNames[new Date().getDay()];
+      const todayName = dayNames[getDowWIB()];
       cached.forEach(entry => {
         const entryDate = entry.tanggal || entry.date || '';
         const entryHari = entry.hari || '';
         if (entryDate === todayStr || entryHari === todayName) {
           if (entry.anggota) {
             const arr = Array.isArray(entry.anggota) ? entry.anggota : [entry.anggota];
-            arr.forEach(a => { if ((a.nia || a) === nia || (a.nama || a) === namaAnggota) isPiket = true; });
+            arr.forEach(a => { if ((a.nia || a.NIA || a) === nia || (a.nama || a) === namaAnggota) isPiket = true; });
           }
-          if (entry.nia === nia || entry.nama === namaAnggota) isPiket = true;
+          if (entry.nia === nia || entry.NIA === nia || entry.nama === namaAnggota) isPiket = true;
         }
       });
     }
@@ -11482,7 +11487,7 @@ function ujicobaLoadPiket() {
 
   // ── Fallback: coba dari localStorage cache jadwal_piket (format lama) ──
   const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-  const todayName = dayNames[today.getDay()];
+  const todayName = dayNames[getDowWIB()];
   try {
     const cached = JSON.parse(localStorage.getItem('jadwal_piket') || 'null');
     if (cached) { ujicobaRenderPiket(container, cached, todayStr, todayName); return; }
@@ -11633,6 +11638,7 @@ function showUjicobaNotifDuplikat(nia) {
       if (gen.members) gen.members.forEach(m => { if (m.nia === nia) nama = m.nama; });
     });
   } catch(e) {}
+  if (nama === nia) { try { const _a = allAnggota.find(x => x.NIA === nia); if (_a && _a.nama) nama = _a.nama; } catch(e) {} }
   document.getElementById('duplikat-notif-nama').textContent = nama;
   document.getElementById('modal-ujicoba-duplikat').classList.add('show');
 }
