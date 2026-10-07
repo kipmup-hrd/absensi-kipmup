@@ -744,6 +744,91 @@ tbody tr:hover td { color: var(--text); }
   margin-top: 12px;
 }
 </style>
+<style id="v2-style">
+/* ═══════════════════════════════════════════════════════════════════
+   v2 — Pantauan Admin + perbaikan tampilan HP
+   Semua aturan layar kecil berada di dalam @media (max-width:768px)
+   sehingga tampilan desktop tidak berubah.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ---------- Pantauan Admin (hanya mengenai elemen baru) ---------- */
+.mon-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.mon-title{font-size:16px;font-weight:700;}
+.mon-title small{font-weight:500;font-size:11px;color:var(--text3);margin-left:6px;}
+.mon-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+.mon-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.mon-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-bottom:14px;}
+.mon-stat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+.mon-stat .n{font-size:24px;font-weight:700;line-height:1.1;}
+.mon-stat .n small{font-size:12px;font-weight:600;margin-left:4px;color:var(--text2);}
+.mon-stat .l{font-size:11px;color:var(--text2);margin-top:4px;}
+.mon-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;align-items:start;}
+.mon-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;}
+.mon-card h4{font-size:13px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.mon-card h4 small{font-weight:500;color:var(--text3);font-size:11px;}
+.mon-note{font-size:10px;color:var(--text3);margin-top:8px;line-height:1.5;}
+.mon-empty{font-size:12px;color:var(--text3);text-align:center;padding:14px 6px;}
+.mon-alert{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.5;margin-bottom:8px;border:1px solid;}
+.mon-alert.ok{background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.28);color:var(--accent);}
+.mon-alert.warn{background:rgba(245,158,11,.09);border-color:rgba(245,158,11,.32);color:#fbbf24;}
+.mon-alert.danger{background:rgba(248,113,113,.09);border-color:rgba(248,113,113,.32);color:var(--red);}
+.mon-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.mon-chip{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--font);font-size:11px;padding:6px 12px;border-radius:20px;cursor:pointer;}
+.mon-chip.active{background:rgba(74,222,128,.15);border-color:var(--accent);color:var(--accent);font-weight:600;}
+.mon-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--bg3);border-left:3px solid var(--border2);margin-bottom:6px;}
+.mon-row .main{flex:1;min-width:0;}
+.mon-row .nm{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mon-row .sb{font-size:10px;color:var(--text3);margin-top:2px;}
+.mon-row .tm{font-family:var(--mono);font-size:11px;color:var(--text2);text-align:right;white-space:nowrap;line-height:1.5;}
+.mon-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.mon-feed{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.mon-feed:last-child{border-bottom:none;}
+.mon-feed .t{font-family:var(--mono);font-size:11px;color:var(--text3);min-width:38px;}
+.mon-feed .w{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mon-bar{height:5px;background:var(--bg3);border-radius:5px;margin-top:6px;}
+.mon-bar>i{display:block;height:5px;border-radius:5px;background:var(--accent);}
+.mon-health{font-size:12px;line-height:1.5;display:flex;flex-direction:column;gap:7px;}
+.mon-health .it{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.sb-backdrop{display:none;}
+
+/* ---------- Layar kecil (HP) ---------- */
+@media (max-width:768px){
+  /* Pantauan: satu kolom */
+  .mon-grid{grid-template-columns:1fr;}
+  .mon-stats{grid-template-columns:repeat(2,1fr);}
+
+  /* Admin: sidebar menjadi laci (drawer). Sebelumnya disembunyikan tanpa pengganti → admin HP tak bisa pindah menu. */
+  #page-admin .sidebar{display:block;position:fixed;left:0;top:0;bottom:0;height:auto;width:272px;max-width:84vw;overflow-y:auto;transform:translateX(-105%);transition:transform .22s ease;z-index:400;}
+  #page-admin .sidebar.open{transform:translateX(0);box-shadow:10px 0 40px rgba(0,0,0,.55);}
+  .sb-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:390;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .sb-backdrop.show{opacity:1;pointer-events:auto;}
+  .mobile-nav-item .mi{font-size:18px;line-height:1;}
+  .mobile-nav-item{min-width:56px;}
+  /* toast tidak menutupi navigasi bawah */
+  body:has(#page-admin.active) .toast{bottom:84px;}
+
+  /* Tabel lebar di admin → kartu (hanya tabel yang melebihi lebar layar; ditandai class .rt oleh skrip) */
+  .admin-content table.rt{display:block;width:100%;min-width:0 !important;}
+  .admin-content table.rt thead{display:none;}
+  .admin-content table.rt tbody{display:block;}
+  .admin-content table.rt tr{display:flex;flex-direction:column;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin:0 0 8px;padding:8px 12px;}
+  .admin-content table.rt td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:4px 0 !important;border:none !important;text-align:right;font-size:12px;width:auto !important;flex-wrap:wrap;}
+  .admin-content table.rt td::before{content:attr(data-label);color:var(--text3);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;text-align:left;flex:0 0 auto;}
+  .admin-content table.rt td[data-label="Nama"]{order:-1;font-size:14px;font-weight:700;text-align:left;justify-content:flex-start;padding-bottom:6px !important;}
+  .admin-content table.rt td[data-label="Nama"]::before{display:none;}
+  .admin-content table.rt td:not([data-label]){display:block;text-align:left;}
+  .admin-content .btn-sm,.admin-content .tab-sub-btn{min-height:34px;}
+  .admin-content table.rt td a{display:inline-block;padding:6px 2px;}
+  .admin-content button[class*="kipm-btn-"]{min-height:34px;min-width:34px;}
+}
+/* Khusus iPhone/iPad (WebKit iOS): font input 16px mencegah halaman diperbesar otomatis saat kolom diketuk.
+   Android & desktop tidak terkena aturan ini sehingga tampilannya tidak berubah. */
+@media (max-width:768px){
+  @supports (-webkit-touch-callout:none){
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),select,textarea{font-size:16px !important;}
+  }
+}
+</style>
 </head>
 <body>
 
@@ -1074,15 +1159,19 @@ const KIPM_DEFAULT_DATA = {"GEN 1":{"color":"#8a96a8","members":[{"id":"gen-1_00
   <!-- Mobile Layout (stacked) - hidden on desktop -->
   <style>
     @media (max-width: 768px) {
-      #page-ujicoba > div:last-child {
+      /* FIX: <style> ini adalah anak TERAKHIR halaman, sehingga ':last-child' tak pernah cocok dengan grid
+         dan aturan ini tidak pernah berlaku (3 kolom terjepit di HP). Grid dipilih lewat atribut style-nya. */
+      #page-ujicoba > div[style*="grid-template-columns"] {
         grid-template-columns: 1fr !important;
         min-height: unset !important;
       }
-      #page-ujicoba > div:last-child > div {
+      #page-ujicoba > div[style*="grid-template-columns"] > div {
         border-right: none !important;
         border-bottom: 1px solid var(--border);
         max-height: unset;
       }
+      /* Di HP, form "Absen Sekarang" (kolom tengah) tampil paling atas */
+      #page-ujicoba > div[style*="grid-template-columns"] > div:nth-child(2) { order: -1; }
     }
   </style>
 </div>
@@ -2124,6 +2213,7 @@ function switchIzinTab(tab) {
     <div class="sidebar-logo" style="padding:24px 20px;"><div class="sidebar-logo-text">KIPM-UP</div><div class="sidebar-logo-sub">Admin</div></div>
     <nav class="sidebar-nav">
       <button class="nav-item active" onclick="switchTab('dashboard')" data-tab="dashboard">📊 Dashboard</button>
+      <button class="nav-item" onclick="switchTab('monitor')" data-tab="monitor">📡 Pantauan Admin</button>
       <button class="nav-item" onclick="switchTab('jadwal')" data-tab="jadwal">📅 Jadwal Piket (Edit)</button>
       <button class="nav-item" onclick="switchTab('rekap')" data-tab="rekap">📋 Rekap Absensi Hadir</button>
       <button class="nav-item" onclick="switchTab('riwayat-piket')" data-tab="riwayat-piket">📅 Riwayat Absensi Piket</button>
@@ -2144,6 +2234,15 @@ function switchIzinTab(tab) {
       <button class="btn-sm" style="width:100%; margin-top:6px;" onclick="adminLogout()">Keluar</button>
     </div>
   </div>
+  <!-- Navigasi admin untuk HP (CSS-nya sudah ada; elemen ini sebelumnya tidak pernah dibuat) -->
+  <div class="sb-backdrop" id="sb-backdrop" onclick="closeAdminDrawer()"></div>
+  <nav class="mobile-nav" id="mobile-nav" aria-label="Navigasi admin">
+    <button class="mobile-nav-item active" data-mtab="dashboard" onclick="switchTab('dashboard')"><span class="mi">📊</span><span>Dashboard</span></button>
+    <button class="mobile-nav-item" data-mtab="monitor" onclick="switchTab('monitor')"><span class="mi">📡</span><span>Pantau</span></button>
+    <button class="mobile-nav-item" data-mtab="rekap" onclick="switchTab('rekap')"><span class="mi">📋</span><span>Rekap</span></button>
+    <button class="mobile-nav-item" data-mtab="riwayat-piket" onclick="switchTab('riwayat-piket')"><span class="mi">📅</span><span>Piket</span></button>
+    <button class="mobile-nav-item" id="mnav-menu" onclick="openAdminDrawer()"><span class="mi">☰</span><span>Menu</span></button>
+  </nav>
   <div class="admin-main">
     <div class="admin-topbar" style="padding:14px 24px; background:var(--bg2); display:flex; justify-content:space-between;"><div class="topbar-title" id="tab-title">Dashboard</div><div id="topbar-clock">--:--:--</div></div>
     <div class="admin-content">
@@ -2164,6 +2263,36 @@ function switchIzinTab(tab) {
         <div class="table-card" style="padding:16px;">
           <div style="font-weight:600; font-size:13px; margin-bottom:12px;">🎯 Sesi Kegiatan Aktif Hari Ini</div>
           <div id="dashboard-sesi-aktif"><div style="color:var(--text3); font-size:12px;">Tidak ada sesi kegiatan hari ini</div></div>
+        </div>
+      </div>
+
+      <!-- PANTAUAN ADMIN TAB (hanya lihat) -->
+      <div id="tab-monitor" class="tab-panel">
+        <div class="mon-head">
+          <div>
+            <div class="mon-title">Ringkasan hari ini<small>hanya lihat · otomatis diperbarui tiap 30 detik</small></div>
+            <div class="mon-sub" id="mon-sub">Memuat…</div>
+          </div>
+          <div class="mon-actions">
+            <button class="btn-sm primary" id="mon-btn-refresh" onclick="refreshMonitor(true)">🔄 Muat ulang</button>
+            <button class="btn-sm" onclick="monitorCopyWA()">📋 Salin rekap (WA)</button>
+          </div>
+        </div>
+        <div id="mon-alerts"></div>
+        <div class="mon-stats" id="mon-stats"></div>
+        <div class="mon-grid">
+          <div>
+            <div class="mon-card">
+              <h4>📋 Piket Hari Ini <small id="mon-count"></small></h4>
+              <div class="mon-chips" id="mon-chips"></div>
+              <div id="mon-list"><div class="mon-empty">Memuat…</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="mon-card"><h4>⚡ Absen Terbaru</h4><div id="mon-feed"><div class="mon-empty">Memuat…</div></div></div>
+            <div class="mon-card"><h4>🎯 Sesi Kegiatan Hari Ini</h4><div id="mon-sesi"></div></div>
+            <div class="mon-card"><h4>🩺 Kesehatan Sistem</h4><div class="mon-health" id="mon-health"></div></div>
+          </div>
         </div>
       </div>
 
@@ -3863,11 +3992,13 @@ function switchTab(tab){
   document.getElementById(`tab-${tab}`).classList.add('active'); 
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); 
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active'); 
+  if(typeof onAdminTabChanged === 'function') onAdminTabChanged(tab);
   
-  const titles = {'dashboard':'Dashboard', 'jadwal':'Jadwal Piket', 'rekap':'Rekap Absensi Hadir', 'riwayat-piket':'📅 Riwayat Absensi Piket', 'riwayat-dp':'🛡️ Riwayat Absensi DP', 'kegiatan':'Absensi Kegiatan', 'riwayat-kegiatan':'📋 Riwayat Absensi Kegiatan', 'izin':'Izin & Ketidakhadiran', 'anggota':'Data Anggota BPH Aktif', 'data-kipm':'📚 Data Anggota KIPM', 'riwayat-kipmup':'🏛️ Riwayat Absen KIPM-UP', 'riwayat-nonbph':'🌱 Riwayat Absen Non-BPH', 'konten':'Edit Konten Halaman', 'ranking':'🏆 Papan Peringkat'};
+  const titles = {'dashboard':'Dashboard', 'monitor':'📡 Pantauan Admin', 'jadwal':'Jadwal Piket', 'rekap':'Rekap Absensi Hadir', 'riwayat-piket':'📅 Riwayat Absensi Piket', 'riwayat-dp':'🛡️ Riwayat Absensi DP', 'kegiatan':'Absensi Kegiatan', 'riwayat-kegiatan':'📋 Riwayat Absensi Kegiatan', 'izin':'Izin & Ketidakhadiran', 'anggota':'Data Anggota BPH Aktif', 'data-kipm':'📚 Data Anggota KIPM', 'riwayat-kipmup':'🏛️ Riwayat Absen KIPM-UP', 'riwayat-nonbph':'🌱 Riwayat Absen Non-BPH', 'konten':'Edit Konten Halaman', 'ranking':'🏆 Papan Peringkat'};
   document.getElementById('tab-title').innerText = titles[tab] || ''; 
   
   if(tab==='dashboard') loadDashboard(); 
+  if(tab==='monitor') initMonitor(); else if(typeof stopMonitor === 'function') stopMonitor();
   if(tab==='rekap') loadRekap(); 
   if(tab==='riwayat-piket') { initRiwayatPiket(); renderPiketRankingBoard(); }
   if(tab==='riwayat-dp') { initRiwayatDP(); renderDPRankingBoard(); }
@@ -14071,5 +14202,366 @@ window.hideFilterBar = function(ctx) {
 })();
 
 </script>
+<script id="v2-script">
+// =========================================================================
+// v2 — PANTAUAN ADMIN (hanya lihat) · navigasi admin di HP · tabel→kartu di HP
+// =========================================================================
+(function () {
+  'use strict';
+
+  // ── Pengaturan (ubah di sini bila jam piket berubah) ──
+  const MON_JAM_MULAI = 9 * 60;       // 09:00 WIB
+  const MON_JAM_SELESAI = 16 * 60;    // 16:00 WIB
+  const MON_TOLERANSI_MENIT = 30;     // peringatan "belum datang" mulai 09:30
+  const MON_REFRESH_MS = 30000;       // perbarui otomatis tiap 30 detik
+
+  let monTimer = null, monBusy = false, monFilter = 'semua';
+  let monRows = null;                 // null = belum pernah berhasil memuat dari server
+  let monServer = { ok: null, ms: 0 };
+  let monLastOk = 0;
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const wib = () => new Date(Date.now() + 7 * 3600 * 1000);
+  const nowWIBMinutes = () => { const w = wib(); return w.getUTCHours() * 60 + w.getUTCMinutes(); };
+  const pad = n => String(n).padStart(2, '0');
+  const short = nama => String(nama || '').split(' ').slice(0, 2).join(' ');
+  const hmOf = w => {
+    const s = (typeof formatWaktu === 'function') ? formatWaktu(w) : String(w || '');
+    return /^\d{1,2}:\d{2}/.test(s) ? String(s).slice(0, 5).padStart(5, '0') : '';
+  };
+  const tKey = (r, today) => {
+    try { const d = _parseWaktuServerToDate(r.tanggal || today, r.waktu); return d ? d.getTime() : 0; } catch (e) { return 0; }
+  };
+
+  const ST = {
+    'hadir':       { lb: '🟢 Di bursa',      c: '#4ade80', bg: 'rgba(74,222,128,.14)',  pr: 5 },
+    'pulang':      { lb: '🟣 Sudah pulang',  c: '#c084fc', bg: 'rgba(192,132,252,.14)', pr: 6 },
+    'lupa':        { lb: '⚠️ Lupa pulang',   c: '#fbbf24', bg: 'rgba(251,191,36,.16)',  pr: 0 },
+    'belum':       { lb: '🔴 Belum datang',  c: '#f87171', bg: 'rgba(248,113,113,.14)', pr: 2 },
+    'belum-mulai': { lb: '⏳ Belum mulai',   c: '#8a96a8', bg: 'rgba(138,150,168,.14)', pr: 4 },
+    'tidak-hadir': { lb: '❌ Tidak hadir',   c: '#f87171', bg: 'rgba(248,113,113,.18)', pr: 1 },
+    'izin':        { lb: '📋 Izin',          c: '#f59e0b', bg: 'rgba(245,158,11,.14)',  pr: 3 }
+  };
+  const FILTERS = [
+    ['semua', 'Semua', () => true],
+    ['belum', 'Belum', r => ['belum', 'belum-mulai', 'tidak-hadir'].includes(r.st)],
+    ['hadir', 'Hadir', r => ['hadir', 'lupa'].includes(r.st)],
+    ['pulang', 'Pulang', r => r.st === 'pulang'],
+    ['izin', 'Izin', r => r.st === 'izin']
+  ];
+
+  // ── Model data (fungsi murni → mudah diuji) ──
+  // o: { rows, jadwal:[NIA], izin:{NIA:jenisIzin}, anggota:[{NIA,nama,divisi}], nowMin, today }
+  function buildMonitorModel(o) {
+    const amap = {};
+    (o.anggota || []).forEach(a => { amap[String(a.NIA)] = a; });
+
+    const per = {};
+    [...(o.rows || [])].sort((a, b) => tKey(a, o.today) - tKey(b, o.today)).forEach(r => {
+      const nia = String(r.NIA);
+      const p = per[nia] || (per[nia] = { nia, nama: r.nama || (amap[nia] && amap[nia].nama) || nia, datang: '', pulang: '', durasi: '', source: r.source || '' });
+      const hm = hmOf(r.waktu);
+      if (r.tipe === 'DATANG' && !p.datang) { p.datang = hm; if (r.source) p.source = r.source; }
+      if (r.tipe === 'PULANG') {
+        p.pulang = hm;
+        const d = String(r.durasi == null ? '' : r.durasi);
+        if (d && d !== '-' && !/^NaN/.test(d)) p.durasi = d;
+      }
+    });
+
+    const jadwal = (o.jadwal || []).map(String);
+    const jadwalSet = new Set(jadwal);
+    const rows = jadwal.map(nia => {
+      const a = amap[nia] || {}, p = per[nia] || {}, izin = o.izin && o.izin[nia];
+      let st;
+      if (p.pulang) st = 'pulang';
+      else if (p.datang) st = o.nowMin >= MON_JAM_SELESAI ? 'lupa' : 'hadir';
+      else if (izin) st = 'izin';
+      else st = o.nowMin < MON_JAM_MULAI ? 'belum-mulai' : (o.nowMin >= MON_JAM_SELESAI ? 'tidak-hadir' : 'belum');
+      return { nia, nama: a.nama || p.nama || nia, divisi: a.divisi || '', st, datang: p.datang || '', pulang: p.pulang || '', durasi: p.durasi || '', izin: izin || '', source: p.source || '' };
+    });
+
+    const nonPiket = Object.values(per)
+      .filter(p => p.datang && !jadwalSet.has(p.nia))
+      .map(p => ({ nia: p.nia, nama: (amap[p.nia] && amap[p.nia].nama) || p.nama, divisi: (amap[p.nia] && amap[p.nia].divisi) || '', datang: p.datang, pulang: p.pulang, source: p.source }))
+      .sort((a, b) => a.datang.localeCompare(b.datang));
+
+    const c = { terjadwal: rows.length, hadir: 0, pulang: 0, lupa: 0, belum: 0, izin: 0 };
+    rows.forEach(r => {
+      if (r.st === 'pulang') c.pulang++;
+      else if (r.st === 'hadir') c.hadir++;
+      else if (r.st === 'lupa') c.lupa++;
+      else if (r.st === 'izin') c.izin++;
+      else c.belum++;
+    });
+    c.sudahDatang = c.hadir + c.pulang + c.lupa;
+    c.pct = c.terjadwal ? Math.round(c.sudahDatang / c.terjadwal * 100) : 0;
+    c.nonPiket = nonPiket.length;
+
+    // Perlu tindakan
+    const names = arr => arr.slice(0, 6).map(r => short(r.nama)).join(', ') + (arr.length > 6 ? ' +' + (arr.length - 6) + ' lainnya' : '');
+    const alerts = [];
+    const belum = rows.filter(r => r.st === 'belum');
+    if (belum.length && o.nowMin >= MON_JAM_MULAI + MON_TOLERANSI_MENIT) alerts.push({ lv: 'warn', ic: '⏰', tx: 'Belum datang (' + belum.length + '): ' + names(belum) });
+    const tidak = rows.filter(r => r.st === 'tidak-hadir');
+    if (tidak.length) alerts.push({ lv: 'danger', ic: '❌', tx: 'Tidak hadir hingga jam piket selesai (' + tidak.length + '): ' + names(tidak) });
+    const lupa = rows.filter(r => r.st === 'lupa');
+    if (lupa.length) alerts.push({ lv: 'danger', ic: '⚠️', tx: 'Lupa absen pulang (' + lupa.length + '): ' + names(lupa) });
+
+    // Urutan: yang perlu perhatian di atas
+    rows.sort((a, b) => (ST[a.st].pr - ST[b.st].pr) || a.nama.localeCompare(b.nama));
+
+    // Absen terbaru (maks. 8)
+    const feed = [...(o.rows || [])].sort((a, b) => tKey(b, o.today) - tKey(a, o.today)).slice(0, 8).map(r => ({
+      t: hmOf(r.waktu), tipe: r.tipe, source: r.source || '',
+      nama: (amap[String(r.NIA)] && amap[String(r.NIA)].nama) || r.nama || String(r.NIA)
+    }));
+
+    return { rows, nonPiket, counts: c, alerts, feed };
+  }
+
+  // ── Teks rekap untuk WhatsApp ──
+  function buildWAText(m) {
+    const w = wib();
+    const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][w.getUTCDay()];
+    const bln = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][w.getUTCMonth()];
+    const c = m.counts, L = [];
+    const list = f => m.rows.filter(f).map(r => short(r.nama));
+    L.push('📋 *Rekap Piket KIPM-UP*');
+    L.push(hari + ', ' + w.getUTCDate() + ' ' + bln + ' ' + w.getUTCFullYear() + ' · update ' + pad(w.getUTCHours()) + ':' + pad(w.getUTCMinutes()) + ' WIB');
+    L.push('');
+    L.push('✅ Sudah datang: ' + c.sudahDatang + '/' + c.terjadwal + ' (' + c.pct + '%)');
+    L.push('🟢 Masih di bursa: ' + c.hadir + ' · 🟣 Sudah pulang: ' + c.pulang);
+    const belum = list(r => ['belum', 'belum-mulai', 'tidak-hadir'].includes(r.st));
+    if (belum.length) L.push('🔴 Belum datang (' + belum.length + '): ' + belum.join(', '));
+    const lupa = list(r => r.st === 'lupa');
+    if (lupa.length) L.push('⚠️ Lupa pulang (' + lupa.length + '): ' + lupa.join(', '));
+    const izin = m.rows.filter(r => r.st === 'izin').map(r => short(r.nama) + ' (' + ({ sakit: 'sakit', 'tukar-jadwal': 'tukar jadwal' }[r.izin] || 'izin') + ')');
+    if (izin.length) L.push('📋 Izin (' + izin.length + '): ' + izin.join(', '));
+    if (m.nonPiket.length) L.push('➕ Hadir di luar jadwal (' + m.nonPiket.length + '): ' + m.nonPiket.map(r => short(r.nama)).join(', '));
+    return L.join('\n');
+  }
+
+  // ── Konteks perangkat ──
+  function localCtx() {
+    let pending = 0, usedKB = 0;
+    try { pending = JSON.parse(localStorage.getItem('ujicoba_pending_sync') || '[]').length; } catch (e) {}
+    try { let n = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += (k.length + (localStorage.getItem(k) || '').length) * 2; } usedKB = Math.round(n / 1024); } catch (e) {}
+    return { pending, usedKB, pct: Math.min(100, Math.round(usedKB / 5120 * 100)) };
+  }
+
+  function currentModel() {
+    const today = getTodayWIB(), dow = getDowWIB();
+    const izin = {};
+    (typeof izinList !== 'undefined' ? izinList : []).forEach(i => {
+      if (i.tanggal === today && (i.jenisKegiatan === 'piket' || i.jenisKegiatan === 'semua')) izin[String(i.NIA)] = i.jenisIzin;
+    });
+    return buildMonitorModel({
+      rows: monRows || [], today, nowMin: nowWIBMinutes(),
+      jadwal: (typeof jadwalMingguan !== 'undefined' && jadwalMingguan[dow]) || [],
+      izin, anggota: (typeof allAnggota !== 'undefined') ? allAnggota : []
+    });
+  }
+
+  // ── Render ──
+  function monRender() {
+    const $ = id => document.getElementById(id);
+    if (!$('tab-monitor')) return;
+    const w = wib();
+    const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][w.getUTCDay()];
+    const bln = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][w.getUTCMonth()];
+    const ctx = localCtx();
+
+    $('mon-sub').textContent = hari + ', ' + w.getUTCDate() + ' ' + bln + ' ' + w.getUTCFullYear() + ' · ' +
+      (monLastOk ? 'data server ' + pad(new Date(monLastOk + 7 * 3600 * 1000).getUTCHours()) + ':' + pad(new Date(monLastOk + 7 * 3600 * 1000).getUTCMinutes()) + ' WIB' : 'belum ada data dari server');
+
+    // Belum pernah berhasil memuat → jangan tampilkan status palsu "belum datang"
+    if (monRows === null) {
+      $('mon-alerts').innerHTML = monServer.ok === false
+        ? '<div class="mon-alert danger"><span>❌</span><div>Tidak dapat memuat data absensi dari server. Periksa koneksi internet lalu tekan <b>Muat ulang</b>.</div></div>' : '';
+      $('mon-stats').innerHTML = '';
+      $('mon-chips').innerHTML = '';
+      $('mon-count').textContent = '';
+      $('mon-list').innerHTML = '<div class="mon-empty">' + (monServer.ok === false ? 'Data belum tersedia.' : 'Memuat…') + '</div>';
+      $('mon-feed').innerHTML = '<div class="mon-empty">—</div>';
+      renderSesi(); renderHealth(ctx);
+      return;
+    }
+
+    const m = currentModel(), c = m.counts;
+    monModelCache = m;
+
+    // Perlu tindakan
+    const al = m.alerts.slice();
+    if (monServer.ok === false) al.unshift({ lv: 'danger', ic: '📡', tx: 'Server tidak merespons — menampilkan data terakhir yang berhasil dimuat.' });
+    if (ctx.pending > 0) al.push({ lv: 'warn', ic: '📤', tx: ctx.pending + ' absen di perangkat ini belum terkirim ke server (lihat Kesehatan Sistem).' });
+    if (ctx.pct >= 80) al.push({ lv: 'warn', ic: '💾', tx: 'Penyimpanan lokal hampir penuh (' + ctx.pct + '%). Gunakan "Bersihkan Storage".' });
+    $('mon-alerts').innerHTML = al.length
+      ? al.map(a => '<div class="mon-alert ' + a.lv + '"><span>' + a.ic + '</span><div>' + esc(a.tx) + '</div></div>').join('')
+      : '<div class="mon-alert ok"><span>✅</span><div>Tidak ada yang perlu ditindaklanjuti saat ini.</div></div>';
+
+    // Kartu ringkas
+    const card = (n, l, color, extra) => '<div class="mon-stat"><div class="n" style="color:' + color + ';">' + n + (extra || '') + '</div><div class="l">' + l + '</div></div>';
+    let cards = card(c.terjadwal, 'Terjadwal piket', 'var(--text)') +
+      card(c.sudahDatang, 'Sudah datang', 'var(--accent)', '<small>' + c.pct + '%</small>') +
+      card(c.hadir, 'Masih di bursa', 'var(--accent2)') +
+      card(c.pulang, 'Sudah pulang', '#c084fc') +
+      card(c.belum, 'Belum datang', c.belum ? 'var(--red)' : 'var(--text3)') +
+      card(c.izin, 'Izin / sakit', c.izin ? '#f59e0b' : 'var(--text3)');
+    if (c.lupa) cards += card(c.lupa, 'Lupa pulang', '#fbbf24');
+    cards += card(c.nonPiket, 'Hadir di luar jadwal', c.nonPiket ? 'var(--accent2)' : 'var(--text3)');
+    $('mon-stats').innerHTML = cards;
+
+    // Filter + daftar piket
+    $('mon-chips').innerHTML = FILTERS.map(f => {
+      const n = m.rows.filter(f[2]).length;
+      return '<button class="mon-chip' + (monFilter === f[0] ? ' active' : '') + '" onclick="monSetFilter(\'' + f[0] + '\')">' + f[1] + ' (' + n + ')</button>';
+    }).join('');
+    $('mon-count').textContent = c.terjadwal ? c.terjadwal + ' orang' : '';
+    const fn = (FILTERS.find(f => f[0] === monFilter) || FILTERS[0])[2];
+    const vis = m.rows.filter(fn);
+    let html = '';
+    if (!c.terjadwal) html = '<div class="mon-empty">Tidak ada jadwal piket hari ini (libur / akhir pekan).</div>';
+    else if (!vis.length) html = '<div class="mon-empty">Tidak ada anggota pada filter ini.</div>';
+    else html = vis.map(r => {
+      const s = ST[r.st];
+      let lb = s.lb;
+      if (r.st === 'izin') lb = ({ sakit: '🤒 Sakit', 'tukar-jadwal': '🔄 Tukar jadwal' }[r.izin]) || '📋 Izin';
+      const tm = [r.datang ? '⬇ ' + r.datang : '', r.pulang ? '⬆ ' + r.pulang : '', r.durasi].filter(Boolean).join('<br>');
+      return '<div class="mon-row" style="border-left-color:' + s.c + ';"><div class="main"><div class="nm">' + esc(r.nama) + '</div><div class="sb">' + esc(r.nia) + (r.divisi ? ' · ' + esc(r.divisi) : '') + '</div></div>' +
+        (tm ? '<div class="tm">' + tm + '</div>' : '') +
+        '<span class="mon-badge" style="color:' + s.c + ';background:' + s.bg + ';">' + lb + '</span></div>';
+    }).join('');
+    if (m.nonPiket.length && (monFilter === 'semua' || monFilter === 'hadir')) {
+      html += '<div style="font-size:11px;color:var(--text3);margin:12px 0 6px;font-weight:600;">➕ Hadir di luar jadwal (' + m.nonPiket.length + ')</div>' +
+        m.nonPiket.map(r => '<div class="mon-row" style="border-left-color:var(--accent2);"><div class="main"><div class="nm">' + esc(r.nama) + '</div><div class="sb">' + esc(r.nia) + (r.divisi ? ' · ' + esc(r.divisi) : '') + '</div></div><div class="tm">⬇ ' + esc(r.datang) + (r.pulang ? '<br>⬆ ' + esc(r.pulang) : '') + '</div></div>').join('');
+    }
+    $('mon-list').innerHTML = html;
+
+    // Absen terbaru
+    $('mon-feed').innerHTML = m.feed.length
+      ? m.feed.map(f => '<div class="mon-feed"><span class="t">' + esc(f.t || '--:--') + '</span><span class="w">' + esc(short(f.nama)) + '</span><span class="mon-badge" style="' +
+          (f.tipe === 'DATANG' ? 'color:#4ade80;background:rgba(74,222,128,.14);' : 'color:#c084fc;background:rgba(192,132,252,.14);') + '">' + (f.tipe === 'DATANG' ? 'DATANG' : 'PULANG') + '</span></div>').join('')
+      : '<div class="mon-empty">Belum ada absensi hari ini.</div>';
+
+    renderSesi(); renderHealth(ctx);
+  }
+  let monModelCache = null;
+
+  function renderSesi() {
+    const el = document.getElementById('mon-sesi'); if (!el) return;
+    const today = getTodayWIB();
+    const list = (typeof sesiList !== 'undefined' ? sesiList : []).filter(s => new Date(s.startTime + 7 * 3600 * 1000).toISOString().slice(0, 10) === today);
+    if (!list.length) { el.innerHTML = '<div class="mon-empty">Belum ada sesi kegiatan hari ini.</div><div class="mon-note">Menampilkan sesi yang dibuat di perangkat ini.</div>'; return; }
+    el.innerHTML = list.map(s => {
+      const aktif = typeof isSesiAktif === 'function' && isSesiAktif(s);
+      const hadir = (s.absensi || []).length, total = (s.peserta || []).length;
+      const pct = total ? Math.min(100, Math.round(hadir / total * 100)) : 0;
+      const sisa = aktif ? Math.max(0, Math.ceil((s.endTime - Date.now()) / 60000)) : 0;
+      return '<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><div style="font-size:13px;font-weight:600;min-width:0;">' + esc(s.nama) + '</div>' +
+        '<span class="mon-badge" style="' + (aktif ? 'color:#4ade80;background:rgba(74,222,128,.14);' : 'color:#8a96a8;background:rgba(138,150,168,.14);') + '">' + (aktif ? '🟢 Aktif · ' + sisa + ' mnt' : '⏹ Selesai') + '</span></div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:3px;">' + esc(typeof jenisBadge === 'function' ? jenisBadge(s.jenis) : s.jenis) + ' · ' + hadir + (total ? '/' + total : '') + ' hadir</div>' +
+        (total ? '<div class="mon-bar"><i style="width:' + pct + '%;"></i></div>' : '') + '</div>';
+    }).join('') + '<button class="btn-sm" style="width:100%;" onclick="switchTab(\'kegiatan\')">Buka Absensi Kegiatan →</button><div class="mon-note">Menampilkan sesi yang dibuat di perangkat ini.</div>';
+  }
+
+  function renderHealth(ctx) {
+    const el = document.getElementById('mon-health'); if (!el) return;
+    const srv = monServer.ok === null ? '⏳ Memeriksa…' : monServer.ok ? '✅ Tersambung · ' + monServer.ms + ' ms' : '❌ Tidak merespons';
+    el.innerHTML =
+      '<div class="it"><span>☁️ Server (Google Sheets)</span><b>' + srv + '</b></div>' +
+      '<div class="it"><span>📤 Antrean kirim (perangkat ini)</span><b>' + (ctx.pending ? '<span style="color:#fbbf24;">' + ctx.pending + ' tertunda</span> <button class="btn-sm" onclick="syncPendingAbsen().then(function(){refreshMonitor(true)})">Kirim ulang</button>' : '✅ Kosong') + '</b></div>' +
+      '<div class="it"><span>💾 Penyimpanan lokal</span><b style="' + (ctx.pct >= 80 ? 'color:#fbbf24;' : '') + '">' + ctx.pct + '% (' + ctx.usedKB + ' KB)</b></div>' +
+      '<div class="mon-note">Absen yang gagal terkirim tersimpan di komputer bursa dan baru tampil di sini setelah berhasil terkirim.</div>';
+  }
+
+  // ── Muat data dari server ──
+  async function refreshMonitor(manual) {
+    if (monBusy || !document.getElementById('tab-monitor')) return;
+    monBusy = true;
+    const btn = document.getElementById('mon-btn-refresh');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Memuat…'; }
+    const today = getTodayWIB();
+    try { await Promise.all([typeof syncJadwalDariGAS === 'function' ? syncJadwalDariGAS() : null, typeof syncIzinThrottled === 'function' ? syncIzinThrottled() : null]); } catch (e) {}
+    const t0 = performance.now(); let res = null;
+    try { res = await Promise.race([api({ action: 'getRekapAbsensi', from: today, to: today }), new Promise(r => setTimeout(() => r(null), 10000))]); } catch (e) { res = null; }
+    const ms = Math.round(performance.now() - t0);
+    if (res && res.ok && Array.isArray(res.data)) { monRows = res.data; monLastOk = Date.now(); monServer = { ok: true, ms }; }
+    else monServer = { ok: false, ms };
+    monRender();
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Muat ulang'; }
+    monBusy = false;
+  }
+
+  function initMonitor() {
+    stopMonitor();
+    monRender();
+    refreshMonitor();
+    monTimer = setInterval(() => {
+      const p = document.getElementById('tab-monitor');
+      if (!p || !p.classList.contains('active')) { stopMonitor(); return; }
+      if (document.hidden) return;
+      refreshMonitor();
+    }, MON_REFRESH_MS);
+  }
+  function stopMonitor() { if (monTimer) { clearInterval(monTimer); monTimer = null; } }
+
+  function monSetFilter(f) { monFilter = f; monRender(); }
+
+  async function monitorCopyWA() {
+    if (monRows === null) { showToast('Data belum dimuat dari server', 'error'); return; }
+    const txt = buildWAText(currentModel());
+    try { await navigator.clipboard.writeText(txt); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0;'; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e2) {} ta.remove();
+    }
+    showToast('✅ Rekap disalin — tinggal tempel di WhatsApp', 'success');
+  }
+
+  // ── Navigasi admin di HP ──
+  function openAdminDrawer() {
+    const s = document.querySelector('#page-admin .sidebar'); if (!s) return;
+    s.classList.add('open');
+    const b = document.getElementById('sb-backdrop'); if (b) b.classList.add('show');
+  }
+  function closeAdminDrawer() {
+    const s = document.querySelector('#page-admin .sidebar'); if (s) s.classList.remove('open');
+    const b = document.getElementById('sb-backdrop'); if (b) b.classList.remove('show');
+  }
+  function onAdminTabChanged(tab) {
+    closeAdminDrawer();
+    document.querySelectorAll('#mobile-nav [data-mtab]').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
+    const inMain = !!document.querySelector('#mobile-nav [data-mtab="' + tab + '"]');
+    const mm = document.getElementById('mnav-menu'); if (mm) mm.classList.toggle('active', !inMain);
+    scheduleDecorate();
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAdminDrawer(); });
+
+  // ── Tabel lebar → kartu di HP ──
+  let decTimer = null;
+  function scheduleDecorate() { clearTimeout(decTimer); decTimer = setTimeout(decorateTables, 140); }
+  function decorateTables() {
+    if (!window.matchMedia('(max-width: 768px)').matches) return;
+    document.querySelectorAll('#page-admin .admin-content table').forEach(t => {
+      if (t.offsetParent === null) return;                       // berada di tab yang tersembunyi
+      const heads = [...t.querySelectorAll('thead th')].map(th => th.textContent.trim());
+      if (!heads.length) return;
+      t.querySelectorAll('tbody tr').forEach(tr => {
+        [...tr.children].forEach((td, i) => {
+          if (td.tagName === 'TD' && !td.dataset.label && heads[i] && !td.hasAttribute('colspan')) td.dataset.label = heads[i];
+        });
+      });
+      if (!t.classList.contains('rt') && t.parentElement && t.offsetWidth > t.parentElement.clientWidth + 4) t.classList.add('rt');
+    });
+  }
+  const ac = document.querySelector('#page-admin .admin-content');
+  if (ac && 'MutationObserver' in window) new MutationObserver(scheduleDecorate).observe(ac, { childList: true, subtree: true });
+  window.addEventListener('resize', scheduleDecorate);
+
+  Object.assign(window, { initMonitor, stopMonitor, refreshMonitor, monSetFilter, monitorCopyWA, openAdminDrawer, closeAdminDrawer, onAdminTabChanged, buildMonitorModel, buildMonitorWAText: buildWAText });
+})();
+</script>
+
 </body>
 </html>
